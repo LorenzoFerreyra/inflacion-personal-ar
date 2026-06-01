@@ -1,7 +1,10 @@
 fetch_price_data <- function(pool, eans) {
   stopifnot(is.character(eans), length(eans) > 0)
 
-  eans_sql <- paste(vapply(eans, function(x) as.character(DBI::dbQuoteString(pool, x)), character(1)), collapse = ",")
+  eans_sql <- paste(
+    vapply(eans, function(x) as.character(DBI::dbQuoteString(pool, x)), character(1)),
+    collapse = ","
+  )
 
   query <- sprintf(
     "SELECT
