@@ -58,7 +58,7 @@ Una vez que `renv` haya terminado de instalar los paquetes, tienes dos formas de
 Asegúrate de que tu directorio de trabajo es la raíz del proyecto y ejecuta:
 
 ```r
-shiny::runApp()
+Rscript -e "shiny::runApp('.')"
 ```
 You can verify which library R is using at any moment with:
 

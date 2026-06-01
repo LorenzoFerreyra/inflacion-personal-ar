@@ -16,7 +16,6 @@
 #' @return Un `data.frame` con `fecha`, `precio_lista`, `product_description` y `marca`.
 #' Los precios se promedian por día para cada producto si existen en múltiples cadenas.
 fetch_price_data <- function(pool, eans, start_date, end_date) {
-
   # Validar que los inputs son correctos
   stopifnot(is.character(eans), length(eans) > 0)
   stopifnot(inherits(start_date, "Date"), inherits(end_date, "Date"))
@@ -54,11 +53,66 @@ fetch_price_data <- function(pool, eans, start_date, end_date) {
   )
 
   # Ejecutar la consulta
-  tryCatch({
-    dbGetQuery(pool, final_query)
-  }, error = function(e) {
-    message("Error en la consulta a la base de datos: ", e$message)
-    # Devolver un dataframe vacío en caso de error
-    data.frame()
-  })
+  tryCatch(
+    {
+      dbGetQuery(pool, final_query)
+    },
+    error = function(e) {
+      message("Error en la consulta a la base de datos: ", e$message)
+      # Devolver un dataframe vacío en caso de error
+      data.frame()
+    }
+  )
+}
+
+
+#' @title Buscar productos por texto
+#' @description Busca productos en la tabla `canonical_products` que coincidan
+#' con un término de búsqueda.
+#'
+#' @param pool Un objeto `pool` de conexión a la base de datos.
+#' @param search_term El texto a buscar en la descripción o marca.
+#' @param limit El número máximo de resultados a devolver.
+#'
+#' @return Una lista nombrada `(value = ean, label = description)` para usar en selectizeInput.
+search_products <- function(pool, search_term, limit = 100) {
+  # Validar input
+  stopifnot(is.character(search_term), nchar(search_term) > 0)
+
+  # El término de búsqueda se envuelve en '%' para buscar subcadenas.
+  search_pattern <- paste0("%", search_term, "%")
+
+  query <- "
+    SELECT ean, product_description, marca
+    FROM canonical_products
+    WHERE product_description LIKE ? OR marca LIKE ?
+    ORDER BY product_description
+    LIMIT ?
+  "
+
+  # Interpolar los parámetros de forma segura
+  safe_query <- sqlInterpolate(
+    pool,
+    query,
+    .dots = list(search_pattern, search_pattern, limit)
+  )
+
+  # Ejecutar la consulta
+  results <- tryCatch(
+    {
+      dbGetQuery(pool, safe_query)
+    },
+    error = function(e) {
+      message("Error en la búsqueda de productos: ", e$message)
+      data.frame()
+    }
+  )
+
+  # Si no hay resultados, devolver NULL
+  if (nrow(results) == 0) {
+    return(NULL)
+  }
+
+  # Formatear para selectizeInput (lista nombrada)
+  setNames(results$ean, paste(results$product_description, " (", results$marca, ")", sep = ""))
 }

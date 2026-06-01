@@ -6,28 +6,21 @@
 
 ui <- fluidPage(
   titlePanel("Calculadora de Inflación Personal"),
-
   sidebarLayout(
     sidebarPanel(
       width = 3,
       h4("1. Armá tu canasta"),
       p("Seleccioná los productos que consumís habitualmente."),
-
       selectizeInput(
         "selected_products",
         "Buscar y agregar productos:",
-        choices = product_choices,
+        choices = NULL, # Se carga desde el servidor
         multiple = TRUE,
-        selected = NULL,
         options = list(
-          placeholder = 'Escribí para buscar...',
-          # Mejora la performance con muchos items
-          maxOptions = 100
+          placeholder = "Escribí para buscar..."
         )
       ),
-
       hr(),
-
       h4("2. Opciones de Visualización"),
       dateRangeInput(
         "date_range",
@@ -37,10 +30,8 @@ ui <- fluidPage(
         format = "dd/mm/yyyy",
         separator = " - "
       ),
-
       actionButton("calculate_button", "Calcular Mi Inflación", class = "btn-primary", icon = icon("calculator"))
     ),
-
     mainPanel(
       width = 9,
       tabsetPanel(

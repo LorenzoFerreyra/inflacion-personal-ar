@@ -9,6 +9,25 @@ source("R/queries.R")
 source("R/plots.R")
 
 server <- function(input, output, session) {
+  # --- Server-side Selectize para productos ---
+  updateSelectizeInput(
+    session,
+    "selected_products",
+    server = TRUE,
+    choices = function() {
+      # Esta función se ejecuta cuando el usuario busca.
+      # 'session$userData$selectize$selected_products$search' contiene el texto.
+      search_term <- session$userData$selectize$selected_products$search
+
+      # Evitar búsquedas vacías o muy cortas
+      if (nchar(search_term) < 3) {
+        return(NULL)
+      }
+
+      # Llamar a una función que busca productos en la DB
+      search_products(db, search_term)
+    }
+  )
 
   # --- Reactividad para obtener datos ---
 
@@ -71,13 +90,12 @@ server <- function(input, output, session) {
     DT::datatable(
       df,
       rownames = FALSE,
-      filter = 'top',
+      filter = "top",
       options = list(
         pageLength = 15,
-        language = list(url = '//cdn.datatables.net/plug-ins/1.10.19/i18n/Spanish.json'),
+        language = list(url = "//cdn.datatables.net/plug-ins/1.10.19/i18n/Spanish.json"),
         autoWidth = TRUE
       )
     )
   })
-
 }

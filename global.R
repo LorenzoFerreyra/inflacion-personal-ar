@@ -33,26 +33,14 @@ onStop(function() {
 # ==============================================================================
 # DATOS INICIALES
 # ==============================================================================
-# Cargar productos canónicos para que el usuario pueda seleccionarlos.
-# Usamos tryCatch para manejar el caso en que la tabla no exista o esté vacía.
-all_products <- tryCatch({
-  dbGetQuery(db, "SELECT ean, product_description, marca, categoria FROM canonical_products ORDER BY product_description")
-}, error = function(e) {
-  # Si hay un error (ej. la tabla no existe), devuelve un dataframe vacío.
-  # Esto previene que la app crashee si la DB no está lista.
-  message("Error al cargar productos canónicos: ", e$message)
-  data.frame(
-    ean = character(0),
-    product_description = character(0),
-    marca = character(0),
-    categoria = character(0)
-  )
-})
+# DEPRECATED: No se cargan todos los productos al inicio por performance.
+all_products <- data.frame()
 
 # Crear una lista nombrada para el selectInput, formateada como "Descripción (Marca)"
 # Esto es más eficiente que hacerlo reactivamente.
-product_choices <- if (nrow(all_products) > 0) {
-  setNames(all_products$ean, paste(all_products$product_description, " (", all_products$marca, ")", sep = ""))
-} else {
-  character(0)
-}
+# DEPRECATED: Se movió a server-side selectize para performance.
+# product_choices <- if (nrow(all_products) > 0) {
+#   setNames(all_products$ean, paste(all_products$product_description, " (", all_products$marca, ")", sep = ""))
+# } else {
+#   character(0)
+# }
