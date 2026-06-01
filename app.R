@@ -1,11 +1,13 @@
 library(shiny)
 
 source("global.R")
-source("server.R")
+source("R/server.R")
 
-ui <- htmlTemplate(
-  "templates/index.html",
-  document_ = TRUE
-)
+ui <- function(request) {
+  htmlTemplate(
+    filename = "templates/index.html",
+    document_ = TRUE
+  )
+}
 
 shinyApp(ui = ui, server = server)
