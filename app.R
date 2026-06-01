@@ -53,7 +53,7 @@ product_choices <- setNames(all_products$ean, paste(all_products$product_descrip
 # UI (Interfaz de Usuario)
 # ==============================================================================
 ui <- fluidPage(
-  titlePanel("Calculadora de Inflación Personal"),
+  titlePanel("Calculadora de inflación personal"),
 
   sidebarLayout(
     sidebarPanel(
