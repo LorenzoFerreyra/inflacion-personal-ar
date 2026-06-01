@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inflación Personal AR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav>
+  <div class="nav-logo">inflación personal <span>ar</span></div>
+  <div class="nav-links">
+    <button class="nav-link active" data-page="calculator">Calculadora</button>
+    <button class="nav-link" data-page="search">Buscador</button>
+  </div>
+  <div class="nav-meta">actualizado 31.05.2026</div>
+</nav>
+
+<main>
+
+  <!-- ═══ PAGE: CALCULATOR ═══ -->
+  <div id="page-calculator" class="page active">
+
+    <header class="calc-hero">
+      <h1>Calculá tu inflación real</h1>
+      <p>Armá tu canasta con los productos que realmente consumís. Te mostramos cómo tu inflación se compara con el índice oficial.</p>
+    </header>
+
+    <!-- Step indicators -->
+    <div class="steps">
+      <div class="step-item active" data-step="1">
+        <div class="step-number">1</div>
+        <span class="step-label">Categorías</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item" data-step="2">
+        <div class="step-number">2</div>
+        <span class="step-label">Productos</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item" data-step="3">
+        <div class="step-number">3</div>
+        <span class="step-label">Resultados</span>
+      </div>
+    </div>
+
+    <!-- Step panes -->
+    <div class="step-content">
+
+      <!-- STEP 1: Categories -->
+      <section class="step-pane active" id="step-1">
+        <p class="section-label">Seleccioná las categorías que querés incluir</p>
+        <div class="category-grid">
+          <button class="category-card selected" data-category="carnes">
+            <span class="category-icon" aria-hidden="true">🥩</span>
+            <span class="category-name">Carnes</span>
+            <span class="category-count">247 productos</span>
+          </button>
+          <button class="category-card selected" data-category="lacteos">
+            <span class="category-icon" aria-hidden="true">🥛</span>
+            <span class="category-name">Lácteos</span>
+            <span class="category-count">189 productos</span>
+          </button>
+          <button class="category-card" data-category="panaderia">
+            <span class="category-icon" aria-hidden="true">🍞</span>
+            <span class="category-name">Panadería</span>
+            <span class="category-count">156 productos</span>
+          </button>
+          <button class="category-card selected" data-category="almacen">
+            <span class="category-icon" aria-hidden="true">🥫</span>
+            <span class="category-name">Almacén</span>
+            <span class="category-count">412 productos</span>
+          </button>
+          <button class="category-card" data-category="bebidas">
+            <span class="category-icon" aria-hidden="true">🧃</span>
+            <span class="category-name">Bebidas</span>
+            <span class="category-count">298 productos</span>
+          </button>
+          <button class="category-card" data-category="limpieza">
+            <span class="category-icon" aria-hidden="true">🧹</span>
+            <span class="category-name">Limpieza</span>
+            <span class="category-count">134 productos</span>
+          </button>
+          <button class="category-card" data-category="higiene">
+            <span class="category-icon" aria-hidden="true">🧴</span>
+            <span class="category-name">Higiene personal</span>
+            <span class="category-count">178 productos</span>
+          </button>
+          <button class="category-card" data-category="congelados">
+            <span class="category-icon" aria-hidden="true">❄️</span>
+            <span class="category-name">Congelados</span>
+            <span class="category-count">93 productos</span>
+          </button>
+          <button class="category-card" data-category="alcoholes">
+            <span class="category-icon" aria-hidden="true">🍺</span>
+            <span class="category-name">Alcoholes</span>
+            <span class="category-count">167 productos</span>
+          </button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" data-action="next-step">Continuar</button>
+        </div>
+      </section>
+
+      <!-- STEP 2: Products -->
+      <section class="step-pane" id="step-2">
+        <div class="search-box">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input type="text" placeholder="Buscar producto, marca o EAN..." aria-label="Buscar productos">
+        </div>
+
+        <div class="filter-chips">
+          <button class="filter-chip active">Todos</button>
+          <button class="filter-chip">Carnes</button>
+          <button class="filter-chip">Lácteos</button>
+          <button class="filter-chip">Almacén</button>
+        </div>
+
+        <ul class="product-list" role="listbox" aria-label="Lista de productos">
+          <li class="product-row selected" data-ean="7790070001234" role="option" aria-selected="true">
+            <div class="product-info">
+              <span class="product-name">Leche entera UAT 1L</span>
+              <span class="product-brand">La Serenísima</span>
+            </div>
+            <span class="product-price">$1.890</span>
+            <div class="check-circle" aria-hidden="true"></div>
+          </li>
+          <li class="product-row selected" data-ean="7790070002345" role="option" aria-selected="true">
+            <div class="product-info">
+              <span class="product-name">Aceite de girasol 900ml</span>
+              <span class="product-brand">Natura</span>
+            </div>
+            <span class="product-price">$3.250</span>
+            <div class="check-circle" aria-hidden="true"></div>
+          </li>
+          <li class="product-row" data-ean="7790070003456" role="option" aria-selected="false">
+            <div class="product-info">
+              <span class="product-name">Yerba mate suave 1kg</span>
+              <span class="product-brand">Taragüí</span>
+            </div>
+            <span class="product-price">$5.490</span>
+            <div class="check-circle" aria-hidden="true"></div>
+          </li>
+          <li class="product-row selected" data-ean="7790070004567" role="option" aria-selected="true">
+            <div class="product-info">
+              <span class="product-name">Fideos tallarín 500g</span>
+              <span class="product-brand">Matarazzo</span>
+            </div>
+            <span class="product-price">$1.120</span>
+            <div class="check-circle" aria-hidden="true"></div>
+          </li>
+          <li class="product-row" data-ean="7790070005678" role="option" aria-selected="false">
+            <div class="product-info">
+              <span class="product-name">Queso cremoso 1kg</span>
+              <span class="product-brand">La Paulina</span>
+            </div>
+            <span class="product-price">$8.750</span>
+            <div class="check-circle" aria-hidden="true"></div>
+          </li>
+          <li class="product-row" data-ean="7790070006789" role="option" aria-selected="false">
+            <div class="product-info">
+              <span class="product-name">Pan lactal 500g</span>
+              <span class="product-brand">Bimbo</span>
+            </div>
+            <span class="product-price">$2.340</span>
+            <div class="check-circle" aria-hidden="true"></div>
+          </li>
+          <li class="product-row selected" data-ean="7790070007890" role="option" aria-selected="true">
+            <div class="product-info">
+              <span class="product-name">Arroz largo fino 1kg</span>
+              <span class="product-brand">Gallo</span>
+            </div>
+            <span class="product-price">$1.680</span>
+            <div class="check-circle" aria-hidden="true"></div>
+          </li>
+          <li class="product-row" data-ean="7790070008901" role="option" aria-selected="false">
+            <div class="product-info">
+              <span class="product-name">Azúcar 1kg</span>
+              <span class="product-brand">Ledesma</span>
+            </div>
+            <span class="product-price">$1.350</span>
+            <div class="check-circle" aria-hidden="true"></div>
+          </li>
+        </ul>
+
+        <div class="btn-group">
+          <button class="btn btn-secondary" data-action="prev-step">Volver</button>
+          <button class="btn btn-primary" data-action="next-step">Ver resultados</button>
+        </div>
+      </section>
+
+      <!-- STEP 3: placeholder (content lives in results-section) -->
+      <section class="step-pane" id="step-3"></section>
+    </div>
+
+    <!-- Results (visible on step 3) -->
+    <div id="results-section" class="results-section hidden">
+      <header class="result-header">
+        <h2>Tu inflación personal</h2>
+        <p>Basado en 4 productos seleccionados · últimos 90 días</p>
+      </header>
+
+      <div class="result-cards">
+        <article class="stat-card">
+          <div class="stat-label">Tu inflación mensual</div>
+          <div class="stat-value color-red">+8.4%</div>
+          <div class="stat-sub">Mayo 2026</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">IPC oficial</div>
+          <div class="stat-value color-blue">+6.1%</div>
+          <div class="stat-sub">INDEC · Mayo 2026</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Diferencia</div>
+          <div class="stat-value color-red">+2.3pp</div>
+          <div class="stat-sub">Tu canasta sube más que el promedio</div>
+        </article>
+      </div>
+
+      <div class="chart-container">
+        <div class="chart-box">
+          <div class="chart-header">
+            <span class="chart-title">Evolución comparada · base 100</span>
+            <div class="chart-legend">
+              <div class="legend-item">
+                <div class="legend-dot legend-dot--green"></div>
+                Tu canasta
+              </div>
+              <div class="legend-item">
+                <div class="legend-dot legend-dot--blue"></div>
+                IPC oficial
+              </div>
+            </div>
+          </div>
+          <svg class="chart-svg" viewBox="0 0 900 280" preserveAspectRatio="none" aria-label="Gráfico de evolución de índice de precios">
+            <defs>
+              <linearGradient id="greenGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--color-accent)"/>
+                <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="70" x2="900" y2="70" class="chart-grid"/>
+            <line x1="0" y1="140" x2="900" y2="140" class="chart-grid"/>
+            <line x1="0" y1="210" x2="900" y2="210" class="chart-grid"/>
+            <text x="4" y="68" class="chart-label-y">130</text>
+            <text x="4" y="138" class="chart-label-y">120</text>
+            <text x="4" y="208" class="chart-label-y">110</text>
+            <text x="4" y="275" class="chart-label-y">100</text>
+            <polyline class="chart-line chart-line--official" points="40,260 140,245 240,230 340,218 440,200 540,185 640,170 740,155 840,145"/>
+            <polygon class="chart-area" points="40,260 140,240 240,215 340,210 440,180 540,155 640,130 740,100 840,75 840,280 40,280" fill="url(#greenGradient)"/>
+            <polyline class="chart-line chart-line--personal" points="40,260 140,240 240,215 340,210 440,180 540,155 640,130 740,100 840,75"/>
+            <text x="40" y="278" class="chart-label-x">Mar</text>
+            <text x="240" y="278" class="chart-label-x">Abr</text>
+            <text x="440" y="278" class="chart-label-x">May</text>
+            <text x="640" y="278" class="chart-label-x">Jun</text>
+            <text x="840" y="278" class="chart-label-x">Jul</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <div class="chart-box">
+          <div class="chart-header">
+            <span class="chart-title">Variación por producto · último mes</span>
+          </div>
+          <ul class="bar-chart" aria-label="Variación de precios por producto">
+            <li class="bar-row">
+              <span class="bar-label">Leche entera 1L</span>
+              <div class="bar-track"><div class="bar-fill bar-fill--red" style="width:72%"></div></div>
+              <span class="bar-value color-red">+12.1%</span>
+            </li>
+            <li class="bar-row">
+              <span class="bar-label">Aceite girasol 900ml</span>
+              <div class="bar-track"><div class="bar-fill bar-fill--red" style="width:54%"></div></div>
+              <span class="bar-value color-red">+9.0%</span>
+            </li>
+            <li class="bar-row">
+              <span class="bar-label">Fideos tallarín 500g</span>
+              <div class="bar-track"><div class="bar-fill bar-fill--red" style="width:40%"></div></div>
+              <span class="bar-value color-red">+6.7%</span>
+            </li>
+            <li class="bar-row">
+              <span class="bar-label">Arroz largo fino 1kg</span>
+              <div class="bar-track"><div class="bar-fill bar-fill--green" style="width:30%"></div></div>
+              <span class="bar-value color-green">+5.0%</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <button class="btn btn-secondary" data-action="edit-basket">Editar canasta</button>
+        <button class="btn btn-secondary" data-action="download-csv">Descargar datos (CSV)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PAGE: SEARCH ═══ -->
+  <div id="page-search" class="page">
+    <div class="search-page">
+      <h1>Buscador de precios</h1>
+      <p>Consultá la evolución de precios de cualquier producto en nuestra base de datos.</p>
+
+      <div class="big-search">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input type="text" placeholder="Buscar por nombre, marca o código de barras..." value="leche" aria-label="Buscar productos">
+      </div>
+
+      <div class="filter-chips">
+        <button class="filter-chip active">Todos</button>
+        <button class="filter-chip">Lácteos</button>
+        <button class="filter-chip">Carnes</button>
+        <button class="filter-chip">Almacén</button>
+        <button class="filter-chip">Bebidas</button>
+        <button class="filter-chip">Limpieza</button>
+      </div>
+
+      <div class="table-header">
+        <span>Producto</span>
+        <span>Precio actual</span>
+        <span>Var. mensual</span>
+      </div>
+
+      <ul class="search-results" role="list" aria-label="Resultados de búsqueda">
+        <li class="result-row">
+          <div class="result-product">
+            <span class="result-product-name">Leche entera UAT 1L</span>
+            <span class="result-product-meta">La Serenísima · EAN 7790070001234 · Lácteos</span>
+          </div>
+          <span class="result-price">$1.890</span>
+          <span class="result-change change-up">+12.1%</span>
+        </li>
+        <li class="result-row">
+          <div class="result-product">
+            <span class="result-product-name">Leche descremada UAT 1L</span>
+            <span class="result-product-meta">La Serenísima · EAN 7790070001241 · Lácteos</span>
+          </div>
+          <span class="result-price">$1.950</span>
+          <span class="result-change change-up">+10.8%</span>
+        </li>
+        <li class="result-row">
+          <div class="result-product">
+            <span class="result-product-name">Leche entera sachet 1L</span>
+            <span class="result-product-meta">SanCor · EAN 7790070005678 · Lácteos</span>
+          </div>
+          <span class="result-price">$1.520</span>
+          <span class="result-change change-up">+8.3%</span>
+        </li>
+        <li class="result-row">
+          <div class="result-product">
+            <span class="result-product-name">Leche chocolatada 1L</span>
+            <span class="result-product-meta">Cindor · EAN 7790070009012 · Lácteos</span>
+          </div>
+          <span class="result-price">$2.450</span>
+          <span class="result-change change-up">+6.2%</span>
+        </li>
+        <li class="result-row">
+          <div class="result-product">
+            <span class="result-product-name">Leche en polvo entera 800g</span>
+            <span class="result-product-meta">Nido · EAN 7613035123456 · Lácteos</span>
+          </div>
+          <span class="result-price">$7.890</span>
+          <span class="result-change change-down">-1.2%</span>
+        </li>
+        <li class="result-row">
+          <div class="result-product">
+            <span class="result-product-name">Dulce de leche 400g</span>
+            <span class="result-product-meta">La Serenísima · EAN 7790070003456 · Lácteos</span>
+          </div>
+          <span class="result-price">$3.120</span>
+          <span class="result-change change-up">+4.5%</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<!-- Basket bottom bar -->
+<div class="basket-bar visible" id="basket-bar">
+  <div class="basket-left">
+    <span class="basket-count"><strong>4</strong> productos en tu canasta</span>
+    <div class="basket-tags">
+      <span class="basket-tag">Leche 1L <button class="basket-tag-remove" aria-label="Quitar Leche 1L">&times;</button></span>
+      <span class="basket-tag">Aceite 900ml <button class="basket-tag-remove" aria-label="Quitar Aceite 900ml">&times;</button></span>
+      <span class="basket-tag">Fideos 500g <button class="basket-tag-remove" aria-label="Quitar Fideos 500g">&times;</button></span>
+      <span class="basket-tag">Arroz 1kg <button class="basket-tag-remove" aria-label="Quitar Arroz 1kg">&times;</button></span>
+    </div>
+  </div>
+  <button class="btn btn-primary" data-action="calculate">Calcular</button>
+</div>
+
+<footer>inflación personal ar · datos propios · tesis de grado</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
