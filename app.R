@@ -495,20 +495,22 @@ server <- function(input, output, session) {
     days <- PERIOD_DAYS[[pd]] %||% 30
     cutoff <- as.character(Sys.Date() - days)
 
+    term <- search_term_val() %||% ""
+    cat_val <- search_cat_val() %||% ""
     conditions <- character()
     params <- list(cutoff)
 
-    if (nzchar(search_term_val())) {
+    if (nzchar(term)) {
       conditions <- c(
         conditions,
         "(c.product_description LIKE ? OR c.marca LIKE ?)"
       )
-      t <- paste0("%", search_term_val(), "%")
+      t <- paste0("%", term, "%")
       params <- c(params, t, t)
     }
-    if (nzchar(search_cat_val())) {
+    if (nzchar(cat_val)) {
       conditions <- c(conditions, "c.categoria = ?")
-      params <- c(params, search_cat_val())
+      params <- c(params, cat_val)
     }
 
     where <- if (length(conditions) > 0) {
