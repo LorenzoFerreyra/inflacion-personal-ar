@@ -22,292 +22,119 @@ PERIOD_SUBTITLES <- list(
   mensual = "30 días", trimestral = "90 días", interanual = "365 días"
 )
 
+STEP_NAMES <- c("Agregar productos", "Revisar canasta", "Tu resultado")
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════════
-
-variation_badge <- function(v) {
-  if (is.null(v) || is.na(v)) {
-    return(span("var-badge var-flat", "—"))
-  }
-  cls <- if (v > 0) "var-up" else if (v < 0) "var-down" else "var-flat"
-  sign <- if (v > 0) "+" else ""
-  span(paste("var-badge", cls), paste0(sign, v, "%"))
-}
 
 span <- function(class, text) {
   sprintf('<span class="%s">%s</span>', class, text)
 }
 
-# ═══════════════════════════════════════════════════════════════════════════
-# CSS
-# ═══════════════════════════════════════════════════════════════════════════
-
-CSS <- '
-:root {
-  --bg:      #0f0f0f;
-  --surface: #1a1a1a;
-  --border:  #2a2a2a;
-  --text:    #e5e5e5;
-  --muted:   #888;
-  --accent:  #4ade80;
-  --red:     #f87171;
-  --radius:  10px;
-  --font:    "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: var(--bg); color: var(--text);
-  font-family: var(--font); font-size: 15px; line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
-ul { list-style: none; }
-button {
-  font-family: inherit; cursor: pointer; border: none;
-  background: none; color: inherit; font-size: inherit;
+variation_badge <- function(v) {
+  if (is.null(v) || is.na(v)) return(span("var-badge var-flat", "—"))
+  cls <- if (v > 0) "var-up" else if (v < 0) "var-down" else "var-flat"
+  sign <- if (v > 0) "+" else ""
+  span(paste("var-badge", cls), paste0(sign, v, "%"))
 }
 
-/* Header */
-.app-header { padding: 24px 32px 0; max-width: 1100px; margin: 0 auto; }
-.header-row { display: flex; align-items: center; gap: 12px; }
-.header-left { display: flex; align-items: center; gap: 12px; }
-.app-title { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
-.badge {
-  font-size: 11px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.5px; background: var(--accent); color: #000;
-  padding: 2px 8px; border-radius: 99px;
-}
-.app-subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
-
-/* Tab nav */
-.tab-nav {
-  display: flex; gap: 4px; padding: 20px 32px 0; max-width: 1100px;
-  margin: 0 auto; border-bottom: 1px solid var(--border);
-}
-.tab-link {
-  padding: 10px 20px; font-size: 14px; font-weight: 500; color: var(--muted);
-  border-radius: var(--radius) var(--radius) 0 0;
-  transition: color 0.15s, background 0.15s;
-  background: transparent; position: relative;
-}
-.tab-link:hover { color: var(--text); }
-.tab-link.active { color: var(--text); background: var(--surface); }
-.tab-link.active::after {
-  content: ""; position: absolute; bottom: -1px; left: 0; right: 0;
-  height: 2px; background: var(--accent);
+format_price <- function(x) {
+  if (is.null(x) || is.na(x) || x <= 0) return("—")
+  paste0("$", format(round(x), big.mark = ".", decimal.mark = ",", scientific = FALSE))
 }
 
-/* Main */
-main { max-width: 1100px; margin: 0 auto; padding: 24px 32px 48px; }
-.placeholder-pane { text-align: center; padding: 80px 20px; }
+search_icon_svg <- '<svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
 
-/* Step layout */
-.step-columns { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; }
-.step-narrow  { max-width: 620px; margin: 0 auto; }
-.step-top-bar { margin-bottom: 20px; }
+stepper_html <- function(active) {
+  steps <- vapply(1:3, function(i) {
+    if (i < active) {
+      cls_num <- "done"
+      cls_txt <- "done"
+    } else if (i == active) {
+      cls_num <- "active"
+      cls_txt <- "active"
+    } else {
+      cls_num <- "upcoming"
+      cls_txt <- "upcoming"
+    }
+    onclick <- if (i <= active) {
+      sprintf("Shiny.setInputValue('go_to_step',%d)", i)
+    } else ""
+    sprintf(
+      '<div class="stepper-step"><button class="stepper-num %s" onclick="%s">%d</button><span class="stepper-text %s">%s</span></div>',
+      cls_num, onclick, i, cls_txt, STEP_NAMES[i]
+    )
+  }, "")
 
-/* Headings */
-.section-heading {
-  font-size: 13px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.8px; color: var(--muted); margin-bottom: 14px;
-}
-.section-subheading {
-  font-size: 13px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.8px; color: var(--muted); margin: 28px 0 14px;
-}
+  lines <- vapply(1:2, function(i) {
+    cls <- if (i < active) " done" else ""
+    sprintf('<div class="stepper-line%s"></div>', cls)
+  }, "")
 
-/* Buttons */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 10px 20px; font-size: 14px; font-weight: 600;
-  border-radius: var(--radius); transition: background 0.15s, opacity 0.15s;
-  gap: 6px;
-}
-.btn-primary       { background: var(--accent); color: #000; }
-.btn-primary:hover { opacity: 0.85; }
-.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
-.btn-secondary       { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
-.btn-secondary:hover { background: #252525; }
-.btn-ghost       { background: transparent; color: var(--muted); padding: 8px 12px; font-weight: 500; }
-.btn-ghost:hover { color: var(--text); }
-.btn-full { width: 100%; }
-.btn-group { display: flex; gap: 10px; margin-top: 24px; }
-
-/* Search */
-.search-box { position: relative; margin-bottom: 16px; }
-.search-box input {
-  width: 100%; padding: 12px 14px 12px 38px; background: var(--surface);
-  border: 1px solid var(--border); border-radius: var(--radius);
-  color: var(--text); font-family: var(--font); font-size: 14px;
-  outline: none; transition: border-color 0.15s;
-}
-.search-box input:focus { border-color: var(--accent); }
-.search-box input::placeholder { color: #555; }
-.search-icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  color: #555; pointer-events: none;
+  paste0('<div class="stepper">', steps[1], lines[1], steps[2], lines[2], steps[3], '</div>')
 }
 
-/* Category chips */
-.chip-group { margin-bottom: 8px; }
-.chip-wrapper {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  max-height: 72px; overflow: hidden; transition: max-height 0.3s ease;
-}
-.chip-wrapper.expanded { max-height: 320px; overflow-y: auto; padding-right: 4px; }
-.chip {
-  padding: 6px 14px; font-size: 13px; font-weight: 500; border-radius: 99px;
-  background: var(--surface); color: var(--muted); border: 1px solid var(--border);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  flex-shrink: 0; white-space: nowrap;
-}
-.chip:hover { color: var(--text); border-color: #444; }
-.chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
-.chip-more {
-  padding: 5px 12px; font-size: 12px; font-weight: 500; color: var(--muted);
-  background: transparent; border: 1px dashed var(--border);
-  border-radius: 99px; margin-top: 6px; transition: color 0.15s, border-color 0.15s;
-  cursor: pointer; flex-shrink: 0;
-}
-.chip-more:hover { color: var(--text); border-color: #555; }
-
-/* Period toggle */
-.period-toggle {
-  display: inline-flex; gap: 4px; background: var(--surface);
-  border-radius: var(--radius); padding: 4px; margin-bottom: 18px;
-}
-.period-btn {
-  padding: 7px 16px; font-size: 13px; font-weight: 500;
-  border-radius: 7px; color: var(--muted); transition: background 0.15s, color 0.15s;
-}
-.period-btn:hover { color: var(--text); }
-.period-btn.active { background: #2a2a2a; color: var(--text); font-weight: 600; }
-
-/* Product list */
-.product-list {
-  max-height: 480px; overflow-y: auto; border: 1px solid var(--border);
-  border-radius: var(--radius); background: var(--surface);
-}
-.product-row {
-  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  border-bottom: 1px solid #222; transition: background 0.1s;
-}
-.product-row:last-child { border-bottom: none; }
-.product-row:hover { background: #1e1e1e; }
-.product-row.in-basket { background: rgba(74, 222, 128, 0.06); }
-.product-info { flex: 1; min-width: 0; }
-.product-name {
-  font-size: 14px; font-weight: 500; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
-}
-.product-meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
-.product-price {
-  font-size: 13px; font-weight: 500; color: var(--muted);
-  white-space: nowrap; min-width: 70px; text-align: right;
-}
-.product-add {
-  flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
-  border: 1px solid var(--border); display: flex; align-items: center;
-  justify-content: center; font-size: 16px; color: var(--muted);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.product-add:hover { border-color: var(--accent); color: var(--accent); }
-.product-row.in-basket .product-add {
-  background: var(--accent); color: #000; border-color: var(--accent);
-}
-.product-row.in-basket .product-add:hover { opacity: 0.8; }
-
-/* Variation badge */
-.var-badge {
-  font-size: 13px; font-weight: 600; padding: 3px 10px;
-  border-radius: 99px; white-space: nowrap; flex-shrink: 0;
-}
-.var-up   { background: rgba(248, 113, 113, 0.15); color: var(--red); }
-.var-down { background: rgba(74, 222, 128, 0.12); color: var(--accent); }
-.var-flat { background: rgba(136, 136, 136, 0.12); color: var(--muted); }
-
-/* Basket list */
-.basket-list {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-.basket-item {
-  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  border-bottom: 1px solid #222;
-}
-.basket-item:last-child { border-bottom: none; }
-.basket-item-info { flex: 1; min-width: 0; }
-.basket-item-name {
-  font-size: 14px; font-weight: 500; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis;
-}
-.basket-item-cat { font-size: 12px; color: var(--muted); margin-top: 1px; }
-.basket-remove {
-  flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; color: var(--muted);
-  transition: color 0.15s, background 0.15s;
-}
-.basket-remove:hover { color: var(--red); background: rgba(248, 113, 113, 0.1); }
-
-/* Basket summary */
-.basket-summary {
-  margin-top: 16px; padding: 16px; background: var(--surface);
-  border-radius: var(--radius); border: 1px solid var(--border);
-  display: flex; gap: 20px;
-}
-.basket-summary.hidden { display: none; }
-.summary-block { flex: 1; }
-.summary-label {
-  font-size: 12px; color: var(--muted); text-transform: uppercase;
-  letter-spacing: 0.5px; margin-bottom: 4px;
-}
-.summary-value { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-.summary-sub { font-size: 13px; margin-top: 4px; }
-
-/* Result cards */
-.result-cards {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 16px; margin-bottom: 8px;
-}
-.result-card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 20px; text-align: center;
-}
-.result-card-label {
-  font-size: 12px; color: var(--muted); text-transform: uppercase;
-  letter-spacing: 0.5px; margin-bottom: 8px;
-}
-.result-card-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
-.result-card-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
-
-/* Utility */
-.color-red   { color: var(--red); }
-.color-green { color: var(--accent); }
-
-/* Chart */
-.chart-wrapper {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px; margin-bottom: 8px;
+period_buttons <- function(pd, input_name = "period") {
+  paste0(lapply(c("mensual", "trimestral", "interanual"), function(p) {
+    act <- if (pd == p) " active" else ""
+    sprintf(
+      '<button class="period-btn%s" onclick="Shiny.setInputValue(\'%s\',\'%s\')">%s</button>',
+      act, input_name, p, PERIOD_LABELS[[p]]
+    )
+  }), collapse = "")
 }
 
-/* Empty state */
-.empty-state { text-align: center; padding: 32px 20px; color: var(--muted); font-size: 14px; }
+chip_html_builder <- function(cats, active_cat, input_name = "search_category") {
+  if (nrow(cats) == 0) return("")
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  cats_sorted <- cats[order(-cats$n), ]
+  VISIBLE <- 8L
+  n_total <- nrow(cats_sorted)
+  has_more <- n_total > VISIBLE
 
-/* Responsive */
-@media (max-width: 768px) {
-  .app-header { padding: 20px 16px 0; }
-  .tab-nav { padding: 16px 16px 0; overflow-x: auto; }
-  main { padding: 20px 16px 40px; }
-  .step-columns { grid-template-columns: 1fr; }
-  .result-cards { grid-template-columns: 1fr; }
+  if (nzchar(active_cat) && has_more) {
+    idx <- which(cats_sorted$categoria == active_cat)
+    if (length(idx) > 0 && idx > VISIBLE) {
+      cats_sorted <- rbind(
+        cats_sorted[seq_len(VISIBLE - 1), , drop = FALSE],
+        cats_sorted[idx, , drop = FALSE],
+        cats_sorted[setdiff(seq_len(n_total), c(seq_len(VISIBLE - 1), idx)), , drop = FALSE]
+      )
+    }
+  }
+
+  chip_buttons <- paste0(vapply(seq_len(n_total), function(i) {
+    cat <- cats_sorted$categoria[[i]]
+    act <- if (active_cat == cat) " active" else ""
+    sprintf(
+      '<button class="chip%s" onclick="Shiny.setInputValue(\'%s\',\'%s\')">%s</button>',
+      act, input_name, gsub("'", "\\'", cat), cat
+    )
+  }, ""), collapse = "")
+
+  todos_act <- if (!nzchar(active_cat)) " active" else ""
+
+  if (has_more) {
+    hidden_n <- n_total - VISIBLE
+    sprintf(
+      '<div class="chip-group">
+        <button class="chip%s" onclick="Shiny.setInputValue(\'%s\',\'\')">Todos</button>
+        <div class="chip-wrapper">%s</div>
+        <button class="chip-more" onclick="var w=this.parentElement.querySelector(\'.chip-wrapper\');if(w.classList.toggle(\'expanded\')){this.textContent=\'Ver menos\'}else{this.textContent=\'+ %d m\\u00e1s\'}">+ %d más</button>
+      </div>',
+      todos_act, input_name, chip_buttons, hidden_n, hidden_n
+    )
+  } else {
+    sprintf(
+      '<div class="chip-group">
+        <button class="chip%s" onclick="Shiny.setInputValue(\'%s\',\'\')">Todos</button>
+        <div class="chip-wrapper expanded">%s</div>
+      </div>',
+      todos_act, input_name, chip_buttons
+    )
+  }
 }
-'
 
 # ═══════════════════════════════════════════════════════════════════════════
 # UI
@@ -322,10 +149,9 @@ ui <- fluidPage(
       href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap",
       rel = "stylesheet"
     ),
-    tags$style(HTML(CSS))
+    tags$link(rel = "stylesheet", href = "styles.css")
   ),
 
-  # ── Header ──
   HTML('
     <header class="app-header">
       <div class="header-row">
@@ -339,21 +165,14 @@ ui <- fluidPage(
 
     <nav class="tab-nav">
       <button class="tab-link active" data-tab="canasta"
-              onclick="Shiny.setInputValue(\'active_tab\',\'canasta\')">
-        Mi canasta
-      </button>
+              onclick="Shiny.setInputValue(\'active_tab\',\'canasta\')">Mi canasta</button>
       <button class="tab-link" data-tab="explorador"
-              onclick="Shiny.setInputValue(\'active_tab\',\'explorador\')">
-        Explorador
-      </button>
+              onclick="Shiny.setInputValue(\'active_tab\',\'explorador\')">Explorador</button>
       <button class="tab-link" data-tab="insights"
-              onclick="Shiny.setInputValue(\'active_tab\',\'insights\')">
-        Insights
-      </button>
+              onclick="Shiny.setInputValue(\'active_tab\',\'insights\')">Insights</button>
     </nav>
   '),
 
-  # ── Main ──
   tags$main(
     conditionalPanel(
       "input.active_tab != 'explorador' && input.active_tab != 'insights'",
@@ -361,25 +180,22 @@ ui <- fluidPage(
     ),
     conditionalPanel(
       "input.active_tab == 'explorador'",
-      HTML('<div class="placeholder-pane"><p class="empty-state">Explorador — próximamente</p></div>')
+      uiOutput("explorador_content")
     ),
     conditionalPanel(
       "input.active_tab == 'insights'",
-      HTML('<div class="placeholder-pane"><p class="empty-state">Insights — próximamente</p></div>')
+      uiOutput("insights_content")
     )
   ),
 
-  # ── JS bridge ──
   tags$script(HTML('
     $(document).on("shiny:connected", function() {
 
-      // Tab highlight
       Shiny.addCustomMessageHandler("highlight_tab", function(tab) {
         $(".tab-link").removeClass("active");
         $(".tab-link[data-tab=\\"" + tab + "\\""]").addClass("active");
       });
 
-      // Debounced search
       var searchTimer = null;
       $(document).on("input", "#search_term", function() {
         var val = $(this).val();
@@ -389,11 +205,25 @@ ui <- fluidPage(
         }, 300);
       });
 
-      // Restore search focus after re-render
+      var expSearchTimer = null;
+      $(document).on("input", "#exp_search_term", function() {
+        var val = $(this).val();
+        clearTimeout(expSearchTimer);
+        expSearchTimer = setTimeout(function() {
+          Shiny.setInputValue("exp_search_term", val);
+        }, 300);
+      });
+
       $(document).on("shiny:value", function(e) {
         if (e.name === "step_content") {
           setTimeout(function() {
             var el = document.getElementById("search_term");
+            if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
+          }, 50);
+        }
+        if (e.name === "explorador_content") {
+          setTimeout(function() {
+            var el = document.getElementById("exp_search_term");
             if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
           }, 50);
         }
@@ -410,117 +240,73 @@ server <- function(input, output, session) {
   con <- dbConnect(RSQLite::SQLite(), DB_PATH)
   onSessionEnded(function() dbDisconnect(con))
 
-  current_step <- reactiveVal(1)
-  basket_eans <- reactiveVal(character())
-  basket_info <- reactiveVal(list())
+  current_step   <- reactiveVal(1)
+  basket_eans    <- reactiveVal(character())
+  basket_info    <- reactiveVal(list())
 
-  # ── Tab highlight ──────────────────────────────────────────────────────
-  observeEvent(input$active_tab,
-    {
-      session$sendCustomMessage("highlight_tab", input$active_tab)
-    },
-    ignoreNULL = TRUE
-  )
+  observeEvent(input$active_tab, {
+    session$sendCustomMessage("highlight_tab", input$active_tab)
+  }, ignoreNULL = TRUE)
 
-  # ── Period ─────────────────────────────────────────────────────────────
-  period <- reactive({
-    input$period %||% "mensual"
-  })
+  period <- reactive(input$period %||% "mensual")
 
-  # ── Cached dates (from R/queries.R) ────────────────────────────────────
   latest_fecha <- reactiveVal(NULL)
-
-  observe({
-    latest_fecha(q_latest_fecha(con))
-  })
+  observe({ latest_fecha(q_latest_fecha(con)) })
 
   cutoff_fecha <- reactive({
-    req(latest_fecha())
+    lf <- latest_fecha()
+    if (is.null(lf)) return(NULL)
     days <- PERIOD_DAYS[[period()]] %||% 30
-    target <- as.character(as.Date(latest_fecha()) - days)
+    target <- as.character(as.Date(lf) - days)
     q_cutoff_fecha(con, target)
   })
 
-  # ── Load categories ────────────────────────────────────────────────────
-  categories <- reactiveVal(
-    data.frame(categoria = character(), n = integer())
-  )
+  categories <- reactiveVal(data.frame(categoria = character(), n = integer()))
+  observe({ categories(q_categories(con)) })
 
-  observe({
-    categories(q_categories(con))
-  })
-
-  # ── Search state ───────────────────────────────────────────────────────
   search_term_val <- reactiveVal("")
-  search_cat_val <- reactiveVal("")
+  search_cat_val  <- reactiveVal("")
 
-  observe({
-    search_term_val(input$search_term %||% "")
-  })
-  observe({
-    search_cat_val(input$search_category %||% "")
-  })
+  observeEvent(input$search_term, { search_term_val(input$search_term %||% "") }, ignoreNULL = FALSE)
+  observeEvent(input$search_category, { search_cat_val(input$search_category %||% "") }, ignoreNULL = FALSE)
 
-  search_trigger <- reactive({
-    list(period(), search_term_val(), search_cat_val())
-  })
-
-  # ── Search results (uses R/queries.R) ────────────────────────────────────
   search_results <- reactive({
-    req(search_trigger(), latest_fecha())
+    lf <- latest_fecha()
+    if (is.null(lf)) return(data.frame(ean = character(), product_description = character(), marca = character(), categoria = character(), precio_actual = numeric(), variacion = numeric()))
     q_search_products(
-      con, latest_fecha(), cutoff_fecha(),
+      con, lf, cutoff_fecha(),
       search_term_val() %||% "", search_cat_val() %||% ""
     )
   })
 
-  # ── Basket variations (uses R/queries.R) ─────────────────────────────────
   basket_variations <- reactive({
     eans <- basket_eans()
-    if (length(eans) == 0) return(data.frame())
-    req(latest_fecha())
-    q_basket_variations(con, eans, latest_fecha(), cutoff_fecha())
+    lf <- latest_fecha()
+    if (length(eans) == 0 || is.null(lf)) return(data.frame())
+    q_basket_variations(con, eans, lf, cutoff_fecha())
   })
 
-  # ── Basket summary ─────────────────────────────────────────────────────
   basket_summary_data <- reactive({
     bv <- basket_variations()
-    if (nrow(bv) == 0) {
-      return(NULL)
-    }
+    if (nrow(bv) == 0) return(NULL)
     vars <- na.omit(bv$variacion)
-    if (length(vars) == 0) {
-      return(NULL)
-    }
-
+    if (length(vars) == 0) return(NULL)
     avg <- round(mean(vars), 1)
     ipc <- IPC[[period()]] %||% 0
     diff <- round(avg - ipc, 1)
     list(avg = avg, ipc = ipc, diff = diff)
   })
 
-  # ── Add / remove products ──────────────────────────────────────────────
   observeEvent(input$add_product, {
     ean <- input$add_product
-    if (is.null(ean) || !nzchar(ean)) {
-      return()
-    }
-    if (ean %in% basket_eans()) {
-      return()
-    }
-
+    if (is.null(ean) || !nzchar(ean) || ean %in% basket_eans()) return()
     row <- search_results()[search_results()$ean == ean, ]
     if (nrow(row) == 0) {
       row <- tryCatch(
-        dbGetQuery(con,
-          "SELECT ean, product_description, marca, categoria
-           FROM canonical_products WHERE ean = ?",
-          params = list(ean)
-        ),
+        dbGetQuery(con, "SELECT ean, product_description, marca, categoria FROM canonical_products WHERE ean = ?", params = list(ean)),
         error = function(e) data.frame()
       )
     }
-
     basket_eans(c(basket_eans(), ean))
     info <- basket_info()
     info[[ean]] <- list(
@@ -533,117 +319,50 @@ server <- function(input, output, session) {
 
   observeEvent(input$remove_product, {
     ean <- input$remove_product
-    if (is.null(ean) || !nzchar(ean)) {
-      return()
-    }
+    if (is.null(ean) || !nzchar(ean)) return()
     basket_eans(setdiff(basket_eans(), ean))
     info <- basket_info()
     info[[ean]] <- NULL
     basket_info(info)
   })
 
-  # ── Step navigation ────────────────────────────────────────────────────
   observeEvent(input$go_to_step, {
     s <- as.integer(input$go_to_step)
     if (s %in% 1:3) current_step(s)
   })
 
   # ═════════════════════════════════════════════════════════════════════
-  # Render step content
+  # MI CANASTA
   # ═════════════════════════════════════════════════════════════════════
 
   output$step_content <- renderUI({
-    switch(as.character(current_step()),
-      "1" = step1_html(),
-      "2" = step2_html(),
-      "3" = step3_html()
+    message(">>> renderUI step_content firing, step=", current_step())
+    result <- tryCatch(
+      switch(as.character(current_step()),
+        "1" = step1_html(),
+        "2" = step2_html(),
+        "3" = step3_html()
+      ),
+      error = function(e) {
+        message("step_content error: ", e$message)
+        HTML(paste0('<div class="empty-state">Error: ', htmltools::htmlEscape(e$message), '</div>'))
+      }
     )
+    message(">>> renderUI result class: ", class(result), " null=", is.null(result), " len=", nchar(as.character(result)))
+    if (is.null(result)) return(HTML('<div class="empty-state">Cargando…</div>'))
+    result
   })
 
-  # ── Step 1 ─────────────────────────────────────────────────────────────
-
   step1_html <- reactive({
-    sr <- search_results()
+    sr   <- search_results()
     eans <- basket_eans()
-    info <- basket_info()
     cats <- categories()
-    summary <- basket_summary_data()
+    pd   <- period()
+    message(">>> step1: sr rows=", nrow(sr), " eans=", length(eans), " cats rows=", nrow(cats), " pd=", pd)
 
-    pd <- period()
-    subt <- PERIOD_SUBTITLES[[pd]]
+    chip_html <- chip_html_builder(cats, search_cat_val() %||% "", "search_category")
+    period_btns <- period_buttons(pd)
 
-    # ── Category chips (collapsible) ──
-    if (nrow(cats) > 0) {
-      cats_sorted <- cats[order(-cats$n), ]
-      active_cat <- search_cat_val()
-      VISIBLE <- 8L
-      n_total <- nrow(cats_sorted)
-      has_more <- n_total > VISIBLE
-
-      # Move active category into visible range
-      if (nzchar(active_cat) && has_more) {
-        idx <- which(cats_sorted$categoria == active_cat)
-        if (length(idx) > 0 && idx > VISIBLE) {
-          cats_sorted <- rbind(
-            cats_sorted[seq_len(VISIBLE - 1), , drop = FALSE],
-            cats_sorted[idx, , drop = FALSE],
-            cats_sorted[setdiff(
-              seq_len(n_total),
-              c(seq_len(VISIBLE - 1), idx)
-            ), , drop = FALSE]
-          )
-        }
-      }
-
-      chip_buttons <- paste0(vapply(seq_len(n_total), function(i) {
-        cat <- cats_sorted$categoria[[i]]
-        act <- if (active_cat == cat) " active" else ""
-        sprintf(
-          '<button class="chip%s" onclick="Shiny.setInputValue(\'search_category\',\'%s\')">%s</button>',
-          act, gsub("'", "\\'", cat), cat
-        )
-      }, ""), collapse = "")
-
-      todos_act <- if (!nzchar(active_cat)) " active" else ""
-
-      if (has_more) {
-        hidden_n <- n_total - VISIBLE
-        chip_html <- sprintf(
-          '
-          <div id="category_chips" class="chip-group">
-            <button class="chip%s" onclick="Shiny.setInputValue(\'search_category\',\'\')">Todos</button>
-            <div class="chip-wrapper">%s</div>
-            <button class="chip-more" data-hidden="%d"
-              onclick="var w=this.parentElement.querySelector(\'.chip-wrapper\');if(w.classList.toggle(\'expanded\')){this.textContent=\'Ver menos\'}else{this.textContent=\'%s\'}">
-              + %d más
-            </button>
-          </div>', todos_act, chip_buttons, hidden_n,
-          paste0("+ ", hidden_n, " m\u00e1s"), hidden_n
-        )
-      } else {
-        chip_html <- sprintf('
-          <div id="category_chips" class="chip-group">
-            <button class="chip%s" onclick="Shiny.setInputValue(\'search_category\',\'\')">Todos</button>
-            <div class="chip-wrapper expanded">%s</div>
-          </div>', todos_act, chip_buttons)
-      }
-    } else {
-      chip_html <- ""
-    }
-
-    # ── Period buttons ──
-    period_btns <- paste0(lapply(
-      c("mensual", "trimestral", "interanual"),
-      function(p) {
-        act <- if (pd == p) " active" else ""
-        sprintf(
-          '<button class="period-btn%s" onclick="Shiny.setInputValue(\'period\',\'%s\')">%s</button>',
-          act, p, PERIOD_LABELS[[p]]
-        )
-      }
-    ), collapse = "")
-
-    # ── Product rows ──
     if (nrow(sr) == 0) {
       product_rows <- '<li class="empty-state">No se encontraron productos.</li>'
     } else {
@@ -652,91 +371,129 @@ server <- function(input, output, session) {
         in_b <- p$ean %in% eans
         ean_esc <- gsub("'", "\\'", p$ean)
         action_name <- if (in_b) "remove_product" else "add_product"
-        btn_label <- if (in_b) "&#10003;" else "+"
-        row_cls <- if (in_b) " product-row in-basket" else "product-row"
-
-        pa <- p$precio_actual
-        precio <- if (length(pa) > 0 && !is.na(pa) && pa > 0) {
-          paste0("$", format(round(pa), big.mark = ".", decimal.mark = ",", scientific = FALSE))
-        } else {
-          "—"
-        }
-
+        btn_label <- if (in_b) "✓ Agregado" else "+ Agregar"
+        row_cls <- if (in_b) "product-row in-basket" else "product-row"
         sprintf(
-          '
-          <li class="%s" data-ean="%s">
+          '<li class="%s">
             <div class="product-info">
               <div class="product-name">%s</div>
               <div class="product-meta">%s · %s</div>
             </div>
-            <span class="product-price">%s</span>
             %s
-            <button class="product-add"
-              onclick="Shiny.setInputValue(\'%s\',\'%s\')">%s</button>
+            <button class="product-add-btn" onclick="Shiny.setInputValue(\'%s\',\'%s\')">%s</button>
           </li>',
-          row_cls, p$ean,
-          p$product_description, p$marca %||% "", p$categoria %||% "",
-          precio,
+          row_cls, p$product_description,
+          p$marca %||% "", format_price(p$precio_actual),
           variation_badge(p$variacion),
           action_name, ean_esc, btn_label
         )
       }), collapse = "")
     }
 
-    # ── Basket preview (right column) ──
+    n_eans <- length(eans)
+    disabled <- if (n_eans == 0) " disabled" else ""
+
+    s1 <- stepper_html(1)
+    s2 <- search_icon_svg
+    s3 <- isolate(search_term_val())
+    s4 <- period_btns
+    s5 <- chip_html
+    s6 <- product_rows
+    s7 <- n_eans
+    s8 <- if (n_eans != 1) "s" else ""
+    s9 <- if (n_eans != 1) "s" else ""
+    s10 <- disabled
+    message(">>> args: ", paste(sapply(list(s1,s2,s3,s4,s5,s6,s7,s8,s9,s10), function(x) paste0("len=",length(x),"/nch=",nchar(x)[1])), collapse=" | "))
+    html_str <- tryCatch(
+      sprintf(
+        '<div class="step-wide">
+        %s
+
+        <div class="search-row">
+          <div class="search-box">
+            %s
+            <input id="search_term" type="text" placeholder="Buscar por nombre, marca o categoría…" value="%s" autocomplete="off">
+          </div>
+          <div class="period-area">
+            <div class="period-label">Variación a mostrar</div>
+            <div class="period-toggle">%s</div>
+          </div>
+        </div>
+
+        %s
+
+        <ul class="product-list">%s</ul>
+
+        <div class="selection-bar">
+          <span class="selection-count">%d producto%s seleccionado%s</span>
+          <button class="btn btn-primary"%s onclick="Shiny.setInputValue(\'go_to_step\',2)">Revisar canasta</button>
+        </div>
+      </div>',
+        s1, s2, s3, s4, s5, s6, s7, s8, s9, s10
+      ),
+      error = function(e) {
+        message(">>> sprintf ERROR: ", e$message)
+        paste0('<div class="empty-state">sprintf error: ', e$message, '</div>')
+      }
+    )
+    message(">>> html_str len=", nchar(html_str), " class=", paste(class(html_str), collapse=","))
+    HTML(html_str)
+  })
+
+  step2_html <- reactive({
+    eans <- basket_eans()
+    info <- basket_info()
+    bv   <- basket_variations()
+    pd   <- period()
+    summary <- basket_summary_data()
+
+    period_btns <- period_buttons(pd)
+
     if (length(eans) == 0) {
-      basket_html <- '<ul class="basket-list"><li class="empty-state">Agregá productos desde la izquierda.</li></ul>'
+      basket_html <- '<div class="empty-state">Tu canasta está vacía. Volvé al paso 1 para agregar productos.</div>'
       summary_html <- ""
     } else {
       basket_items <- paste0(lapply(eans, function(ean) {
         inf <- info[[ean]]
-        bv <- basket_variations()
         vr <- if (nrow(bv) > 0) bv[bv$ean == ean, ] else data.frame()
         v <- if (nrow(vr) > 0) vr$variacion[1] else NULL
         ean_esc <- gsub("'", "\\'", ean)
         sprintf(
-          '
-          <li class="basket-item" data-ean="%s">
+          '<li class="basket-item">
             <div class="basket-item-info">
               <div class="basket-item-name">%s</div>
-              <div class="basket-item-cat">%s · %s</div>
+              <div class="basket-item-cat">%s</div>
             </div>
             %s
-            <button class="basket-remove"
-              onclick="Shiny.setInputValue(\'remove_product\',\'%s\')"
-              aria-label="Quitar">&times;</button>
+            <button class="basket-remove" onclick="Shiny.setInputValue(\'remove_product\',\'%s\')" aria-label="Quitar">&times;</button>
           </li>',
-          ean, inf$name %||% ean, inf$brand %||% "", inf$category %||% "",
+          inf$name %||% ean, inf$category %||% "",
           variation_badge(v), ean_esc
         )
       }), collapse = "")
-
       basket_html <- sprintf('<ul class="basket-list">%s</ul>', basket_items)
 
+      subt <- PERIOD_SUBTITLES[[pd]]
       if (!is.null(summary)) {
         avg_sign <- if (summary$avg >= 0) "+" else ""
         avg_color <- if (summary$avg >= 0) "color-red" else "color-green"
         ipc_sign <- if (summary$ipc >= 0) "+" else ""
         diff_sign <- if (summary$diff >= 0) "+" else ""
-        diff_color <- if (summary$diff > 0) {
-          "color-red"
-        } else if (summary$diff < 0) "color-green" else ""
-        diff_label <- if (summary$diff > 0) {
-          "por encima"
-        } else if (summary$diff < 0) "por debajo" else ""
+        diff_color <- if (summary$diff > 0) "color-red" else if (summary$diff < 0) "color-green" else ""
+        diff_label <- if (summary$diff > 0) "por encima" else if (summary$diff < 0) "por debajo" else ""
         summary_html <- sprintf(
-          '
-          <div class="basket-summary">
-            <div class="summary-block">
+          '<div class="basket-summary">
+            <div>
               <div class="summary-label">Tu inflación (%s)</div>
               <div class="summary-value %s">%s%s%%</div>
             </div>
-            <div class="summary-block">
+            <div>
               <div class="summary-label">IPC oficial</div>
               <div class="summary-value">%s%s%%</div>
               <div class="summary-sub %s">%s%s pp %s</div>
             </div>
-          </div>', subt, avg_color, avg_sign, summary$avg,
+          </div>',
+          subt, avg_color, avg_sign, summary$avg,
           ipc_sign, summary$ipc, diff_color, diff_sign, summary$diff, diff_label
         )
       } else {
@@ -744,130 +501,36 @@ server <- function(input, output, session) {
       }
     }
 
-    n_eans <- length(eans)
-    disabled <- if (n_eans == 0) " disabled" else ""
-    btn_label <- paste0(
-      "Revisar canasta",
-      if (n_eans > 0) paste0(" (", n_eans, ")") else ""
-    )
+    btn_html <- if (length(eans) > 0) {
+      '<div class="btn-group">
+        <button class="btn btn-secondary" onclick="Shiny.setInputValue(\'go_to_step\',1)">&larr; Agregar más</button>
+        <button class="btn btn-primary btn-full" onclick="Shiny.setInputValue(\'go_to_step\',3)">Ver mi resultado</button>
+      </div>'
+    } else ""
 
     HTML(sprintf(
-      '
-      <div class="step-columns">
-        <div class="col-left">
-          <h2 class="section-heading">ARMA TU CANASTA</h2>
-
-          <div class="search-box">
-            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16"
-                 fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input id="search_term" type="text" placeholder="Buscar producto…"
-                   value="%s" autocomplete="off">
-          </div>
-
-          %s
-
-          <div class="period-toggle" id="period_toggle_1">%s</div>
-
-          <ul class="product-list">%s</ul>
-        </div>
-
-        <div class="col-right">
-          <h2 class="section-heading">TU CANASTA ACTUAL</h2>
-          %s
-          %s
-          <button id="btn_review" class="btn btn-primary btn-full"
-                  style="margin-top:16px" %s
-                  onclick="Shiny.setInputValue(\'go_to_step\',2)">%s</button>
-        </div>
+      '<div class="step-narrow">
+        %s
+        <h2 class="section-heading">Revisar tu canasta</h2>
+        <div class="period-toggle" style="margin-bottom:20px">%s</div>
+        %s
+        %s
+        %s
       </div>',
-      isolate(search_term_val()), chip_html, period_btns, product_rows,
-      basket_html, summary_html, disabled, btn_label
+      stepper_html(2), period_btns, basket_html, summary_html, btn_html
     ))
   })
 
-  # ── Step 2 ─────────────────────────────────────────────────────────────
-
-  step2_html <- reactive({
-    eans <- basket_eans()
-    info <- basket_info()
-    bv <- basket_variations()
-    pd <- period()
-
-    period_btns <- paste0(lapply(
-      c("mensual", "trimestral", "interanual"),
-      function(p) {
-        act <- if (pd == p) " active" else ""
-        sprintf(
-          '<button class="period-btn%s" onclick="Shiny.setInputValue(\'period\',\'%s\')">%s</button>',
-          act, p, PERIOD_LABELS[[p]]
-        )
-      }
-    ), collapse = "")
-
-    if (length(eans) == 0) {
-      basket_html <- '<ul class="basket-list"><li class="empty-state">Tu canasta está vacía. Volvé al paso 1 para agregar productos.</li></ul>'
-      btn_html <- ""
-    } else {
-      basket_items <- paste0(lapply(eans, function(ean) {
-        inf <- info[[ean]]
-        vr <- if (nrow(bv) > 0) bv[bv$ean == ean, ] else data.frame()
-        v <- if (nrow(vr) > 0) vr$variacion[1] else NULL
-        ean_esc <- gsub("'", "\\'", ean)
-        sprintf(
-          '
-          <li class="basket-item" data-ean="%s">
-            <div class="basket-item-info">
-              <div class="basket-item-name">%s</div>
-              <div class="basket-item-cat">%s · %s</div>
-            </div>
-            %s
-            <button class="basket-remove"
-              onclick="Shiny.setInputValue(\'remove_product\',\'%s\')"
-              aria-label="Quitar">&times;</button>
-          </li>',
-          ean, inf$name %||% ean, inf$brand %||% "", inf$category %||% "",
-          variation_badge(v), ean_esc
-        )
-      }), collapse = "")
-      basket_html <- sprintf('<ul class="basket-list">%s</ul>', basket_items)
-      btn_html <- '
-        <div class="btn-group">
-          <button id="btn_results" class="btn btn-primary btn-full"
-            onclick="Shiny.setInputValue(\'go_to_step\',3)">Ver mi resultado</button>
-        </div>'
-    }
-
-    HTML(sprintf('
-      <div class="step-narrow">
-        <div class="step-top-bar">
-          <button class="btn btn-ghost"
-            onclick="Shiny.setInputValue(\'go_to_step\',1)">&larr; Volver</button>
-        </div>
-        <h2 class="section-heading">REVISAR TU CANASTA</h2>
-        <div class="period-toggle" id="period_toggle_2">%s</div>
-        %s
-        %s
-      </div>', period_btns, basket_html, btn_html))
-  })
-
-  # ── Step 3 ─────────────────────────────────────────────────────────────
-
   step3_data <- reactive({
     eans <- basket_eans()
-    if (length(eans) == 0) return(NULL)
-    req(latest_fecha())
-
+    lf <- latest_fecha()
+    if (length(eans) == 0 || is.null(lf)) return(NULL)
     pd <- period()
-    product_data <- q_basket_variations(con, eans, latest_fecha(), cutoff_fecha()) %>%
-      arrange(desc(variacion))
+    product_data <- q_basket_variations(con, eans, lf, cutoff_fecha()) %>% arrange(desc(variacion))
     cadena_data <- q_cadena_prices(con, eans, latest_fecha())
-
     pi <- if (nrow(product_data) > 0) round(mean(product_data$variacion, na.rm = TRUE), 1) else 0
     ipc <- IPC[[pd]] %||% 0
     diff <- round(pi - ipc, 1)
-
     list(
       personal_inflation = pi, ipc = ipc, diff_pp = diff,
       period_label = PERIOD_SUBTITLES[[pd]],
@@ -879,38 +542,26 @@ server <- function(input, output, session) {
     data <- step3_data()
 
     if (is.null(data) || nrow(data$products) == 0) {
-      return(HTML('
-        <div class="step-narrow">
-          <div class="step-top-bar">
-            <button class="btn btn-ghost"
-              onclick="Shiny.setInputValue(\'go_to_step\',2)">&larr; Editar canasta</button>
-          </div>
-          <h2 class="section-heading">TU RESULTADO</h2>
-          <div class="result-cards">
-            <div class="result-card">
-              <div class="result-card-label">Sin datos</div>
-              <div class="result-card-sub">Agregá productos a tu canasta para ver tu inflación personal.</div>
-            </div>
-          </div>
-        </div>'))
+      return(HTML(sprintf(
+        '<div class="step-narrow">
+          %s
+          <h2 class="section-heading">Tu resultado</h2>
+          <div class="empty-state">Agregá productos a tu canasta para ver tu inflación personal.</div>
+          <div class="btn-group"><button class="btn btn-secondary" onclick="Shiny.setInputValue(\'go_to_step\',1)">&larr; Agregar productos</button></div>
+        </div>', stepper_html(3))))
     }
 
     pi_sign <- if (data$personal_inflation >= 0) "+" else ""
     pi_color <- if (data$personal_inflation > data$ipc) "color-red" else "color-green"
     ipc_sign <- if (data$ipc >= 0) "+" else ""
     diff_sign <- if (data$diff_pp >= 0) "+" else ""
-    diff_color <- if (data$diff_pp > 0) {
-      "color-red"
-    } else if (data$diff_pp < 0) "color-green" else ""
-    diff_label <- if (data$diff_pp > 0) {
-      "Por encima del IPC"
-    } else if (data$diff_pp < 0) "Por debajo del IPC" else "Igual al IPC"
+    diff_color <- if (data$diff_pp > 0) "color-red" else if (data$diff_pp < 0) "color-green" else ""
+    diff_label <- if (data$diff_pp > 0) "Por encima del IPC" else if (data$diff_pp < 0) "Por debajo del IPC" else "Igual al IPC"
 
     product_rows <- paste0(lapply(seq_len(nrow(data$products)), function(i) {
       p <- data$products[i, ]
       sprintf(
-        '
-        <li class="basket-item">
+        '<li class="basket-item">
           <div class="basket-item-info">
             <div class="basket-item-name">%s</div>
             <div class="basket-item-cat">%s · %s</div>
@@ -923,13 +574,9 @@ server <- function(input, output, session) {
     }), collapse = "")
 
     HTML(sprintf(
-      '
-      <div class="step-narrow">
-        <div class="step-top-bar">
-          <button class="btn btn-ghost"
-            onclick="Shiny.setInputValue(\'go_to_step\',2)">&larr; Editar canasta</button>
-        </div>
-        <h2 class="section-heading">TU RESULTADO</h2>
+      '<div class="step-narrow">
+        %s
+        <h2 class="section-heading">Tu resultado</h2>
 
         <div class="result-cards">
           <div class="result-card">
@@ -947,17 +594,17 @@ server <- function(input, output, session) {
           </div>
         </div>
 
-        <h3 class="section-subheading">VARIACIÓN POR PRODUCTO</h3>
+        <h3 class="section-subheading">Variación por producto</h3>
         <ul class="basket-list">%s</ul>
 
-        <h3 class="section-subheading">PRECIO PROMEDIO POR CADENA</h3>
+        <h3 class="section-subheading">Precio promedio por cadena</h3>
         <div class="chart-wrapper">%s</div>
 
         <div class="btn-group">
-          <button class="btn btn-secondary"
-            onclick="Shiny.setInputValue(\'go_to_step\',2)">Editar canasta</button>
+          <button class="btn btn-secondary" onclick="Shiny.setInputValue(\'go_to_step\',2)">Editar canasta</button>
         </div>
       </div>',
+      stepper_html(3),
       data$period_label, pi_color, pi_sign, data$personal_inflation,
       ipc_sign, data$ipc,
       diff_color, diff_sign, data$diff_pp, diff_label,
@@ -966,58 +613,343 @@ server <- function(input, output, session) {
     ))
   })
 
-  # ── Cadena chart ───────────────────────────────────────────────────────
-
-  output$cadena_chart <- renderPlot(
-    {
-      data <- step3_data()
-      req(data, nrow(data$cadenas) > 0)
-
-      df <- data$cadenas
-      df$cadena <- factor(df$cadena, levels = rev(df$cadena))
-
-      ggplot(df, aes(x = cadena, y = precio_promedio)) +
-        geom_col(fill = "#4ade80", width = 0.55) +
-        geom_text(
-          aes(label = paste0(
-            "$",
-            format(round(precio_promedio), big.mark = ".", decimal.mark = ",", scientific = FALSE)
-          )),
-          hjust = -0.15, color = "#e5e5e5", size = 4.5
-        ) +
-        coord_flip() +
-        scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
-        labs(x = NULL, y = NULL) +
-        theme_void() +
-        theme(
-          plot.background = element_rect(fill = "#1a1a1a", color = NA),
-          panel.background = element_rect(fill = "#1a1a1a", color = NA),
-          axis.text.y = element_text(
-            color = "#e5e5e5", size = 13,
-            hjust = 1, margin = margin(r = 12)
-          ),
-          plot.margin = margin(12, 24, 12, 12)
-        )
-    },
-    bg = "#1a1a1a"
-  )
+  output$cadena_chart <- renderPlot({
+    data <- step3_data()
+    req(data, nrow(data$cadenas) > 0)
+    df <- data$cadenas
+    df$cadena <- factor(df$cadena, levels = rev(df$cadena))
+    ggplot(df, aes(x = cadena, y = precio_promedio)) +
+      geom_col(fill = "#c9a87c", width = 0.55) +
+      geom_text(
+        aes(label = paste0("$", format(round(precio_promedio), big.mark = ".", decimal.mark = ",", scientific = FALSE))),
+        hjust = -0.15, color = "#e5e5e5", size = 4.5
+      ) +
+      coord_flip() +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
+      labs(x = NULL, y = NULL) +
+      theme_void() +
+      theme(
+        plot.background  = element_rect(fill = "#161616", color = NA),
+        panel.background = element_rect(fill = "#161616", color = NA),
+        axis.text.y = element_text(color = "#e5e5e5", size = 13, hjust = 1, margin = margin(r = 12)),
+        plot.margin = margin(12, 24, 12, 12)
+      )
+  }, bg = "#161616")
 
   outputOptions(output, "cadena_chart", suspendWhenHidden = FALSE)
 
-  # ── Input observers ────────────────────────────────────────────────────
-  observeEvent(input$search_term,
-    {
-      search_term_val(input$search_term)
-    },
-    ignoreNULL = FALSE
-  )
+  # ═════════════════════════════════════════════════════════════════════
+  # EXPLORADOR
+  # ═════════════════════════════════════════════════════════════════════
 
-  observeEvent(input$search_category,
-    {
-      search_cat_val(input$search_category)
-    },
-    ignoreNULL = FALSE
-  )
+  exp_search_term_val <- reactiveVal("")
+  exp_search_cat_val  <- reactiveVal("")
+  exp_selected_ean    <- reactiveVal(NULL)
+
+  observeEvent(input$exp_search_term, { exp_search_term_val(input$exp_search_term %||% "") }, ignoreNULL = FALSE)
+  observeEvent(input$exp_search_cat, { exp_search_cat_val(input$exp_search_cat %||% "") }, ignoreNULL = FALSE)
+  observeEvent(input$exp_select, { exp_selected_ean(input$exp_select) }, ignoreNULL = FALSE)
+
+  exp_search_results <- reactive({
+    lf <- latest_fecha()
+    if (is.null(lf)) return(data.frame(ean = character(), product_description = character(), marca = character(), categoria = character(), precio_actual = numeric(), variacion = numeric()))
+    q_search_products(
+      con, lf, cutoff_fecha(),
+      exp_search_term_val() %||% "", exp_search_cat_val() %||% ""
+    )
+  })
+
+  exp_product_detail <- reactive({
+    ean <- exp_selected_ean()
+    lf <- latest_fecha()
+    if (is.null(ean) || !nzchar(ean) || is.null(lf)) return(NULL)
+
+    sr <- exp_search_results()
+    row <- sr[sr$ean == ean, ]
+    if (nrow(row) == 0) return(NULL)
+
+    chain_prices <- q_product_chain_prices(con, ean, latest_fecha())
+
+    list(
+      name = row$product_description[1],
+      brand = row$marca[1] %||% "",
+      category = row$categoria[1] %||% "",
+      variacion = row$variacion[1],
+      chains = chain_prices
+    )
+  })
+
+  output$explorador_content <- renderUI({
+    sr   <- exp_search_results()
+    cats <- categories()
+    sel  <- exp_selected_ean()
+
+    chip_html <- chip_html_builder(cats, exp_search_cat_val() %||% "", "exp_search_cat")
+
+    n_results <- nrow(sr)
+    if (n_results == 0) {
+      result_rows <- '<div class="empty-state">No se encontraron productos.</div>'
+    } else {
+      result_rows <- paste0(lapply(seq_len(n_results), function(i) {
+        p <- sr[i, ]
+        ean_esc <- gsub("'", "\\'", p$ean)
+        selected_cls <- if (!is.null(sel) && sel == p$ean) " selected" else ""
+        sprintf(
+          '<li class="product-row clickable%s" onclick="Shiny.setInputValue(\'exp_select\',\'%s\')">
+            <div class="product-info">
+              <div class="product-name">%s</div>
+              <div class="product-meta">%s · %s</div>
+            </div>
+            %s
+          </li>',
+          selected_cls, ean_esc,
+          p$product_description, p$marca %||% "", p$categoria %||% "",
+          variation_badge(p$variacion)
+        )
+      }), collapse = "")
+    }
+
+    detail <- exp_product_detail()
+    if (is.null(detail)) {
+      detail_html <- '<div class="detail-card"><div class="detail-empty">Seleccioná un producto para ver su detalle</div></div>'
+    } else {
+      if (nrow(detail$chains) > 0) {
+        chain_cells <- paste0(lapply(seq_len(nrow(detail$chains)), function(i) {
+          ch <- detail$chains[i, ]
+          sprintf(
+            '<div class="price-cell"><div class="price-cell-cadena">%s</div><div class="price-cell-value">%s</div></div>',
+            ch$cadena, format_price(ch$precio)
+          )
+        }), collapse = "")
+        chain_html <- sprintf('<div class="price-grid">%s</div>', chain_cells)
+      } else {
+        chain_html <- '<div class="detail-empty">Sin datos de cadenas</div>'
+      }
+
+      ean_esc <- gsub("'", "\\'", sel %||% "")
+      in_basket <- (!is.null(sel) && sel %in% basket_eans())
+      add_label <- if (in_basket) "✓ En tu canasta" else "+ Agregar a canasta"
+      add_action <- if (in_basket) "" else sprintf("Shiny.setInputValue('add_product','%s')", ean_esc)
+
+      detail_html <- sprintf(
+        '<div class="detail-card">
+          <div class="detail-header">
+            <div class="detail-name">%s</div>
+            <div class="detail-meta">%s · %s</div>
+          </div>
+          <div class="detail-chart-placeholder">Serie de precios (próximamente)</div>
+          %s
+          <div class="detail-action">
+            <button class="detail-action-btn" onclick="%s">%s</button>
+          </div>
+        </div>',
+        detail$name, detail$brand, detail$category,
+        chain_html, add_action, add_label
+      )
+    }
+
+    HTML(sprintf(
+      '<div class="exp-layout">
+        <div class="search-box">
+          %s
+          <input id="exp_search_term" type="text" placeholder="Buscar producto, marca o categoría…" value="%s" autocomplete="off">
+        </div>
+        %s
+        <div class="exp-columns">
+          <div>
+            <h3 class="section-heading">Resultados (%d productos)</h3>
+            <ul class="product-list">%s</ul>
+          </div>
+          <div class="exp-detail">
+            <h3 class="section-heading">Detalle del producto</h3>
+            %s
+          </div>
+        </div>
+      </div>',
+      search_icon_svg, isolate(exp_search_term_val()),
+      chip_html,
+      n_results, result_rows,
+      detail_html
+    ))
+  })
+
+  # ═════════════════════════════════════════════════════════════════════
+  # INSIGHTS
+  # ═════════════════════════════════════════════════════════════════════
+
+  output$insights_content <- renderUI({
+    eans <- basket_eans()
+
+    if (length(eans) == 0) {
+      return(HTML(
+        '<div class="insights-layout">
+          <div class="empty-state">Agregá productos a tu canasta para ver insights personalizados.</div>
+        </div>'
+      ))
+    }
+
+    if (is.null(latest_fecha())) return(HTML('<div class="insights-layout"><div class="empty-state">Cargando datos…</div></div>'))
+    bv <- basket_variations()
+    if (nrow(bv) == 0) {
+      return(HTML('<div class="insights-layout"><div class="empty-state">Sin datos disponibles.</div></div>'))
+    }
+
+    pd  <- period()
+    ipc <- IPC[[pd]] %||% 0
+    subt <- PERIOD_SUBTITLES[[pd]]
+
+    vars <- na.omit(bv$variacion)
+    avg_inflation <- if (length(vars) > 0) round(mean(vars), 1) else 0
+    diff_pp <- round(avg_inflation - ipc, 1)
+
+    cadenas <- q_cadena_prices(con, eans, latest_fecha())
+    most_expensive <- if (nrow(cadenas) > 0) cadenas$cadena[1] else "—"
+
+    top_product <- bv[which.max(bv$variacion), ]
+    top_alert <- if (nrow(top_product) > 0 && !is.na(top_product$variacion[1])) {
+      paste0(top_product$product_description[1], " +", top_product$variacion[1], "%")
+    } else "—"
+
+    diff_sign <- if (diff_pp >= 0) "+" else ""
+    diff_color <- if (diff_pp > 0) "red" else if (diff_pp < 0) "green" else ""
+
+    kpi_html <- sprintf(
+      '<div class="kpi-cards">
+        <div class="kpi-card">
+          <div class="kpi-label">Tu inflación vs IPC</div>
+          <div class="kpi-value %s">%s%s pp</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Cadena más cara</div>
+          <div class="kpi-value">%s</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Mayor alerta activa</div>
+          <div class="kpi-value red">%s</div>
+        </div>
+      </div>',
+      diff_color, diff_sign, diff_pp, most_expensive, top_alert
+    )
+
+    bv_sorted <- bv[order(-bv$variacion), ]
+    alerts <- bv_sorted[!is.na(bv_sorted$variacion) & bv_sorted$variacion > 0, ]
+    if (nrow(alerts) > 5) alerts <- alerts[1:5, ]
+
+    if (nrow(alerts) > 0) {
+      alerts_html <- paste0(lapply(seq_len(nrow(alerts)), function(i) {
+        a <- alerts[i, ]
+        sprintf(
+          '<div class="alert-row">
+            <div class="alert-info">
+              <div class="alert-name">%s</div>
+              <div class="alert-detail">Subió %s%% en %s</div>
+            </div>
+            %s
+          </div>',
+          a$product_description, a$variacion, subt, variation_badge(a$variacion)
+        )
+      }), collapse = "")
+    } else {
+      alerts_html <- '<div class="empty-state">Sin alertas activas</div>'
+    }
+
+    above_ipc <- bv_sorted[!is.na(bv_sorted$variacion) & bv_sorted$variacion > ipc, ]
+    if (nrow(above_ipc) > 5) above_ipc <- above_ipc[1:5, ]
+
+    if (nrow(above_ipc) > 0) {
+      vs_ipc_html <- paste0(lapply(seq_len(nrow(above_ipc)), function(i) {
+        p <- above_ipc[i, ]
+        pp_diff <- round(p$variacion - ipc, 1)
+        sprintf(
+          '<div class="vs-ipc-row">
+            <div class="vs-ipc-info">
+              <div class="vs-ipc-name">%s</div>
+              <div class="vs-ipc-detail">IPC alimentos: %s%% · Producto: %s%%</div>
+            </div>
+            <span class="pp-badge">+%s pp</span>
+          </div>',
+          p$product_description, ipc, p$variacion, pp_diff
+        )
+      }), collapse = "")
+    } else {
+      vs_ipc_html <- '<div class="empty-state">Ningún producto supera el IPC</div>'
+    }
+
+    if (nrow(cadenas) > 0) {
+      chain_rows <- paste0(lapply(seq_len(nrow(cadenas)), function(i) {
+        ch <- cadenas[i, ]
+        tag <- if (i == 1) {
+          '<span class="chain-rank-tag expensive">más caro</span>'
+        } else if (i == nrow(cadenas)) {
+          '<span class="chain-rank-tag cheapest">más barato</span>'
+        } else {
+          '<span class="chain-rank-tag mid">medio</span>'
+        }
+        sprintf(
+          '<div class="chain-rank-row">
+            <span class="chain-rank-name">%s</span>
+            %s
+          </div>',
+          ch$cadena, tag
+        )
+      }), collapse = "")
+      chain_html <- sprintf(
+        '<div class="chain-rank-chart">%s</div><div class="chain-rank-list">%s</div>',
+        as.character(plotOutput("insights_chain_chart", height = "280px")),
+        chain_rows
+      )
+    } else {
+      chain_html <- '<div class="empty-state">Sin datos de cadenas</div>'
+    }
+
+    HTML(sprintf(
+      '<div class="insights-layout">
+        %s
+        <div class="insights-columns">
+          <div>
+            <h3 class="section-heading">Alertas de subida brusca</h3>
+            <div class="alert-list">%s</div>
+            <h3 class="section-subheading">Más subidos vs IPC oficial</h3>
+            %s
+          </div>
+          <div>
+            <h3 class="section-heading">Cadenas por precio promedio</h3>
+            %s
+          </div>
+        </div>
+      </div>',
+      kpi_html, alerts_html, vs_ipc_html, chain_html
+    ))
+  })
+
+  output$insights_chain_chart <- renderPlot({
+    eans <- basket_eans()
+    req(length(eans) > 0, latest_fecha())
+    cadenas <- q_cadena_prices(con, eans, latest_fecha())
+    req(nrow(cadenas) > 0)
+
+    df <- cadenas
+    df$cadena <- factor(df$cadena, levels = rev(df$cadena))
+
+    ggplot(df, aes(x = cadena, y = precio_promedio)) +
+      geom_col(fill = "#c9a87c", width = 0.55) +
+      geom_text(
+        aes(label = paste0("$", format(round(precio_promedio), big.mark = ".", decimal.mark = ",", scientific = FALSE))),
+        hjust = -0.15, color = "#e5e5e5", size = 4.2
+      ) +
+      coord_flip() +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
+      labs(x = NULL, y = NULL) +
+      theme_void() +
+      theme(
+        plot.background  = element_rect(fill = "#161616", color = NA),
+        panel.background = element_rect(fill = "#161616", color = NA),
+        axis.text.y = element_text(color = "#e5e5e5", size = 12, hjust = 1, margin = margin(r = 10)),
+        plot.margin = margin(8, 20, 8, 8)
+      )
+  }, bg = "#161616")
+
+  outputOptions(output, "insights_chain_chart", suspendWhenHidden = FALSE)
 }
 
 # ═══════════════════════════════════════════════════════════════════════════

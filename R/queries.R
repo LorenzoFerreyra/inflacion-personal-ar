@@ -45,8 +45,10 @@ q_search_products <- function(con, latest_fecha, cutoff_fecha, term = "", catego
   term <- safe_str(term)
   category <- safe_str(category)
 
-  conditions <- "ps.precio_lista > 0"
-  params <- list(latest_fecha)
+  has_cutoff <- !is.null(cutoff_fecha) && !is.na(cutoff_fecha) && cutoff_fecha != latest_fecha
+
+  conditions <- "pl.precio_lista > 0"
+  params <- if (has_cutoff) list(latest_fecha, cutoff_fecha) else list(latest_fecha)
 
   if (nzchar(term)) {
     conditions <- paste0(conditions, " AND (c.product_description LIKE ? OR c.marca LIKE ?)")
@@ -57,64 +59,108 @@ q_search_products <- function(con, latest_fecha, cutoff_fecha, term = "", catego
     params <- c(params, category)
   }
 
-  sql <- sprintf("
-    SELECT c.ean, c.product_description, c.marca, c.categoria,
-           ROUND(AVG(ps.precio_lista), 0) AS precio_actual
-    FROM canonical_products c
-    JOIN price_series ps ON c.ean = ps.ean AND ps.fecha = ?
-    WHERE %s
-    GROUP BY c.ean, c.product_description, c.marca, c.categoria
-    ORDER BY c.product_description
-    LIMIT 50
-  ", conditions)
+  if (has_cutoff) {
+    sql <- sprintf("
+      SELECT c.ean, c.product_description, c.marca, c.categoria,
+             ROUND(AVG(pl.precio_lista), 0) AS precio_actual,
+             CASE WHEN pc.precio_cutoff > 0
+               THEN ROUND((AVG(pl.precio_lista) - pc.precio_cutoff) / pc.precio_cutoff * 100, 1)
+               ELSE NULL END AS variacion
+      FROM canonical_products c
+      JOIN price_series pl ON c.ean = pl.ean AND pl.fecha = ?
+      LEFT JOIN (
+        SELECT ean, ROUND(AVG(precio_lista), 0) AS precio_cutoff
+        FROM price_series WHERE fecha = ? AND precio_lista > 0
+        GROUP BY ean
+      ) pc ON c.ean = pc.ean
+      WHERE %s
+      GROUP BY c.ean, c.product_description, c.marca, c.categoria
+      ORDER BY variacion IS NULL, c.product_description
+      LIMIT 50
+    ", conditions)
+  } else {
+    sql <- sprintf("
+      SELECT c.ean, c.product_description, c.marca, c.categoria,
+             ROUND(AVG(pl.precio_lista), 0) AS precio_actual,
+             NULL AS variacion
+      FROM canonical_products c
+      JOIN price_series pl ON c.ean = pl.ean AND pl.fecha = ?
+      WHERE %s
+      GROUP BY c.ean, c.product_description, c.marca, c.categoria
+      ORDER BY c.product_description
+      LIMIT 50
+    ", conditions)
+  }
 
-  latest <- tryCatch(
+  tryCatch(
     dbGetQuery(con, sql, params = params),
     error = function(e) {
       message("q_search_products error: ", e$message)
       data.frame(ean = character(), product_description = character(),
                  marca = character(), categoria = character(),
-                 precio_actual = numeric())
+                 precio_actual = numeric(), variacion = numeric())
     }
   )
-
-  if (nrow(latest) == 0 || is.null(cutoff_fecha)) {
-    latest$variacion <- NA_real_
-    return(latest)
-  }
-
-  add_variation(con, latest, cutoff_fecha)
 }
 
 q_basket_variations <- function(con, eans, latest_fecha, cutoff_fecha) {
   if (length(eans) == 0) return(data.frame())
 
+  has_cutoff <- !is.null(cutoff_fecha) && !is.na(cutoff_fecha) && cutoff_fecha != latest_fecha
   placeholders <- paste(rep("?", length(eans)), collapse = ",")
 
-  sql <- sprintf("
-    SELECT c.ean, c.product_description, c.marca, c.categoria,
-           ROUND(AVG(ps.precio_lista), 0) AS precio_actual
-    FROM canonical_products c
-    JOIN price_series ps ON c.ean = ps.ean AND ps.fecha = ?
-    WHERE ps.precio_lista > 0 AND c.ean IN (%s)
-    GROUP BY c.ean, c.product_description, c.marca, c.categoria
-    ORDER BY c.product_description
-  ", placeholders)
+  if (has_cutoff) {
+    sql <- sprintf("
+      SELECT c.ean, c.product_description, c.marca, c.categoria,
+             ROUND(AVG(pl.precio_lista), 0) AS precio_actual,
+             CASE WHEN pc.precio_cutoff > 0
+               THEN ROUND((AVG(pl.precio_lista) - pc.precio_cutoff) / pc.precio_cutoff * 100, 1)
+               ELSE NULL END AS variacion
+      FROM canonical_products c
+      JOIN price_series pl ON c.ean = pl.ean AND pl.fecha = ?
+      LEFT JOIN (
+        SELECT ean, ROUND(AVG(precio_lista), 0) AS precio_cutoff
+        FROM price_series WHERE fecha = ? AND precio_lista > 0
+        GROUP BY ean
+      ) pc ON c.ean = pc.ean
+      WHERE pl.precio_lista > 0 AND c.ean IN (%s)
+      GROUP BY c.ean, c.product_description, c.marca, c.categoria
+      ORDER BY c.product_description
+    ", placeholders)
+    params <- c(list(latest_fecha, cutoff_fecha), as.list(eans))
+  } else {
+    sql <- sprintf("
+      SELECT c.ean, c.product_description, c.marca, c.categoria,
+             ROUND(AVG(pl.precio_lista), 0) AS precio_actual,
+             NULL AS variacion
+      FROM canonical_products c
+      JOIN price_series pl ON c.ean = pl.ean AND pl.fecha = ?
+      WHERE pl.precio_lista > 0 AND c.ean IN (%s)
+      GROUP BY c.ean, c.product_description, c.marca, c.categoria
+      ORDER BY c.product_description
+    ", placeholders)
+    params <- c(list(latest_fecha), as.list(eans))
+  }
 
-  latest <- tryCatch(
-    dbGetQuery(con, sql, params = c(list(latest_fecha), as.list(eans))),
+  tryCatch(
+    dbGetQuery(con, sql, params = params),
     error = function(e) {
       message("q_basket_variations error: ", e$message)
       data.frame()
     }
   )
+}
 
-  if (nrow(latest) == 0 || is.null(cutoff_fecha)) {
-    latest$variacion <- NA_real_
-    return(latest)
-  }
-
-  add_variation(con, latest, cutoff_fecha)
+q_product_chain_prices <- function(con, ean, latest_fecha) {
+  tryCatch(
+    dbGetQuery(con, "
+      SELECT cadena, ROUND(precio_lista, 0) AS precio
+      FROM price_series
+      WHERE ean = ? AND fecha = ? AND precio_lista > 0
+      ORDER BY precio_lista ASC
+    ", params = list(ean, latest_fecha)),
+    error = function(e) data.frame()
+  )
 }
 
 q_cadena_prices <- function(con, eans, latest_fecha) {
@@ -137,38 +183,4 @@ q_cadena_prices <- function(con, eans, latest_fecha) {
       data.frame()
     }
   )
-}
-
-# ── Helper: add variation column by comparing against cutoff prices ──────
-
-add_variation <- function(con, latest_df, cutoff_fecha) {
-  eans <- latest_df$ean
-  placeholders <- paste(rep("?", length(eans)), collapse = ",")
-
-  sql <- sprintf("
-    SELECT ean, ROUND(AVG(precio_lista), 0) AS precio_cutoff
-    FROM price_series
-    WHERE fecha = ? AND precio_lista > 0 AND ean IN (%s)
-    GROUP BY ean
-  ", placeholders)
-
-  cutoff_prices <- tryCatch(
-    dbGetQuery(con, sql, params = c(list(cutoff_fecha), as.list(eans))),
-    error = function(e) data.frame()
-  )
-
-  if (nrow(cutoff_prices) > 0) {
-    latest_df <- latest_df %>%
-      left_join(cutoff_prices, by = "ean") %>%
-      mutate(variacion = if_else(
-        !is.na(precio_cutoff) & precio_cutoff > 0,
-        round((precio_actual - precio_cutoff) / precio_cutoff * 100, 1),
-        NA_real_
-      )) %>%
-      select(-precio_cutoff)
-  } else {
-    latest_df$variacion <- NA_real_
-  }
-
-  latest_df
 }
