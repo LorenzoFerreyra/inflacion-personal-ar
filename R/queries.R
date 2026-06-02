@@ -14,11 +14,18 @@ q_latest_fecha <- function(con) {
 }
 
 q_cutoff_fecha <- function(con, target) {
-  tryCatch(
+  fecha <- tryCatch(
     dbGetQuery(con, "SELECT MAX(fecha) AS fecha FROM price_series WHERE fecha <= ?",
                params = list(target))$fecha,
     error = function(e) NULL
   )
+  if (is.null(fecha) || is.na(fecha)) {
+    fecha <- tryCatch(
+      dbGetQuery(con, "SELECT MIN(fecha) AS fecha FROM price_series")$fecha,
+      error = function(e) NULL
+    )
+  }
+  fecha
 }
 
 q_categories <- function(con) {
