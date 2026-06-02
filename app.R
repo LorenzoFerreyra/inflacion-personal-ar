@@ -427,32 +427,19 @@ server <- function(input, output, session) {
     input$period %||% "mensual"
   })
 
-  # ── Variation CTE ──────────────────────────────────────────────────────
-  variation_cte <- function() {
-    "WITH daily_avg AS (
-      SELECT ean, fecha, ROUND(AVG(precio_lista), 2) AS precio
-      FROM price_series
-      WHERE precio_lista > 0 AND fecha >= ?
-      GROUP BY ean, fecha
-    ),
-    bounds AS (
-      SELECT ean, MIN(fecha) AS first_date, MAX(fecha) AS last_date
-      FROM daily_avg
-      GROUP BY ean
-    ),
-    variations AS (
-      SELECT b.ean,
-        l.precio AS precio_actual,
-        CASE
-          WHEN b.first_date = b.last_date THEN NULL
-          WHEN f.precio > 0 THEN ROUND((l.precio - f.precio) / f.precio * 100, 1)
-          ELSE NULL
-        END AS variacion
-      FROM bounds b
-      JOIN daily_avg f ON b.ean = f.ean AND b.first_date = f.fecha
-      JOIN daily_avg l ON b.ean = l.ean AND b.last_date = l.fecha
-    )"
-  }
+  # ── Cached dates (from R/queries.R) ────────────────────────────────────
+  latest_fecha <- reactiveVal(NULL)
+
+  observe({
+    latest_fecha(q_latest_fecha(con))
+  })
+
+  cutoff_fecha <- reactive({
+    req(latest_fecha())
+    days <- PERIOD_DAYS[[period()]] %||% 30
+    target <- as.character(as.Date(latest_fecha()) - days)
+    q_cutoff_fecha(con, target)
+  })
 
   # ── Load categories ────────────────────────────────────────────────────
   categories <- reactiveVal(
@@ -460,17 +447,7 @@ server <- function(input, output, session) {
   )
 
   observe({
-    cats <- tryCatch(
-      dbGetQuery(con, "
-        SELECT categoria, COUNT(*) AS n
-        FROM canonical_products
-        WHERE categoria IS NOT NULL AND categoria != ''
-        GROUP BY categoria
-        ORDER BY categoria
-      "),
-      error = function(e) data.frame(categoria = character(), n = integer())
-    )
-    categories(cats)
+    categories(q_categories(con))
   })
 
   # ── Search state ───────────────────────────────────────────────────────
@@ -488,87 +465,21 @@ server <- function(input, output, session) {
     list(period(), search_term_val(), search_cat_val())
   })
 
-  # ── Search results ─────────────────────────────────────────────────────
+  # ── Search results (uses R/queries.R) ────────────────────────────────────
   search_results <- reactive({
-    req(search_trigger())
-    pd <- period()
-    days <- PERIOD_DAYS[[pd]] %||% 30
-    cutoff <- as.character(Sys.Date() - days)
-
-    term <- search_term_val() %||% ""
-    cat_val <- search_cat_val() %||% ""
-    conditions <- character()
-    params <- list(cutoff)
-
-    if (nzchar(term)) {
-      conditions <- c(
-        conditions,
-        "(c.product_description LIKE ? OR c.marca LIKE ?)"
-      )
-      t <- paste0("%", term, "%")
-      params <- c(params, t, t)
-    }
-    if (nzchar(cat_val)) {
-      conditions <- c(conditions, "c.categoria = ?")
-      params <- c(params, cat_val)
-    }
-
-    where <- if (length(conditions) > 0) {
-      paste("WHERE", paste(conditions, collapse = " AND "))
-    } else {
-      ""
-    }
-
-    sql <- sprintf(
-      "%s SELECT c.ean, c.product_description, c.marca, c.categoria,
-          v.precio_actual, v.variacion
-       FROM canonical_products c
-       LEFT JOIN variations v ON c.ean = v.ean
-       %s ORDER BY c.product_description LIMIT 50",
-      variation_cte(), where
-    )
-
-    tryCatch(
-      dbGetQuery(con, sql, params = params),
-      error = function(e) {
-        message("search error: ", e$message)
-        data.frame(
-          ean = character(), product_description = character(),
-          marca = character(), categoria = character(),
-          precio_actual = numeric(), variacion = numeric()
-        )
-      }
+    req(search_trigger(), latest_fecha())
+    q_search_products(
+      con, latest_fecha(), cutoff_fecha(),
+      search_term_val() %||% "", search_cat_val() %||% ""
     )
   })
 
-  # ── Basket variations ──────────────────────────────────────────────────
+  # ── Basket variations (uses R/queries.R) ─────────────────────────────────
   basket_variations <- reactive({
     eans <- basket_eans()
-    if (length(eans) == 0) {
-      return(data.frame())
-    }
-
-    pd <- period()
-    days <- PERIOD_DAYS[[pd]] %||% 30
-    cutoff <- as.character(Sys.Date() - days)
-    ph <- paste(rep("?", length(eans)), collapse = ",")
-
-    sql <- sprintf(
-      "%s SELECT c.ean, c.product_description, c.marca, c.categoria,
-          COALESCE(v.variacion, 0) AS variacion
-       FROM canonical_products c
-       LEFT JOIN variations v ON c.ean = v.ean
-       WHERE c.ean IN (%s) ORDER BY c.product_description",
-      variation_cte(), ph
-    )
-
-    tryCatch(
-      dbGetQuery(con, sql, params = c(list(cutoff), as.list(eans))),
-      error = function(e) {
-        message("basket_variations error: ", e$message)
-        data.frame()
-      }
-    )
+    if (length(eans) == 0) return(data.frame())
+    req(latest_fecha())
+    q_basket_variations(con, eans, latest_fecha(), cutoff_fecha())
   })
 
   # ── Basket summary ─────────────────────────────────────────────────────
@@ -744,8 +655,9 @@ server <- function(input, output, session) {
         btn_label <- if (in_b) "&#10003;" else "+"
         row_cls <- if (in_b) " product-row in-basket" else "product-row"
 
-        precio <- if (!is.na(p$precio_actual) && p$precio_actual > 0) {
-          paste0("$", formatC(p$precio_actual, format = "f", digits = 0, big.mark = "."))
+        pa <- p$precio_actual
+        precio <- if (length(pa) > 0 && !is.na(pa) && pa > 0) {
+          paste0("$", format(round(pa), big.mark = ".", decimal.mark = ",", scientific = FALSE))
         } else {
           "—"
         }
@@ -944,48 +856,13 @@ server <- function(input, output, session) {
 
   step3_data <- reactive({
     eans <- basket_eans()
-    if (length(eans) == 0) {
-      return(NULL)
-    }
+    if (length(eans) == 0) return(NULL)
+    req(latest_fecha())
 
     pd <- period()
-    days <- PERIOD_DAYS[[pd]] %||% 30
-    cutoff <- as.character(Sys.Date() - days)
-    ph <- paste(rep("?", length(eans)), collapse = ",")
-
-    sql_prod <- sprintf(
-      "%s SELECT c.ean, c.product_description, c.marca, c.categoria,
-          COALESCE(v.variacion, 0) AS variacion
-       FROM canonical_products c
-       LEFT JOIN variations v ON c.ean = v.ean
-       WHERE c.ean IN (%s) ORDER BY v.variacion DESC",
-      variation_cte(), ph
-    )
-    product_data <- tryCatch(
-      dbGetQuery(con, sql_prod, params = c(list(cutoff), as.list(eans))),
-      error = function(e) {
-        message("step3 products: ", e$message)
-        data.frame()
-      }
-    )
-
-    sql_cad <- sprintf("
-      WITH latest AS (
-        SELECT ean, cadena, precio_lista,
-          ROW_NUMBER() OVER (PARTITION BY ean, cadena ORDER BY fecha DESC) AS rn
-        FROM price_series
-        WHERE precio_lista > 0 AND fecha >= ? AND ean IN (%s)
-      )
-      SELECT cadena, ROUND(AVG(precio_lista), 0) AS precio_promedio
-      FROM latest WHERE rn = 1
-      GROUP BY cadena ORDER BY precio_promedio DESC", ph)
-    cadena_data <- tryCatch(
-      dbGetQuery(con, sql_cad, params = c(list(cutoff), as.list(eans))),
-      error = function(e) {
-        message("step3 cadena: ", e$message)
-        data.frame()
-      }
-    )
+    product_data <- q_basket_variations(con, eans, latest_fecha(), cutoff_fecha()) %>%
+      arrange(desc(variacion))
+    cadena_data <- q_cadena_prices(con, eans, latest_fecha())
 
     pi <- if (nrow(product_data) > 0) round(mean(product_data$variacion, na.rm = TRUE), 1) else 0
     ipc <- IPC[[pd]] %||% 0
@@ -1104,7 +981,7 @@ server <- function(input, output, session) {
         geom_text(
           aes(label = paste0(
             "$",
-            formatC(precio_promedio, format = "f", digits = 0, big.mark = ".")
+            format(round(precio_promedio), big.mark = ".", decimal.mark = ",", scientific = FALSE)
           )),
           hjust = -0.15, color = "#e5e5e5", size = 4.5
         ) +
