@@ -1,196 +1,251 @@
-source("R/queries.R")
-
 server <- function(input, output, session) {
 
-  # ── Send categories + products on startup ──────────────────────────────
+  con <- dbConnect(RSQLite::SQLite(), DB_PATH)
+  onSessionEnded(function() dbDisconnect(con))
+
+  calc_data <- reactiveVal(NULL)
+
+  # ── Startup: send categories ──────────────────────────────────────────
 
   observe({
-    categories <- tryCatch(
-      dbGetQuery(db, "
+    cats <- tryCatch(
+      dbGetQuery(con, "
         SELECT categoria, COUNT(*) AS n
         FROM canonical_products
         WHERE categoria IS NOT NULL
         GROUP BY categoria
         ORDER BY categoria
       "),
-      error = function(e) data.frame(categoria = character(0), n = integer(0))
+      error = function(e) data.frame(categoria = character(), n = integer())
     )
-
-    session$sendCustomMessage("categories", toJSON(categories, auto_unbox = TRUE))
+    session$sendCustomMessage("categories", toJSON(cats, auto_unbox = TRUE))
   })
 
-  # JS sends: Shiny.setInputValue('search_query', {term, category})
-  observeEvent(input$search_query, {
-    q <- input$search_query
+  # ── Helper: variation CTE ─────────────────────────────────────────────
 
-    term_filter <- if (nzchar(q$term)) {
-      paste0("AND (c.product_description LIKE '%", q$term, "%' OR c.marca LIKE '%", q$term, "%')")
-    } else {
-      ""
-    }
-
-    cat_filter <- if (nzchar(q$category)) {
-      paste0("AND c.categoria = '", q$category, "'")
-    } else {
-      ""
-    }
-
-    query <- sprintf("
-      SELECT c.ean, c.product_description, c.marca, c.categoria
-      FROM canonical_products c
-      WHERE 1=1 %s %s
-      ORDER BY c.product_description
-      LIMIT 50
-    ", cat_filter, term_filter)
-
-    products <- tryCatch(
-      dbGetQuery(db, query),
-      error = function(e) data.frame()
-    )
-
-    session$sendCustomMessage("products", toJSON(products, auto_unbox = TRUE))
-  })
-
-  # ── Search module: search by term ──────────────────────────────────────
-
-  # JS sends: Shiny.setInputValue('price_search', {term, category})
-  observeEvent(input$price_search, {
-    q <- input$price_search
-
-    term_clause <- if (nzchar(q$term)) {
-      paste0("AND (c.product_description LIKE '%", q$term, "%' OR c.marca LIKE '%", q$term, "%')")
-    } else {
-      ""
-    }
-
-    cat_clause <- if (nzchar(q$category)) {
-      paste0("AND c.categoria = '", q$category, "'")
-    } else {
-      ""
-    }
-
-    query <- sprintf("
-      SELECT
-        c.ean,
-        c.product_description,
-        c.marca,
-        c.categoria,
-        latest.precio_actual,
-        latest.precio_anterior,
+  variation_cte <- function() {
+    "WITH daily_avg AS (
+      SELECT ean, fecha, ROUND(AVG(precio_lista), 2) AS precio
+      FROM price_series
+      WHERE precio_lista > 0 AND fecha >= ?
+      GROUP BY ean, fecha
+    ),
+    bounds AS (
+      SELECT ean, MIN(fecha) AS first_date, MAX(fecha) AS last_date
+      FROM daily_avg
+      GROUP BY ean
+    ),
+    variations AS (
+      SELECT b.ean,
+        l.precio AS precio_actual,
         CASE
-          WHEN latest.precio_anterior > 0
-          THEN ROUND((latest.precio_actual - latest.precio_anterior) / latest.precio_anterior * 100, 1)
+          WHEN b.first_date = b.last_date THEN NULL
+          WHEN f.precio > 0 THEN ROUND((l.precio - f.precio) / f.precio * 100, 1)
           ELSE NULL
         END AS variacion
+      FROM bounds b
+      JOIN daily_avg f ON b.ean = f.ean AND b.first_date = f.fecha
+      JOIN daily_avg l ON b.ean = l.ean AND b.last_date = l.fecha
+    )"
+  }
+
+  # ── Search products (Step 1) ──────────────────────────────────────────
+
+  observeEvent(input$search_products, {
+    q <- input$search_products
+    term     <- q$term %||% ""
+    category <- q$category %||% ""
+    period   <- q$period %||% "mensual"
+    days     <- PERIOD_DAYS[[period]] %||% 30
+    cutoff   <- as.character(Sys.Date() - days)
+
+    conditions <- character()
+    params <- list(cutoff)
+
+    if (nzchar(term)) {
+      conditions <- c(conditions, "(c.product_description LIKE ? OR c.marca LIKE ?)")
+      params <- c(params, paste0("%", term, "%"), paste0("%", term, "%"))
+    }
+    if (nzchar(category)) {
+      conditions <- c(conditions, "c.categoria = ?")
+      params <- c(params, category)
+    }
+
+    where <- if (length(conditions) > 0) {
+      paste("WHERE", paste(conditions, collapse = " AND "))
+    } else {
+      ""
+    }
+
+    sql <- sprintf(
+      "%s
+      SELECT c.ean, c.product_description, c.marca, c.categoria,
+        v.precio_actual, v.variacion
       FROM canonical_products c
-      LEFT JOIN (
-        SELECT
-          p1.ean,
-          p1.precio_lista AS precio_actual,
-          p2.precio_lista AS precio_anterior
-        FROM (
-          SELECT ean, ROUND(AVG(precio_lista), 2) AS precio_lista
-          FROM price_series
-          WHERE fecha = (SELECT MAX(fecha) FROM price_series)
-          GROUP BY ean
-        ) p1
-        LEFT JOIN (
-          SELECT ean, ROUND(AVG(precio_lista), 2) AS precio_lista
-          FROM price_series
-          WHERE fecha = (
-            SELECT DISTINCT fecha FROM price_series ORDER BY fecha DESC LIMIT 1 OFFSET 30
-          )
-          GROUP BY ean
-        ) p2 ON p1.ean = p2.ean
-      ) latest ON c.ean = latest.ean
-      WHERE latest.precio_actual IS NOT NULL %s %s
+      LEFT JOIN variations v ON c.ean = v.ean
+      %s
       ORDER BY c.product_description
-      LIMIT 50
-    ", cat_clause, term_clause)
+      LIMIT 50",
+      variation_cte(), where
+    )
 
     results <- tryCatch(
-      dbGetQuery(db, query),
-      error = function(e) data.frame()
+      dbGetQuery(con, sql, params = params),
+      error = function(e) {
+        message("search_products error: ", e$message)
+        data.frame()
+      }
     )
 
     session$sendCustomMessage("search_results", toJSON(results, auto_unbox = TRUE))
   })
 
-  # ── Calculate personal inflation ───────────────────────────────────────
+  # ── Basket variations (Step 2 / period change) ────────────────────────
 
-  # JS sends: Shiny.setInputValue('calculate', {eans: [...], days: 90})
-  observeEvent(input$calculate, {
-    req(input$calculate)
-    params <- input$calculate
-    eans <- params$eans
-    days <- if (!is.null(params$days)) params$days else 90
+  observeEvent(input$basket_variations, {
+    q    <- input$basket_variations
+    eans <- q$eans
+    period <- q$period %||% "mensual"
+    days   <- PERIOD_DAYS[[period]] %||% 30
+    cutoff <- as.character(Sys.Date() - days)
 
-    if (length(eans) == 0) return()
-
-    eans_sql <- paste(
-      vapply(eans, function(x) as.character(dbQuoteString(db, x)), character(1)),
-      collapse = ","
-    )
-
-    # Price series for selected basket
-    basket_query <- sprintf("
-      SELECT
-        p.fecha,
-        p.ean,
-        c.product_description,
-        c.marca,
-        ROUND(AVG(p.precio_lista), 2) AS precio
-      FROM price_series p
-      JOIN canonical_products c ON p.ean = c.ean
-      WHERE p.ean IN (%s)
-        AND p.precio_lista > 0
-        AND p.fecha >= date('now', '-%d days')
-      GROUP BY p.ean, p.fecha
-      ORDER BY p.fecha
-    ", eans_sql, days)
-
-    basket_data <- tryCatch(
-      dbGetQuery(db, basket_query),
-      error = function(e) data.frame()
-    )
-
-    if (nrow(basket_data) == 0) {
-      session$sendCustomMessage("results", toJSON(list(error = "Sin datos para los productos seleccionados"), auto_unbox = TRUE))
+    if (length(eans) == 0) {
+      session$sendCustomMessage("basket_data", "[]")
       return()
     }
 
-    # Compute basket cost per date
-    basket_index <- basket_data %>%
-      group_by(fecha) %>%
-      summarise(costo = sum(precio, na.rm = TRUE), .groups = "drop") %>%
-      arrange(fecha) %>%
-      mutate(indice = round(costo / first(costo) * 100, 2))
+    placeholders <- paste(rep("?", length(eans)), collapse = ",")
+    params <- c(list(cutoff), as.list(eans))
 
-    # Per-product latest variation
-    product_variation <- basket_data %>%
-      group_by(ean, product_description, marca) %>%
-      arrange(fecha) %>%
-      summarise(
-        precio_inicio = first(precio),
-        precio_fin    = last(precio),
-        variacion     = round((last(precio) - first(precio)) / first(precio) * 100, 1),
-        .groups       = "drop"
-      ) %>%
-      arrange(desc(variacion))
-
-    # Summary stats
-    inflation_personal <- round(
-      (last(basket_index$costo) - first(basket_index$costo)) / first(basket_index$costo) * 100, 1
+    sql <- sprintf(
+      "%s
+      SELECT c.ean, c.product_description, c.marca, c.categoria,
+        COALESCE(v.variacion, 0) AS variacion
+      FROM canonical_products c
+      LEFT JOIN variations v ON c.ean = v.ean
+      WHERE c.ean IN (%s)
+      ORDER BY c.product_description",
+      variation_cte(), placeholders
     )
+
+    results <- tryCatch(
+      dbGetQuery(con, sql, params = params),
+      error = function(e) {
+        message("basket_variations error: ", e$message)
+        data.frame()
+      }
+    )
+
+    session$sendCustomMessage("basket_data", toJSON(results, auto_unbox = TRUE))
+  })
+
+  # ── Calculate results (Step 3) ────────────────────────────────────────
+
+  observeEvent(input$calculate, {
+    q      <- input$calculate
+    eans   <- q$eans
+    period <- q$period %||% "mensual"
+    days   <- PERIOD_DAYS[[period]] %||% 30
+    cutoff <- as.character(Sys.Date() - days)
+    ipc    <- IPC[[period]] %||% 0
+
+    if (length(eans) == 0) return()
+
+    placeholders <- paste(rep("?", length(eans)), collapse = ",")
+
+    # Per-product variations
+    params_prod <- c(list(cutoff), as.list(eans))
+    sql_prod <- sprintf(
+      "%s
+      SELECT c.ean, c.product_description, c.marca, c.categoria,
+        COALESCE(v.variacion, 0) AS variacion
+      FROM canonical_products c
+      LEFT JOIN variations v ON c.ean = v.ean
+      WHERE c.ean IN (%s)
+      ORDER BY v.variacion DESC",
+      variation_cte(), placeholders
+    )
+
+    product_data <- tryCatch(
+      dbGetQuery(con, sql_prod, params = params_prod),
+      error = function(e) {
+        message("calculate products error: ", e$message)
+        data.frame()
+      }
+    )
+
+    # Per-cadena average prices (latest date only)
+    params_cadena <- c(list(cutoff), as.list(eans))
+    sql_cadena <- sprintf("
+      WITH latest AS (
+        SELECT ean, cadena, precio_lista,
+          ROW_NUMBER() OVER (PARTITION BY ean, cadena ORDER BY fecha DESC) AS rn
+        FROM price_series
+        WHERE precio_lista > 0 AND fecha >= ? AND ean IN (%s)
+      )
+      SELECT cadena, ROUND(AVG(precio_lista), 0) AS precio_promedio
+      FROM latest
+      WHERE rn = 1
+      GROUP BY cadena
+      ORDER BY precio_promedio DESC
+    ", placeholders)
+
+    cadena_data <- tryCatch(
+      dbGetQuery(con, sql_cadena, params = params_cadena),
+      error = function(e) {
+        message("calculate cadena error: ", e$message)
+        data.frame()
+      }
+    )
+
+    personal_inflation <- if (nrow(product_data) > 0) {
+      round(mean(product_data$variacion, na.rm = TRUE), 1)
+    } else {
+      0
+    }
+
+    diff_pp <- round(personal_inflation - ipc, 1)
 
     result <- list(
-      inflation_personal = inflation_personal,
-      basket_index       = basket_index,
-      product_variation  = product_variation,
-      n_products         = length(eans),
-      days               = days
+      personal_inflation = personal_inflation,
+      ipc                = ipc,
+      diff_pp            = diff_pp,
+      period             = period,
+      period_label       = PERIOD_LABELS[[period]],
+      products           = product_data,
+      cadenas            = cadena_data
     )
 
+    calc_data(result)
     session$sendCustomMessage("results", toJSON(result, auto_unbox = TRUE))
   })
+
+  # ── Cadena bar chart (ggplot2) ────────────────────────────────────────
+
+  output$cadena_chart <- renderPlot({
+    data <- calc_data()
+    req(data, nrow(data$cadenas) > 0)
+
+    df <- data$cadenas
+    df$cadena <- factor(df$cadena, levels = rev(df$cadena))
+
+    ggplot(df, aes(x = cadena, y = precio_promedio)) +
+      geom_col(fill = "#4ade80", width = 0.55) +
+      geom_text(
+        aes(label = paste0("$", formatC(precio_promedio, format = "f", digits = 0, big.mark = "."))),
+        hjust = -0.15, color = "#e5e5e5", size = 4.5, family = "sans"
+      ) +
+      coord_flip() +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
+      labs(x = NULL, y = NULL) +
+      theme_void() +
+      theme(
+        plot.background  = element_rect(fill = "#161616", color = NA),
+        panel.background = element_rect(fill = "#161616", color = NA),
+        axis.text.y      = element_text(color = "#e5e5e5", size = 13, hjust = 1, margin = margin(r = 12)),
+        plot.margin      = margin(12, 24, 12, 12)
+      )
+  }, bg = "#161616")
+
+  outputOptions(output, "cadena_chart", suspendWhenHidden = FALSE)
 }

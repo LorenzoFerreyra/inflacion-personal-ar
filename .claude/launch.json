@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mockup",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8090"],
-      "port": 8090
+      "name": "shiny",
+      "runtimeExecutable": "C:\\Program Files\\R\\R-4.6.0\\bin\\Rscript.exe",
+      "runtimeArgs": ["-e", "shiny::runApp('.', port=7878, launch.browser=FALSE)"],
+      "port": 7878
     }
   ]
 }
