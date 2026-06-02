@@ -44,7 +44,7 @@ variation_badge <- function(v) {
   if (is.null(v) || is.na(v)) {
     return(tags$span(class = "var-badge var-flat", "—"))
   }
-  cls  <- if (v > 0) "var-up" else if (v < 0) "var-down" else "var-flat"
+  cls <- if (v > 0) "var-up" else if (v < 0) "var-down" else "var-flat"
   sign <- if (v > 0) "+" else ""
   tags$span(class = paste("var-badge", cls), paste0(sign, v, "%"))
 }
@@ -288,10 +288,20 @@ ui <- fluidPage(
 
       /* ── Category Chips ───────────────────────────────────────────── */
       .chip-group {
+        margin-bottom: 8px;
+      }
+      .chip-wrapper {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-bottom: 16px;
+        max-height: 72px;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+      .chip-wrapper.expanded {
+        max-height: 320px;
+        overflow-y: auto;
+        padding-right: 4px;
       }
       .chip {
         padding: 6px 14px;
@@ -302,12 +312,31 @@ ui <- fluidPage(
         color: var(--muted);
         border: 1px solid var(--border);
         transition: background 0.15s, color 0.15s, border-color 0.15s;
+        flex-shrink: 0;
+        white-space: nowrap;
       }
       .chip:hover { color: var(--text); border-color: #444; }
       .chip.active {
         background: var(--accent);
         color: #000;
         border-color: var(--accent);
+      }
+      .chip-more {
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--muted);
+        background: transparent;
+        border: 1px dashed var(--border);
+        border-radius: 99px;
+        margin-top: 6px;
+        transition: color 0.15s, border-color 0.15s;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .chip-more:hover {
+        color: var(--text);
+        border-color: #555;
       }
 
       /* ── Period Toggle ────────────────────────────────────────────── */
@@ -562,9 +591,12 @@ ui <- fluidPage(
   ),
 
   # ── Header ─────────────────────────────────────────────────────────────
-  tags$header(class = "app-header",
-    tags$div(class = "header-row",
-      tags$div(class = "header-left",
+  tags$header(
+    class = "app-header",
+    tags$div(
+      class = "header-row",
+      tags$div(
+        class = "header-left",
         tags$h1(class = "app-title", "Observatorio de inflación"),
         tags$span(class = "badge", "Beta")
       )
@@ -573,13 +605,20 @@ ui <- fluidPage(
   ),
 
   # ── Tab Navigation ─────────────────────────────────────────────────────
-  tags$nav(class = "tab-nav",
-    tags$button(class = "tab-link active", `data-tab` = "canasta",
-                onclick = "Shiny.setInputValue('active_tab', 'canasta')", "Mi canasta"),
-    tags$button(class = "tab-link", `data-tab` = "explorador",
-                onclick = "Shiny.setInputValue('active_tab', 'explorador')", "Explorador"),
-    tags$button(class = "tab-link", `data-tab` = "insights",
-                onclick = "Shiny.setInputValue('active_tab', 'insights')", "Insights")
+  tags$nav(
+    class = "tab-nav",
+    tags$button(
+      class = "tab-link active", `data-tab` = "canasta",
+      onclick = "Shiny.setInputValue('active_tab', 'canasta')", "Mi canasta"
+    ),
+    tags$button(
+      class = "tab-link", `data-tab` = "explorador",
+      onclick = "Shiny.setInputValue('active_tab', 'explorador')", "Explorador"
+    ),
+    tags$button(
+      class = "tab-link", `data-tab` = "insights",
+      onclick = "Shiny.setInputValue('active_tab', 'insights')", "Insights"
+    )
   ),
 
   # ── Main Content ───────────────────────────────────────────────────────
@@ -592,14 +631,16 @@ ui <- fluidPage(
     # Tab: Explorador
     conditionalPanel(
       condition = "input.active_tab == 'explorador'",
-      tags$div(class = "placeholder-pane",
+      tags$div(
+        class = "placeholder-pane",
         tags$p(class = "empty-state", "Explorador — próximamente")
       )
     ),
     # Tab: Insights
     conditionalPanel(
       condition = "input.active_tab == 'insights'",
-      tags$div(class = "placeholder-pane",
+      tags$div(
+        class = "placeholder-pane",
         tags$p(class = "empty-state", "Insights — próximamente")
       )
     )
@@ -647,23 +688,27 @@ ui <- fluidPage(
 # ═══════════════════════════════════════════════════════════════════════════
 
 server <- function(input, output, session) {
-
   # ── Database ───────────────────────────────────────────────────────────
   con <- dbConnect(RSQLite::SQLite(), DB_PATH)
   onSessionEnded(function() dbDisconnect(con))
 
   # ── Reactive State ─────────────────────────────────────────────────────
-  current_step  <- reactiveVal(1)
-  basket_eans   <- reactiveVal(character())
-  basket_info   <- reactiveVal(list())   # ean -> list(name, brand, category)
+  current_step <- reactiveVal(1)
+  basket_eans <- reactiveVal(character())
+  basket_info <- reactiveVal(list()) # ean -> list(name, brand, category)
 
   # ── Tab switching ──────────────────────────────────────────────────────
-  observeEvent(input$active_tab, {
-    session$sendCustomMessage("highlight_tab", input$active_tab)
-  }, ignoreNULL = TRUE)
+  observeEvent(input$active_tab,
+    {
+      session$sendCustomMessage("highlight_tab", input$active_tab)
+    },
+    ignoreNULL = TRUE
+  )
 
   # ── Period ─────────────────────────────────────────────────────────────
-  period <- reactive({ input$period %||% "mensual" })
+  period <- reactive({
+    input$period %||% "mensual"
+  })
 
   # ── Cached latest fecha ────────────────────────────────────────────────
   latest_fecha <- reactiveVal(NULL)
@@ -674,7 +719,7 @@ server <- function(input, output, session) {
 
   cutoff_fecha <- reactive({
     req(latest_fecha())
-    pd   <- period()
+    pd <- period()
     days <- PERIOD_DAYS[[pd]] %||% 30
     target <- as.character(as.Date(latest_fecha()) - days)
     q_cutoff_fecha(con, target)
@@ -688,8 +733,8 @@ server <- function(input, output, session) {
   })
 
   # ── Search products (reactive) ─────────────────────────────────────────
-  search_term_val  <- reactiveVal("")
-  search_cat_val   <- reactiveVal("")
+  search_term_val <- reactiveVal("")
+  search_cat_val <- reactiveVal("")
 
   observe({
     search_term_val(input$search_term %||% "")
@@ -701,14 +746,18 @@ server <- function(input, output, session) {
 
   search_results <- reactive({
     req(latest_fecha())
-    q_search_products(con, latest_fecha(), cutoff_fecha(),
-                      search_term_val(), search_cat_val())
+    q_search_products(
+      con, latest_fecha(), cutoff_fecha(),
+      search_term_val(), search_cat_val()
+    )
   })
 
   # ── Basket variations (for steps 2 & 3) ────────────────────────────────
   basket_variations <- reactive({
     eans <- basket_eans()
-    if (length(eans) == 0) return(data.frame())
+    if (length(eans) == 0) {
+      return(data.frame())
+    }
     req(latest_fecha())
     q_basket_variations(con, eans, latest_fecha(), cutoff_fecha())
   })
@@ -716,14 +765,18 @@ server <- function(input, output, session) {
   # ── Basket summary (for step 1 right panel) ────────────────────────────
   basket_summary_data <- reactive({
     bv <- basket_variations()
-    if (nrow(bv) == 0) return(NULL)
+    if (nrow(bv) == 0) {
+      return(NULL)
+    }
 
     vars <- bv$variacion
     vars <- vars[!is.na(vars)]
-    if (length(vars) == 0) return(NULL)
+    if (length(vars) == 0) {
+      return(NULL)
+    }
 
-    avg  <- round(mean(vars), 1)
-    ipc  <- IPC[[period()]] %||% 0
+    avg <- round(mean(vars), 1)
+    ipc <- IPC[[period()]] %||% 0
     diff <- round(avg - ipc, 1)
 
     list(
@@ -737,10 +790,14 @@ server <- function(input, output, session) {
   # ── Basket management: add/remove product ──────────────────────────────
   observeEvent(input$add_product, {
     ean <- input$add_product
-    if (is.null(ean) || !nzchar(ean)) return()
+    if (is.null(ean) || !nzchar(ean)) {
+      return()
+    }
 
     current <- basket_eans()
-    if (ean %in% current) return()  # already in basket
+    if (ean %in% current) {
+      return()
+    } # already in basket
 
     # Find product details from current search results
     sr <- search_results()
@@ -749,7 +806,8 @@ server <- function(input, output, session) {
       # Fallback: query the DB directly
       row <- tryCatch(
         dbGetQuery(con, "SELECT ean, product_description, marca, categoria FROM canonical_products WHERE ean = ?",
-                   params = list(ean)),
+          params = list(ean)
+        ),
         error = function(e) data.frame()
       )
     }
@@ -767,7 +825,9 @@ server <- function(input, output, session) {
 
   observeEvent(input$remove_product, {
     ean <- input$remove_product
-    if (is.null(ean) || !nzchar(ean)) return()
+    if (is.null(ean) || !nzchar(ean)) {
+      return()
+    }
 
     current <- basket_eans()
     basket_eans(setdiff(current, ean))
@@ -803,51 +863,89 @@ server <- function(input, output, session) {
   })
 
   step1_ui <- reactive({
-    sr  <- search_results()
+    sr <- search_results()
     eans <- basket_eans()
     info <- basket_info()
     cats <- categories()
     summary <- basket_summary_data()
 
     tagList(
-      tags$div(class = "step-columns",
+      tags$div(
+        class = "step-columns",
 
         # ── Left column: search + product list ───────────────────────
-        tags$div(class = "col-left",
+        tags$div(
+          class = "col-left",
           tags$h2(class = "section-heading", "ARMA TU CANASTA"),
 
           # Search box
-          tags$div(class = "search-box",
-            tags$svg(class = "search-icon", viewBox = "0 0 24 24", width = "16", height = "16",
+          tags$div(
+            class = "search-box",
+            tags$svg(
+              class = "search-icon", viewBox = "0 0 24 24", width = "16", height = "16",
               fill = "none", stroke = "currentColor", `stroke-width` = "2",
               tags$circle(cx = "11", cy = "11", r = "8"),
               tags$line(x1 = "21", y1 = "21", x2 = "16.65", y2 = "16.65")
             ),
-            tags$input(id = "search_term", type = "text", placeholder = "Buscar producto…",
-              value = isolate(search_term_val()), autocomplete = "off")
+            tags$input(
+              id = "search_term", type = "text", placeholder = "Buscar producto…",
+              value = isolate(search_term_val()), autocomplete = "off"
+            )
           ),
 
-          # Category chips
+          # Category chips (collapsible, sorted by product count)
           if (nrow(cats) > 0) {
-            tags$div(id = "category_chips", class = "chip-group",
+            cats_sorted <- cats[order(-cats$n), ]
+            active_cat <- search_cat_val() %||% ""
+            VISIBLE <- 8
+            n_total <- nrow(cats_sorted)
+            has_more <- n_total > VISIBLE
+
+            # Ensure active category is always in the visible set
+            if (nzchar(active_cat) && has_more) {
+              active_idx <- which(cats_sorted$categoria == active_cat)
+              if (length(active_idx) > 0 && active_idx > VISIBLE) {
+                before <- cats_sorted[seq_len(VISIBLE - 1), , drop = FALSE]
+                active_row <- cats_sorted[active_idx, , drop = FALSE]
+                after_idx <- setdiff(seq_len(n_total), c(seq_len(VISIBLE - 1), active_idx))
+                after <- cats_sorted[after_idx, , drop = FALSE]
+                cats_sorted <- rbind(before, active_row, after)
+              }
+            }
+
+            tags$div(
+              id = "category_chips", class = "chip-group",
               tags$button(
-                class = paste("chip", if (search_cat_val() == "") " active" else ""),
+                class = paste("chip", if (!nzchar(active_cat)) " active" else ""),
                 onclick = "Shiny.setInputValue('search_category', '')",
                 "Todos"
               ),
-              lapply(seq_len(nrow(cats)), function(i) {
-                cat <- cats$categoria[[i]]
+              tags$div(
+                class = "chip-wrapper",
+                lapply(seq_len(n_total), function(i) {
+                  cat <- cats_sorted$categoria[[i]]
+                  tags$button(
+                    class = paste("chip", if (active_cat == cat) " active" else ""),
+                    onclick = sprintf("Shiny.setInputValue('search_category', '%s')", gsub("'", "\\'", cat)),
+                    cat
+                  )
+                })
+              ),
+              if (has_more) {
+                hidden_n <- n_total - VISIBLE
                 tags$button(
-                  class = paste("chip", if (search_cat_val() == cat) " active" else ""),
-                  onclick = sprintf("Shiny.setInputValue('search_category', '%s')", gsub("'", "\\'", cat)),
-                  cat
+                  class = "chip-more",
+                  `data-hidden` = as.character(hidden_n),
+                  onclick = "var w=this.parentElement.querySelector('.chip-wrapper');if(w.classList.toggle('expanded')){this.textContent='Ver menos'}else{this.textContent='+ '+this.dataset.hidden+' m\u00e1s'}",
+                  paste0("+ ", hidden_n, " m\u00e1s")
                 )
-              })
+              }
             )
           },
 
           # Period toggle
-          tags$div(class = "period-toggle", id = "period_toggle_1",
+          tags$div(
+            class = "period-toggle", id = "period_toggle_1",
             lapply(c("mensual", "trimestral", "interanual"), function(p) {
               tags$button(
                 class = paste("period-btn", if (period() == p) " active" else ""),
@@ -859,33 +957,43 @@ server <- function(input, output, session) {
 
           # Product list
           if (nrow(sr) == 0) {
-            tags$ul(class = "product-list",
+            tags$ul(
+              class = "product-list",
               tags$li(class = "empty-state", "No se encontraron productos.")
             )
           } else {
-            tags$ul(class = "product-list",
+            tags$ul(
+              class = "product-list",
               lapply(seq_len(nrow(sr)), function(i) {
-                p     <- sr[i, ]
-                in_b  <- p$ean %in% eans
+                p <- sr[i, ]
+                in_b <- p$ean %in% eans
                 ean_safe <- gsub("'", "\\'", p$ean)
                 tags$li(
                   class = paste("product-row", if (in_b) " in-basket" else ""),
                   `data-ean` = p$ean,
-                  tags$div(class = "product-info",
+                  tags$div(
+                    class = "product-info",
                     tags$div(class = "product-name", p$product_description),
-                    tags$div(class = "product-meta",
-                      paste(c(p$marca, p$categoria), collapse = " · "))
+                    tags$div(
+                      class = "product-meta",
+                      paste(c(p$marca, p$categoria), collapse = " · ")
+                    )
                   ),
-                  tags$span(class = "product-price",
-                    if (!is.na(p$precio_actual) && p$precio_actual > 0)
-                      paste0("$", formatC(p$precio_actual, format = "f", digits = 0, big.mark = "."))
-                    else "—"
+                  tags$span(
+                    class = "product-price",
+                    if (length(p$precio_actual) > 0 && !is.na(p$precio_actual) && p$precio_actual > 0) {
+                      paste0("$", format(round(p$precio_actual), big.mark = ".", decimal.mark = ",", scientific = FALSE))
+                    } else {
+                      "—"
+                    }
                   ),
                   variation_badge(p$variacion),
                   tags$button(
                     class = "product-add",
-                    onclick = sprintf("Shiny.setInputValue('%s', '%s')",
-                      if (in_b) "remove_product" else "add_product", ean_safe),
+                    onclick = sprintf(
+                      "Shiny.setInputValue('%s', '%s')",
+                      if (in_b) "remove_product" else "add_product", ean_safe
+                    ),
                     if (in_b) "✓" else "+"
                   )
                 )
@@ -895,16 +1003,18 @@ server <- function(input, output, session) {
         ),
 
         # ── Right column: basket preview ─────────────────────────────
-        tags$div(class = "col-right",
+        tags$div(
+          class = "col-right",
           tags$h2(class = "section-heading", "TU CANASTA ACTUAL"),
-
           if (length(eans) == 0) {
-            tags$ul(class = "basket-list",
+            tags$ul(
+              class = "basket-list",
               tags$li(class = "empty-state", "Agregá productos desde la izquierda.")
             )
           } else {
             tagList(
-              tags$ul(class = "basket-list",
+              tags$ul(
+                class = "basket-list",
                 lapply(eans, function(ean) {
                   inf <- info[[ean]]
                   ean_safe <- gsub("'", "\\'", ean)
@@ -912,48 +1022,72 @@ server <- function(input, output, session) {
                   var_row <- if (nrow(bv) > 0) bv[bv$ean == ean, ] else data.frame()
                   v <- if (nrow(var_row) > 0) var_row$variacion[1] else NULL
 
-                  tags$li(class = "basket-item", `data-ean` = ean,
-                    tags$div(class = "basket-item-info",
+                  tags$li(
+                    class = "basket-item", `data-ean` = ean,
+                    tags$div(
+                      class = "basket-item-info",
                       tags$div(class = "basket-item-name", inf$name %||% ean),
-                      tags$div(class = "basket-item-cat",
-                        paste(c(inf$brand, inf$category), collapse = " · "))
+                      tags$div(
+                        class = "basket-item-cat",
+                        paste(c(inf$brand, inf$category), collapse = " · ")
+                      )
                     ),
                     variation_badge(v),
-                    tags$button(class = "basket-remove",
+                    tags$button(
+                      class = "basket-remove",
                       onclick = sprintf("Shiny.setInputValue('remove_product', '%s')", ean_safe),
-                      `aria-label` = "Quitar", "×")
+                      `aria-label` = "Quitar", "×"
+                    )
                   )
                 })
               ),
 
               # Summary
               if (!is.null(summary)) {
-                tags$div(class = "basket-summary",
-                  tags$div(class = "summary-block",
-                    tags$div(class = "summary-label",
-                      paste("Tu inflación (", PERIOD_SUBTITLES[[period()]], ")", sep = "")),
-                    tags$div(class = paste("summary-value",
-                      if (summary$avg >= 0) "color-red" else "color-green"),
-                      paste0(if (summary$avg >= 0) "+" else "", summary$avg, "%"))
+                tags$div(
+                  class = "basket-summary",
+                  tags$div(
+                    class = "summary-block",
+                    tags$div(
+                      class = "summary-label",
+                      paste("Tu inflación (", PERIOD_SUBTITLES[[period()]], ")", sep = "")
+                    ),
+                    tags$div(
+                      class = paste(
+                        "summary-value",
+                        if (summary$avg >= 0) "color-red" else "color-green"
+                      ),
+                      paste0(if (summary$avg >= 0) "+" else "", summary$avg, "%")
+                    )
                   ),
-                  tags$div(class = "summary-block",
+                  tags$div(
+                    class = "summary-block",
                     tags$div(class = "summary-label", "IPC oficial"),
-                    tags$div(class = "summary-value",
-                      paste0(if (summary$ipc >= 0) "+" else "", summary$ipc, "%")),
-                    tags$div(class = paste("summary-sub",
-                      if (summary$diff > 0) "color-red" else if (summary$diff < 0) "color-green" else ""),
+                    tags$div(
+                      class = "summary-value",
+                      paste0(if (summary$ipc >= 0) "+" else "", summary$ipc, "%")
+                    ),
+                    tags$div(
+                      class = paste(
+                        "summary-sub",
+                        if (summary$diff > 0) "color-red" else if (summary$diff < 0) "color-green" else ""
+                      ),
                       paste0(
                         if (summary$diff >= 0) "+" else "", summary$diff, " pp ",
-                        if (summary$diff > 0) "por encima"
-                        else if (summary$diff < 0) "por debajo"
-                        else ""
-                      ))
+                        if (summary$diff > 0) {
+                          "por encima"
+                        } else if (summary$diff < 0) {
+                          "por debajo"
+                        } else {
+                          ""
+                        }
+                      )
+                    )
                   )
                 )
               }
             )
           },
-
           tags$button(
             id = "btn_review",
             class = "btn btn-primary btn-full",
@@ -974,19 +1108,23 @@ server <- function(input, output, session) {
   step2_ui <- reactive({
     eans <- basket_eans()
     info <- basket_info()
-    bv   <- basket_variations()
+    bv <- basket_variations()
 
-    tags$div(class = "step-narrow",
-      tags$div(class = "step-top-bar",
-        tags$button(class = "btn btn-ghost",
+    tags$div(
+      class = "step-narrow",
+      tags$div(
+        class = "step-top-bar",
+        tags$button(
+          class = "btn btn-ghost",
           onclick = "Shiny.setInputValue('go_to_step', 1)",
-          "← Volver")
+          "← Volver"
+        )
       ),
-
       tags$h2(class = "section-heading", "REVISAR TU CANASTA"),
 
       # Period toggle (synced)
-      tags$div(class = "period-toggle", id = "period_toggle_2",
+      tags$div(
+        class = "period-toggle", id = "period_toggle_2",
         lapply(c("mensual", "trimestral", "interanual"), function(p) {
           tags$button(
             class = paste("period-btn", if (period() == p) " active" else ""),
@@ -995,38 +1133,47 @@ server <- function(input, output, session) {
           )
         })
       ),
-
       if (length(eans) == 0) {
-        tags$ul(class = "basket-list",
+        tags$ul(
+          class = "basket-list",
           tags$li(class = "empty-state", "Tu canasta está vacía. Volvé al paso 1 para agregar productos.")
         )
       } else {
         tagList(
-          tags$ul(class = "basket-list",
+          tags$ul(
+            class = "basket-list",
             lapply(eans, function(ean) {
               inf <- info[[ean]]
               var_row <- if (nrow(bv) > 0) bv[bv$ean == ean, ] else data.frame()
               v <- if (nrow(var_row) > 0) var_row$variacion[1] else NULL
               ean_safe <- gsub("'", "\\'", ean)
 
-              tags$li(class = "basket-item", `data-ean` = ean,
-                tags$div(class = "basket-item-info",
+              tags$li(
+                class = "basket-item", `data-ean` = ean,
+                tags$div(
+                  class = "basket-item-info",
                   tags$div(class = "basket-item-name", inf$name %||% ean),
-                  tags$div(class = "basket-item-cat",
-                    paste(c(inf$brand, inf$category), collapse = " · "))
+                  tags$div(
+                    class = "basket-item-cat",
+                    paste(c(inf$brand, inf$category), collapse = " · ")
+                  )
                 ),
                 variation_badge(v),
-                tags$button(class = "basket-remove",
+                tags$button(
+                  class = "basket-remove",
                   onclick = sprintf("Shiny.setInputValue('remove_product', '%s')", ean_safe),
-                  `aria-label` = "Quitar", "×")
+                  `aria-label` = "Quitar", "×"
+                )
               )
             })
           ),
-
-          tags$div(class = "btn-group",
-            tags$button(id = "btn_results", class = "btn btn-primary btn-full",
+          tags$div(
+            class = "btn-group",
+            tags$button(
+              id = "btn_results", class = "btn btn-primary btn-full",
               onclick = "Shiny.setInputValue('go_to_step', 3)",
-              "Ver mi resultado")
+              "Ver mi resultado"
+            )
           )
         )
       }
@@ -1039,7 +1186,9 @@ server <- function(input, output, session) {
 
   step3_data <- reactive({
     eans <- basket_eans()
-    if (length(eans) == 0) return(NULL)
+    if (length(eans) == 0) {
+      return(NULL)
+    }
     req(latest_fecha())
 
     pd <- period()
@@ -1051,7 +1200,9 @@ server <- function(input, output, session) {
 
     personal_inflation <- if (nrow(product_data) > 0) {
       round(mean(product_data$variacion, na.rm = TRUE), 1)
-    } else 0
+    } else {
+      0
+    }
 
     ipc_val <- IPC[[pd]] %||% 0
     diff_pp <- round(personal_inflation - ipc_val, 1)
@@ -1069,24 +1220,28 @@ server <- function(input, output, session) {
   step3_ui <- reactive({
     data <- step3_data()
 
-    tags$div(class = "step-narrow",
-      tags$div(class = "step-top-bar",
-        tags$button(class = "btn btn-ghost",
+    tags$div(
+      class = "step-narrow",
+      tags$div(
+        class = "step-top-bar",
+        tags$button(
+          class = "btn btn-ghost",
           onclick = "Shiny.setInputValue('go_to_step', 2)",
-          "← Editar canasta")
+          "← Editar canasta"
+        )
       ),
-
       tags$h2(class = "section-heading", "TU RESULTADO"),
-
       if (is.null(data) || nrow(data$products) == 0) {
-        tags$div(class = "result-cards",
-          tags$div(class = "result-card",
+        tags$div(
+          class = "result-cards",
+          tags$div(
+            class = "result-card",
             tags$div(class = "result-card-label", "Sin datos"),
             tags$div(class = "result-card-sub", "Agregá productos a tu canasta para ver tu inflación personal.")
           )
         )
       } else {
-        pi_sign  <- if (data$personal_inflation >= 0) "+" else ""
+        pi_sign <- if (data$personal_inflation >= 0) "+" else ""
         pi_color <- if (data$personal_inflation > data$ipc) "color-red" else "color-green"
         diff_sign <- if (data$diff_pp >= 0) "+" else ""
         diff_color <- if (data$diff_pp > 0) "color-red" else if (data$diff_pp < 0) "color-green" else ""
@@ -1094,38 +1249,59 @@ server <- function(input, output, session) {
 
         tagList(
           # Headline cards
-          tags$div(class = "result-cards",
-            tags$div(class = "result-card",
+          tags$div(
+            class = "result-cards",
+            tags$div(
+              class = "result-card",
               tags$div(class = "result-card-label", paste("Tu inflación (", data$period_label, ")", sep = "")),
-              tags$div(class = paste("result-card-value", pi_color),
-                paste0(pi_sign, data$personal_inflation, "%"))
+              tags$div(
+                class = paste("result-card-value", pi_color),
+                paste0(pi_sign, data$personal_inflation, "%")
+              )
             ),
-            tags$div(class = "result-card",
+            tags$div(
+              class = "result-card",
               tags$div(class = "result-card-label", "IPC oficial"),
-              tags$div(class = "result-card-value",
-                paste0(ipc_sign, data$ipc, "%"))
+              tags$div(
+                class = "result-card-value",
+                paste0(ipc_sign, data$ipc, "%")
+              )
             ),
-            tags$div(class = "result-card",
+            tags$div(
+              class = "result-card",
               tags$div(class = "result-card-label", "Diferencia"),
-              tags$div(class = paste("result-card-value", diff_color),
-                paste0(diff_sign, data$diff_pp, " pp")),
-              tags$div(class = "result-card-sub",
-                if (data$diff_pp > 0) "Por encima del IPC"
-                else if (data$diff_pp < 0) "Por debajo del IPC"
-                else "Igual al IPC")
+              tags$div(
+                class = paste("result-card-value", diff_color),
+                paste0(diff_sign, data$diff_pp, " pp")
+              ),
+              tags$div(
+                class = "result-card-sub",
+                if (data$diff_pp > 0) {
+                  "Por encima del IPC"
+                } else if (data$diff_pp < 0) {
+                  "Por debajo del IPC"
+                } else {
+                  "Igual al IPC"
+                }
+              )
             )
           ),
 
           # Product breakdown
           tags$h3(class = "section-subheading", "VARIACIÓN POR PRODUCTO"),
-          tags$ul(class = "basket-list",
+          tags$ul(
+            class = "basket-list",
             lapply(seq_len(nrow(data$products)), function(i) {
               p <- data$products[i, ]
-              tags$li(class = "basket-item",
-                tags$div(class = "basket-item-info",
+              tags$li(
+                class = "basket-item",
+                tags$div(
+                  class = "basket-item-info",
                   tags$div(class = "basket-item-name", p$product_description),
-                  tags$div(class = "basket-item-cat",
-                    paste(c(p$marca, p$categoria), collapse = " · "))
+                  tags$div(
+                    class = "basket-item-cat",
+                    paste(c(p$marca, p$categoria), collapse = " · ")
+                  )
                 ),
                 variation_badge(p$variacion)
               )
@@ -1134,14 +1310,17 @@ server <- function(input, output, session) {
 
           # Cadena chart
           tags$h3(class = "section-subheading", "PRECIO PROMEDIO POR CADENA"),
-          tags$div(class = "chart-wrapper",
+          tags$div(
+            class = "chart-wrapper",
             plotOutput("cadena_chart", height = "350px")
           ),
-
-          tags$div(class = "btn-group",
-            tags$button(class = "btn btn-secondary",
+          tags$div(
+            class = "btn-group",
+            tags$button(
+              class = "btn btn-secondary",
               onclick = "Shiny.setInputValue('go_to_step', 2)",
-              "Editar canasta")
+              "Editar canasta"
+            )
           )
         )
       }
@@ -1152,42 +1331,51 @@ server <- function(input, output, session) {
   # Cadena bar chart (Step 3)
   # ═════════════════════════════════════════════════════════════════════
 
-  output$cadena_chart <- renderPlot({
-    data <- step3_data()
-    req(data, nrow(data$cadenas) > 0)
+  output$cadena_chart <- renderPlot(
+    {
+      data <- step3_data()
+      req(data, nrow(data$cadenas) > 0)
 
-    df <- data$cadenas
-    df$cadena <- factor(df$cadena, levels = rev(df$cadena))
+      df <- data$cadenas
+      df$cadena <- factor(df$cadena, levels = rev(df$cadena))
 
-    ggplot(df, aes(x = cadena, y = precio_promedio)) +
-      geom_col(fill = "#4ade80", width = 0.55) +
-      geom_text(
-        aes(label = paste0("$", formatC(precio_promedio, format = "f", digits = 0, big.mark = "."))),
-        hjust = -0.15, color = "#e5e5e5", size = 4.5
-      ) +
-      coord_flip() +
-      scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
-      labs(x = NULL, y = NULL) +
-      theme_void() +
-      theme(
-        plot.background  = element_rect(fill = "#1a1a1a", color = NA),
-        panel.background = element_rect(fill = "#1a1a1a", color = NA),
-        axis.text.y      = element_text(color = "#e5e5e5", size = 13, hjust = 1, margin = margin(r = 12)),
-        plot.margin      = margin(12, 24, 12, 12)
-      )
-  }, bg = "#1a1a1a")
+      ggplot(df, aes(x = cadena, y = precio_promedio)) +
+        geom_col(fill = "#4ade80", width = 0.55) +
+        geom_text(
+          aes(label = paste0("$", format(round(precio_promedio), big.mark = ".", decimal.mark = ",", scientific = FALSE))),
+          hjust = -0.15, color = "#e5e5e5", size = 4.5
+        ) +
+        coord_flip() +
+        scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
+        labs(x = NULL, y = NULL) +
+        theme_void() +
+        theme(
+          plot.background  = element_rect(fill = "#1a1a1a", color = NA),
+          panel.background = element_rect(fill = "#1a1a1a", color = NA),
+          axis.text.y      = element_text(color = "#e5e5e5", size = 13, hjust = 1, margin = margin(r = 12)),
+          plot.margin      = margin(12, 24, 12, 12)
+        )
+    },
+    bg = "#1a1a1a"
+  )
 
   outputOptions(output, "cadena_chart", suspendWhenHidden = FALSE)
 
   # ── Handle search input changes ────────────────────────────────────────
-  observeEvent(input$search_term, {
-    search_term_val(input$search_term)
-  }, ignoreNULL = FALSE)
+  observeEvent(input$search_term,
+    {
+      search_term_val(input$search_term)
+    },
+    ignoreNULL = FALSE
+  )
 
   # ── Handle category chip changes ───────────────────────────────────────
-  observeEvent(input$search_category, {
-    search_cat_val(input$search_category)
-  }, ignoreNULL = FALSE)
+  observeEvent(input$search_category,
+    {
+      search_cat_val(input$search_category)
+    },
+    ignoreNULL = FALSE
+  )
 
   # ── Handle period changes ──────────────────────────────────────────────
   observeEvent(input$period, {
