@@ -13,7 +13,15 @@ PERIOD_DAYS <- list(
 )
 
 PERIOD_LABELS <- list(
-  mensual    = "30 dias",
-  trimestral = "90 dias",
-  interanual = "365 dias"
+  mensual    = "Mensual",
+  trimestral = "Trimestral",
+  interanual = "Interanual"
 )
+
+PERIOD_SUBTITLES <- list(
+  mensual    = "30 días",
+  trimestral = "90 días",
+  interanual = "365 días"
+)
+
+STEP_NAMES <- c("Agregar productos", "Revisar canasta", "Tu resultado")

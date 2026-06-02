@@ -1,151 +1,270 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Observatorio de Inflación</title>
-  {{ headContent() }}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Observatorio de Inflación</title>
+        {{ headContent() }}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <header class="app-header">
+            <div class="header-row">
+                <div class="header-left">
+                    <h1 class="app-title">Observatorio de inflación</h1>
+                    <span class="badge">Beta</span>
+                </div>
+            </div>
+            <p class="app-subtitle">Tu inflación real, no el promedio</p>
+        </header>
 
-<!-- ═══ HEADER ═══ -->
-<header class="app-header">
-  <div class="header-row">
-    <div class="header-left">
-      <h1 class="app-title">Observatorio de inflación</h1>
-      <span class="badge">Beta</span>
-    </div>
-  </div>
-  <p class="app-subtitle">Tu inflación real, no el promedio</p>
-</header>
+        <nav class="tab-nav">
+            <button class="tab-link active" data-tab="canasta">
+                Mi canasta
+            </button>
+            <button class="tab-link" data-tab="explorador">Explorador</button>
+            <button class="tab-link" data-tab="insights">Insights</button>
+        </nav>
 
-<!-- ═══ TAB NAV ═══ -->
-<nav class="tab-nav">
-  <button class="tab-link active" data-tab="canasta">Mi canasta</button>
-  <button class="tab-link" data-tab="explorador">Explorador</button>
-  <button class="tab-link" data-tab="insights">Insights</button>
-</nav>
+        <main>
+            <!-- ═══ TAB: MI CANASTA ═══ -->
+            <div id="tab-canasta" class="tab-pane active">
+                <!-- STEPPER -->
+                <div id="stepper" class="stepper">
+                    <div class="stepper-step">
+                        <button class="stepper-num active">1</button>
+                        <span class="stepper-text active"
+                            >Agregar productos</span
+                        >
+                    </div>
+                    <div class="stepper-line"></div>
+                    <div class="stepper-step">
+                        <button class="stepper-num upcoming">2</button>
+                        <span class="stepper-text upcoming"
+                            >Revisar canasta</span
+                        >
+                    </div>
+                    <div class="stepper-line"></div>
+                    <div class="stepper-step">
+                        <button class="stepper-num upcoming">3</button>
+                        <span class="stepper-text upcoming">Tu resultado</span>
+                    </div>
+                </div>
 
-<main>
+                <!-- STEP 1 -->
+                <section id="step-1" class="step active">
+                    <div class="step-columns">
+                        <div class="col-left">
+                            <h2 class="section-heading">ARMA TU CANASTA</h2>
 
-  <!-- ═══ TAB: MI CANASTA ═══ -->
-  <div id="tab-canasta" class="tab-pane active">
+                            <div class="search-row">
+                                <div class="search-box">
+                                    <svg
+                                        class="search-icon"
+                                        viewBox="0 0 24 24"
+                                        width="16"
+                                        height="16"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <circle cx="11" cy="11" r="8" />
+                                        <line
+                                            x1="21"
+                                            y1="21"
+                                            x2="16.65"
+                                            y2="16.65"
+                                        />
+                                    </svg>
+                                    <input
+                                        id="search-input"
+                                        type="text"
+                                        placeholder="Buscar producto…"
+                                        autocomplete="off"
+                                    />
+                                </div>
+                                <div class="period-area">
+                                    <div class="period-label">Variación</div>
+                                    <div
+                                        class="period-toggle"
+                                        id="period-toggle-1"
+                                    >
+                                        <button
+                                            class="period-btn active"
+                                            data-period="mensual"
+                                        >
+                                            Mensual
+                                        </button>
+                                        <button
+                                            class="period-btn"
+                                            data-period="trimestral"
+                                        >
+                                            Trimestral
+                                        </button>
+                                        <button
+                                            class="period-btn"
+                                            data-period="interanual"
+                                        >
+                                            Interanual
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-    <!-- STEP 1: Agregar productos -->
-    <section id="step-1" class="step active">
-      <div class="step-columns">
+                            <div id="category-chips" class="chip-group">
+                                <button class="chip active" data-category="">
+                                    Todos
+                                </button>
+                                <div
+                                    id="chip-wrapper"
+                                    class="chip-wrapper"
+                                ></div>
+                                <button
+                                    id="chip-more"
+                                    class="chip-more"
+                                    style="display: none"
+                                >
+                                    + 0 más
+                                </button>
+                            </div>
 
-        <div class="col-left">
-          <h2 class="section-heading">ARMA TU CANASTA</h2>
+                            <ul
+                                id="product-list"
+                                class="product-list"
+                                role="listbox"
+                            >
+                                <li class="empty-state">
+                                    Buscá productos para agregarlos a tu
+                                    canasta.
+                                </li>
+                            </ul>
+                        </div>
 
-          <div class="search-box">
-            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input id="search-input" type="text" placeholder="Buscar producto…" autocomplete="off">
-          </div>
+                        <div class="col-right">
+                            <h2 class="section-heading">TU CANASTA ACTUAL</h2>
 
-          <div id="category-chips" class="chip-group"></div>
+                            <ul id="basket-preview" class="basket-list">
+                                <li class="empty-state">
+                                    Agregá productos desde la izquierda.
+                                </li>
+                            </ul>
 
-          <div class="period-toggle" id="period-toggle-1">
-            <button class="period-btn active" data-period="mensual">Mensual</button>
-            <button class="period-btn" data-period="trimestral">Trimestral</button>
-            <button class="period-btn" data-period="interanual">Interanual</button>
-          </div>
+                            <div
+                                id="basket-summary"
+                                class="basket-summary hidden"
+                            ></div>
 
-          <ul id="product-list" class="product-list" role="listbox" aria-label="Lista de productos">
-            <li class="empty-state">Buscá productos para agregarlos a tu canasta.</li>
-          </ul>
-        </div>
+                            <button
+                                id="btn-review"
+                                class="btn btn-primary btn-full"
+                                disabled
+                            >
+                                Revisar canasta
+                            </button>
+                        </div>
+                    </div>
+                </section>
 
-        <div class="col-right">
-          <h2 class="section-heading">TU CANASTA ACTUAL</h2>
+                <!-- STEP 2 -->
+                <section id="step-2" class="step">
+                    <div class="step-narrow">
+                        <h2 class="section-heading">REVISAR TU CANASTA</h2>
 
-          <ul id="basket-preview" class="basket-list" role="list" aria-label="Canasta actual">
-            <li class="empty-state">Agregá productos desde la izquierda.</li>
-          </ul>
+                        <div class="period-toggle" id="period-toggle-2">
+                            <button
+                                class="period-btn active"
+                                data-period="mensual"
+                            >
+                                Mensual
+                            </button>
+                            <button class="period-btn" data-period="trimestral">
+                                Trimestral
+                            </button>
+                            <button class="period-btn" data-period="interanual">
+                                Interanual
+                            </button>
+                        </div>
 
-          <div id="basket-summary" class="basket-summary hidden"></div>
+                        <ul id="basket-review" class="basket-list"></ul>
 
-          <button id="btn-review" class="btn btn-primary btn-full" disabled>
-            Revisar canasta
-          </button>
-        </div>
+                        <div
+                            id="step2-summary"
+                            class="basket-summary hidden"
+                        ></div>
 
-      </div>
-    </section>
+                        <div class="btn-group">
+                            <button
+                                id="btn-back-step1"
+                                class="btn btn-secondary"
+                            >
+                                &larr; Agregar más
+                            </button>
+                            <button
+                                id="btn-results"
+                                class="btn btn-primary btn-full"
+                            >
+                                Ver mi resultado
+                            </button>
+                        </div>
+                    </div>
+                </section>
 
-    <!-- STEP 2: Revisar canasta -->
-    <section id="step-2" class="step">
-      <div class="step-narrow">
-        <div class="step-top-bar">
-          <button class="btn btn-ghost" data-action="back-to-1">← Volver</button>
-        </div>
+                <!-- STEP 3 -->
+                <section id="step-3" class="step">
+                    <div class="step-narrow">
+                        <h2 class="section-heading">TU RESULTADO</h2>
 
-        <h2 class="section-heading">REVISAR TU CANASTA</h2>
+                        <div id="result-cards" class="result-cards"></div>
 
-        <div class="period-toggle" id="period-toggle-2">
-          <button class="period-btn active" data-period="mensual">Mensual</button>
-          <button class="period-btn" data-period="trimestral">Trimestral</button>
-          <button class="period-btn" data-period="interanual">Interanual</button>
-        </div>
+                        <h3 class="section-subheading">
+                            VARIACIÓN POR PRODUCTO
+                        </h3>
+                        <ul id="result-products" class="basket-list"></ul>
 
-        <ul id="basket-review" class="basket-list" role="list" aria-label="Revisión de canasta"></ul>
+                        <h3 class="section-subheading">
+                            PRECIO PROMEDIO POR CADENA
+                        </h3>
+                        <div class="chart-wrapper">
+                            <div
+                                id="cadena_chart"
+                                class="shiny-plot-output"
+                                style="width: 100%; height: 350px"
+                            ></div>
+                        </div>
 
-        <div class="btn-group">
-          <button id="btn-results" class="btn btn-primary btn-full">Ver mi resultado</button>
-        </div>
-      </div>
-    </section>
+                        <div class="btn-group">
+                            <button
+                                id="btn-edit-basket"
+                                class="btn btn-secondary"
+                            >
+                                Editar canasta
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
 
-    <!-- STEP 3: Tu resultado -->
-    <section id="step-3" class="step">
-      <div class="step-narrow">
-        <div class="step-top-bar">
-          <button class="btn btn-ghost" data-action="back-to-2">← Editar canasta</button>
-        </div>
+            <!-- ═══ TAB: EXPLORADOR ═══ -->
+            <div id="tab-explorador" class="tab-pane">
+                <div class="placeholder-pane">
+                    <p class="empty-state">Explorador — próximamente</p>
+                </div>
+            </div>
 
-        <h2 class="section-heading">TU RESULTADO</h2>
+            <!-- ═══ TAB: INSIGHTS ═══ -->
+            <div id="tab-insights" class="tab-pane">
+                <div class="placeholder-pane">
+                    <p class="empty-state">Insights — próximamente</p>
+                </div>
+            </div>
+        </main>
 
-        <!-- Headline cards -->
-        <div id="result-cards" class="result-cards"></div>
-
-        <!-- Product breakdown -->
-        <h3 class="section-subheading">VARIACIÓN POR PRODUCTO</h3>
-        <ul id="result-products" class="basket-list" role="list"></ul>
-
-        <!-- Cadena chart (ggplot2 via Shiny output binding) -->
-        <h3 class="section-subheading">PRECIO PROMEDIO POR CADENA</h3>
-        <div class="chart-wrapper">
-          <div id="cadena_chart" class="shiny-plot-output" style="width:100%; height:350px;"></div>
-        </div>
-
-        <div class="btn-group">
-          <button class="btn btn-secondary" data-action="back-to-2">Editar canasta</button>
-        </div>
-      </div>
-    </section>
-
-  </div>
-
-  <!-- ═══ TAB: EXPLORADOR ═══ -->
-  <div id="tab-explorador" class="tab-pane">
-    <div class="placeholder-pane">
-      <p class="empty-state">Explorador — próximamente</p>
-    </div>
-  </div>
-
-  <!-- ═══ TAB: INSIGHTS ═══ -->
-  <div id="tab-insights" class="tab-pane">
-    <div class="placeholder-pane">
-      <p class="empty-state">Insights — próximamente</p>
-    </div>
-  </div>
-
-</main>
-
-<script src="ui.js"></script>
-<script src="bridge.js"></script>
-</body>
+        <script src="ui.js"></script>
+        <script src="bridge.js"></script>
+    </body>
 </html>
