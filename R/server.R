@@ -2,6 +2,7 @@ library(DBI)
 library(RSQLite)
 library(dplyr)
 library(ggplot2)
+library(plotly)
 library(jsonlite)
 
 server <- function(input, output, session) {
@@ -204,39 +205,41 @@ server <- function(input, output, session) {
 
   # ── Cadena bar chart (Step 3) ──────────────────────────────────────────
 
-  output$cadena_chart <- renderPlot(
-    {
-      data <- calc_data()
-      req(data, nrow(data$cadenas) > 0)
+  output$cadena_chart <- renderPlotly({
+    data <- calc_data()
+    req(data, nrow(data$cadenas) > 0)
 
-      df <- data$cadenas
-      df$cadena <- factor(df$cadena, levels = rev(df$cadena))
+    df <- data$cadenas
+    df$cadena <- factor(df$cadena, levels = df$cadena)
 
-      ggplot(df, aes(x = cadena, y = precio_promedio)) +
-        geom_col(fill = "#4ade80", width = 0.55) +
-        geom_text(
-          aes(label = paste0(
-            "$",
-            formatC(precio_promedio, format = "f", digits = 0, big.mark = ".")
-          )),
-          hjust = -0.15, color = "#e5e5e5", size = 4.5
-        ) +
-        coord_flip() +
-        scale_y_continuous(expand = expansion(mult = c(0, 0.35))) +
-        labs(x = NULL, y = NULL) +
-        theme_void() +
-        theme(
-          plot.background = element_rect(fill = "#161616", color = NA),
-          panel.background = element_rect(fill = "#161616", color = NA),
-          axis.text.y = element_text(
-            color = "#e5e5e5", size = 13,
-            hjust = 1, margin = margin(r = 12)
-          ),
-          plot.margin = margin(12, 24, 12, 12)
-        )
-    },
-    bg = "#161616"
-  )
+    p <- ggplot(df, aes(
+      x = precio_promedio, y = cadena,
+      text = paste0(cadena, ": $", formatC(precio_promedio, format = "f", digits = 0, big.mark = "."))
+    )) +
+      geom_col(fill = "#4ade80", width = 0.55) +
+      scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+      labs(x = NULL, y = NULL) +
+      theme_void() +
+      theme(
+        plot.background = element_rect(fill = "#161616", color = NA),
+        panel.background = element_rect(fill = "#161616", color = NA),
+        axis.text.y = element_text(
+          color = "#e5e5e5", size = 13,
+          hjust = 1, margin = margin(r = 12)
+        ),
+        plot.margin = margin(12, 24, 12, 12)
+      )
+
+    ggplotly(p, tooltip = "text") %>%
+      layout(
+        paper_bgcolor = "#161616",
+        plot_bgcolor = "#161616",
+        font = list(color = "#e5e5e5"),
+        xaxis = list(visible = FALSE),
+        margin = list(l = 10, r = 10, t = 10, b = 10)
+      ) %>%
+      config(displayModeBar = FALSE)
+  })
 
   outputOptions(output, "cadena_chart", suspendWhenHidden = FALSE)
 
