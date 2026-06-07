@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "shiny",
-      "runtimeExecutable": "C:\\Program Files\\R\\R-4.6.0\\bin\\Rscript.exe",
-      "runtimeArgs": ["-e", "shiny::runApp('.', port=7878, launch.browser=FALSE)"],
-      "port": 7878
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
     }
   ]
 }
