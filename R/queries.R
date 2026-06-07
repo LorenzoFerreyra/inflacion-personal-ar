@@ -28,7 +28,8 @@ q_categories <- function(con) {
 
 # ── Query 1: productos con precio actual y variación ─────────────────────
 
-get_products <- function(con, search = "", category = "", dias = 30, eans = NULL) {
+get_products <- function(con, search = "", category = "", dias = 30, eans = NULL,
+                         page = 1, page_size = 30) {
   search   <- safe_str(search)
   category <- safe_str(category)
 
@@ -48,6 +49,8 @@ get_products <- function(con, search = "", category = "", dias = 30, eans = NULL
     conditions <- paste0(conditions, sprintf(" AND cp.ean IN (%s)", placeholders))
     params <- c(params, as.list(eans))
   }
+
+  offset <- (max(as.integer(page), 1L) - 1L) * as.integer(page_size)
 
   sql <- sprintf("
     WITH
@@ -81,7 +84,8 @@ get_products <- function(con, search = "", category = "", dias = 30, eans = NULL
     JOIN canonical_products cp USING (ean)
     WHERE %s
     ORDER BY cp.product_description
-  ", conditions)
+    LIMIT %d OFFSET %d
+  ", conditions, as.integer(page_size), offset)
 
   tryCatch(
     dbGetQuery(con, sql, params = params),

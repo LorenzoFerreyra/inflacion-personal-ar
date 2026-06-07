@@ -1,4 +1,4 @@
-DB_PATH <- "C:/Users/Lorenzo/Desktop/prices.db"
+DB_PATH <- "C:/Users/Lorenzo/Documents/Desktop project versions/scrapers-uflo/data/prices.db"
 
 IPC <- list(
   mensual    = 8.8,

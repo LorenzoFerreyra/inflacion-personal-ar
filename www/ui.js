@@ -32,6 +32,7 @@ var UI = (function () {
     basketReview: $("#basket-review"),
     step2Summary: $("#step2-summary"),
     btnResults: $("#btn-results"),
+    btnBackStep1: $("#btn-back-step1"),
     resultCards: $("#result-cards"),
     resultProducts: $("#result-products"),
   };
@@ -238,7 +239,7 @@ var UI = (function () {
           '<span class="product-price">' +
           formatPrice(p.precio_actual) +
           "</span>" +
-          varBadge(p.variacion) +
+          varBadge(p.variacion_pct) +
           '<button class="product-add-btn">' +
           (inB ? "\u2713" : "+") +
           "</button>" +
@@ -428,7 +429,7 @@ var UI = (function () {
     // Update variations from server data
     if (variationData && variationData.length) {
       variationData.forEach(function (p) {
-        basketVars[p.ean] = p.variacion;
+        basketVars[p.ean] = p.variacion_pct;
       });
     }
 
@@ -624,7 +625,7 @@ var UI = (function () {
             esc(p.categoria || "") +
             "</div>" +
             "</div>" +
-            varBadge(p.variacion) +
+            varBadge(p.variacion_pct) +
             "</li>"
           );
         })
@@ -632,6 +633,194 @@ var UI = (function () {
     } else {
       dom.resultProducts.innerHTML =
         '<li class="empty-state">Sin datos de variaci\u00f3n.</li>';
+    }
+  }
+
+  // ── Explorador ─────────────────────────────────────────────────────────
+
+  var expList = $("#exp-product-list");
+  var expDetail = $("#exp-detail-card");
+  var selectedEan = null;
+
+  function renderExpProducts(products) {
+    if (!products || !products.length) {
+      expList.innerHTML = '<li class="empty-state">No se encontraron productos.</li>';
+      return;
+    }
+
+    expList.innerHTML = products
+      .map(function (p) {
+        var sel = p.ean === selectedEan;
+        return (
+          '<li class="product-row clickable' + (sel ? " selected" : "") +
+          '" data-ean="' + esc(p.ean) + '">' +
+          '<div class="product-info">' +
+          '<div class="product-name">' + esc(p.product_description) + '</div>' +
+          '<div class="product-meta">' + esc(p.marca || "") + ' &middot; ' + esc(p.categoria || "") + '</div>' +
+          '</div>' +
+          '<span class="product-price">' + formatPrice(p.precio_actual) + '</span>' +
+          varBadge(p.variacion_pct) +
+          '</li>'
+        );
+      })
+      .join("");
+  }
+
+  expList.addEventListener("click", function (e) {
+    var row = e.target.closest(".product-row");
+    if (!row) return;
+    selectedEan = row.dataset.ean;
+    $$(".product-row", expList).forEach(function (r) {
+      r.classList.toggle("selected", r.dataset.ean === selectedEan);
+    });
+    if (typeof onSelectProductExp === "function") onSelectProductExp(selectedEan);
+  });
+
+  function renderExpDetail(data) {
+    if (!data || !data.ean) {
+      expDetail.innerHTML = '<div class="detail-empty">Seleccioná un producto de la lista.</div>';
+      return;
+    }
+
+    var historyHtml = '';
+    if (data.history && data.history.length > 1) {
+      historyHtml = '<div class="detail-chart-placeholder" id="exp-chart-area" style="padding:20px;height:200px;"></div>';
+    } else {
+      historyHtml = '<div class="detail-chart-placeholder">Sin historial de precios disponible.</div>';
+    }
+
+    var chainsHtml = '';
+    if (data.chains && data.chains.length > 0) {
+      chainsHtml = '<div class="price-grid">' +
+        data.chains.map(function (c, i) {
+          var cheapest = i === 0 ? ' style="color:var(--green)"' : '';
+          return (
+            '<div class="price-cell">' +
+            '<div class="price-cell-cadena">' + esc(c.cadena) + '</div>' +
+            '<div class="price-cell-value"' + cheapest + '>' + formatPrice(c.precio_promedio_canasta) + '</div>' +
+            '</div>'
+          );
+        }).join("") +
+        '</div>';
+    }
+
+    var inB = data.ean in basket;
+
+    expDetail.innerHTML =
+      '<div class="detail-header">' +
+      '<div class="detail-name">' + esc(data.name) + '</div>' +
+      '<div class="detail-meta">' + esc(data.brand || "") + (data.category ? ' &middot; ' + esc(data.category) : '') + '</div>' +
+      '<div style="margin-top:8px">' + varBadge(data.variacion) + '</div>' +
+      '</div>' +
+      historyHtml +
+      chainsHtml +
+      '<div class="detail-action">' +
+      '<button class="detail-action-btn" id="exp-add-basket" data-ean="' + esc(data.ean) + '">' +
+      (inB ? '✓ En tu canasta' : '+ Agregar a canasta') +
+      '</button>' +
+      '</div>';
+
+    if (data.history && data.history.length > 1) {
+      renderMiniChart(data.history);
+    }
+  }
+
+  function renderMiniChart(history) {
+    var area = document.getElementById("exp-chart-area");
+    if (!area) return;
+
+    var W = area.clientWidth || 340;
+    var H = 160;
+    var prices = history.map(function (h) { return h.precio_promedio; });
+    var minP = Math.min.apply(null, prices);
+    var maxP = Math.max.apply(null, prices);
+    var range = maxP - minP || 1;
+    var pad = 20;
+
+    var points = history.map(function (h, i) {
+      var x = pad + (i / (history.length - 1)) * (W - pad * 2);
+      var y = H - pad - ((h.precio_promedio - minP) / range) * (H - pad * 2);
+      return x + "," + y;
+    }).join(" ");
+
+    area.innerHTML =
+      '<svg width="' + W + '" height="' + H + '" style="display:block">' +
+      '<polyline points="' + points + '" fill="none" stroke="#c9a87c" stroke-width="2" stroke-linejoin="round"/>' +
+      '<text x="' + pad + '" y="' + (H - 4) + '" fill="#888" font-size="10">' + esc(history[0].fecha) + '</text>' +
+      '<text x="' + (W - pad) + '" y="' + (H - 4) + '" fill="#888" font-size="10" text-anchor="end">' + esc(history[history.length - 1].fecha) + '</text>' +
+      '</svg>';
+  }
+
+  // Add to basket from detail card
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest("#exp-add-basket");
+    if (!btn) return;
+    var ean = btn.dataset.ean;
+    if (!ean) return;
+    if (basket[ean]) {
+      removeBasketItem(ean);
+      btn.textContent = "+ Agregar a canasta";
+    } else {
+      basket[ean] = { name: "", brand: "", category: "" };
+      basketVars[ean] = null;
+      updateBtnReview();
+      if (typeof onAddProduct === "function") onAddProduct(ean);
+      btn.textContent = "✓ En tu canasta";
+    }
+  });
+
+  // ── Insights ──────────────────────────────────────────────────────────
+
+  function renderInsights(data) {
+    if (!data) return;
+
+    var kpiTotal = document.getElementById("kpi-total");
+    var kpiMaxUp = document.getElementById("kpi-max-up");
+    var kpiMaxUpName = document.getElementById("kpi-max-up-name");
+    var kpiMaxDown = document.getElementById("kpi-max-down");
+    var kpiMaxDownName = document.getElementById("kpi-max-down-name");
+
+    kpiTotal.textContent = data.total || "0";
+    kpiMaxUp.textContent = data.max_up_val != null ? "+" + data.max_up_val + "%" : "—";
+    kpiMaxUpName.textContent = data.max_up_name || "";
+    kpiMaxDown.textContent = data.max_down_val != null ? data.max_down_val + "%" : "—";
+    kpiMaxDownName.textContent = data.max_down_name || "";
+
+    var alertsList = document.getElementById("insights-alerts");
+    if (data.alerts && data.alerts.length > 0) {
+      alertsList.innerHTML = data.alerts.map(function (p) {
+        var severity = p.variacion_pct > 20 ? "var(--red)" : p.variacion_pct > 10 ? "var(--yellow)" : "var(--green)";
+        return (
+          '<li class="alert-row">' +
+          '<span style="width:8px;height:8px;border-radius:50%;background:' + severity + ';flex-shrink:0"></span>' +
+          '<div class="alert-info">' +
+          '<div class="alert-name">' + esc(p.product_description) + '</div>' +
+          '<div class="alert-detail">' + esc(p.marca || "") + ' &middot; ' + esc(p.categoria || "") + '</div>' +
+          '</div>' +
+          varBadge(p.variacion_pct) +
+          '</li>'
+        );
+      }).join("");
+    } else {
+      alertsList.innerHTML = '<li class="empty-state">Sin alertas.</li>';
+    }
+
+    var chainList = document.getElementById("insights-chain-rank");
+    if (data.chains && data.chains.length > 0) {
+      chainList.innerHTML = data.chains.map(function (c, i) {
+        var tag = i === 0 ? "cheapest" : i === data.chains.length - 1 ? "expensive" : "mid";
+        var label = i === 0 ? "Más barato" : i === data.chains.length - 1 ? "Más caro" : formatPrice(c.precio_promedio_canasta);
+        return (
+          '<li class="chain-rank-row">' +
+          '<span class="chain-rank-name">' + esc(c.cadena) + '</span>' +
+          '<span class="chain-rank-tag ' + tag + '">' +
+          (tag === "mid" ? formatPrice(c.precio_promedio_canasta) : label) +
+          '</span>' +
+          '</li>'
+        );
+      }).join("");
+    } else {
+      chainList.innerHTML = '<li class="empty-state">Sin datos de cadenas.</li>';
     }
   }
 
@@ -658,6 +847,9 @@ var UI = (function () {
     updateBasketPreview: updateBasketPreview,
     updateBtnReview: updateBtnReview,
     setBasketInfo: setBasketInfo,
+    renderExpProducts: renderExpProducts,
+    renderExpDetail: renderExpDetail,
+    renderInsights: renderInsights,
     esc: esc,
   };
 })();

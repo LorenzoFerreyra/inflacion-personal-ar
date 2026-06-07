@@ -3,114 +3,133 @@
 
   var DEBOUNCE_MS = 300;
   var searchTimer = null;
+  var expSearchTimer = null;
 
   $(document).on("shiny:connected", function () {
-    // ═══════════════════════════════════════════════════════════════════
-    // R → JS: categories (on startup)
-    // ═══════════════════════════════════════════════════════════════════
+
+    // ── R → JS message handlers ─────────────────────────────────────────
+
     Shiny.addCustomMessageHandler("categories", function (raw) {
       var data = typeof raw === "string" ? JSON.parse(raw) : raw;
       UI.renderCategoryChips(data || []);
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // R → JS: search results
-    // ═══════════════════════════════════════════════════════════════════
     Shiny.addCustomMessageHandler("search_results", function (raw) {
       var data = typeof raw === "string" ? JSON.parse(raw) : raw;
-      UI.renderProducts(data || []);
+      UI.handleSearchResults(data);
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // R → JS: basket info (names, brands, categories)
-    // ═══════════════════════════════════════════════════════════════════
     Shiny.addCustomMessageHandler("basket_info", function (raw) {
       var data = typeof raw === "string" ? JSON.parse(raw) : raw;
       UI.setBasketInfo(data);
       UI.updateBasketPreview();
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // R → JS: basket variations
-    // ═══════════════════════════════════════════════════════════════════
     Shiny.addCustomMessageHandler("basket_data", function (raw) {
       var data = typeof raw === "string" ? JSON.parse(raw) : raw;
       UI.renderBasketReview(data || []);
       UI.updateBasketPreview();
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // R → JS: step navigation
-    // ═══════════════════════════════════════════════════════════════════
     Shiny.addCustomMessageHandler("go_to_step", function (step) {
       UI.goToStep(step);
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // R → JS: results (step 3)
-    // ═══════════════════════════════════════════════════════════════════
     Shiny.addCustomMessageHandler("results", function (raw) {
       var data = typeof raw === "string" ? JSON.parse(raw) : raw;
       UI.renderResults(data);
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // JS → R: search input (debounced)
-    // ═══════════════════════════════════════════════════════════════════
+    Shiny.addCustomMessageHandler("exp_search_results", function (raw) {
+      var data = typeof raw === "string" ? JSON.parse(raw) : raw;
+      UI.handleExpSearchResults(data);
+    });
+
+    Shiny.addCustomMessageHandler("exp_product_detail", function (raw) {
+      var data = typeof raw === "string" ? JSON.parse(raw) : raw;
+      UI.renderExpDetail(data);
+    });
+
+    Shiny.addCustomMessageHandler("insights_data", function (raw) {
+      var data = typeof raw === "string" ? JSON.parse(raw) : raw;
+      UI.renderInsights(data);
+    });
+
+    Shiny.addCustomMessageHandler("highlight_tab", function (tab) {
+      UI.showTab(tab);
+    });
+
+    // ── JS → R: Tab 1 search (debounced, resets to page 1) ─────────────
+
     $(document).on("input", "#search-input", function () {
       var val = this.value;
       clearTimeout(searchTimer);
       searchTimer = setTimeout(function () {
         Shiny.setInputValue("search_term", val);
+        Shiny.setInputValue("search_page", 1, { priority: "event" });
       }, DEBOUNCE_MS);
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // JS → R: category change (called by UI when chip clicked)
-    // ═══════════════════════════════════════════════════════════════════
+    // ── JS → R: category change ─────────────────────────────────────────
+
     window.onCategoryChange = function (category) {
       Shiny.setInputValue("search_category", category);
+      Shiny.setInputValue("search_page", 1, { priority: "event" });
     };
 
-    // ═══════════════════════════════════════════════════════════════════
-    // JS → R: period change
-    // ═══════════════════════════════════════════════════════════════════
+    // ── JS → R: period change ───────────────────────────────────────────
+
     $(document).on("click", ".period-btn", function () {
       var period = this.dataset.period;
       UI.setPeriod(period);
       Shiny.setInputValue("period", period);
+      Shiny.setInputValue("search_page", 1, { priority: "event" });
+      Shiny.setInputValue("exp_search_page", 1, { priority: "event" });
 
-      // Re-trigger search with new period
-      var term = UI.dom.searchInput.value;
-      Shiny.setInputValue("search_term", term);
-
-      // If on step 2, refresh basket data
       if (UI.basketCount() > 0) {
         Shiny.setInputValue("basket_refresh", period);
       }
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // JS → R: add product
-    // ═══════════════════════════════════════════════════════════════════
+    // ── JS → R: pagination ──────────────────────────────────────────────
+
+    window.onSearchPage = function (page) {
+      Shiny.setInputValue("search_page", page, { priority: "event" });
+    };
+
+    window.onExpSearchPage = function (page) {
+      Shiny.setInputValue("exp_search_page", page, { priority: "event" });
+    };
+
+    // ── JS → R: add / remove product ────────────────────────────────────
+
     window.onAddProduct = function (ean) {
       Shiny.setInputValue("add_product", ean);
     };
 
-    // ═══════════════════════════════════════════════════════════════════
-    // JS → R: remove product
-    // ═══════════════════════════════════════════════════════════════════
     window.onRemoveProduct = function (ean) {
       Shiny.setInputValue("remove_product", ean);
     };
 
-    // ═══════════════════════════════════════════════════════════════════
-    // Step navigation buttons
-    // ═══════════════════════════════════════════════════════════════════
+    // ── JS → R: Explorador search (debounced) ───────────────────────────
+
+    $(document).on("input", "#exp-search-input", function () {
+      var val = this.value;
+      clearTimeout(expSearchTimer);
+      expSearchTimer = setTimeout(function () {
+        Shiny.setInputValue("exp_search_term", val);
+        Shiny.setInputValue("exp_search_page", 1, { priority: "event" });
+      }, DEBOUNCE_MS);
+    });
+
+    window.onSelectProductExp = function (ean) {
+      Shiny.setInputValue("select_product_exp", ean, { priority: "event" });
+    };
+
+    // ── Step navigation buttons ─────────────────────────────────────────
+
     UI.dom.btnReview.addEventListener("click", function () {
-      if (UI.basketCount() > 0) {
-        Shiny.setInputValue("go_to_step", 2);
-      }
+      if (UI.basketCount() > 0) Shiny.setInputValue("go_to_step", 2);
     });
 
     UI.dom.btnResults.addEventListener("click", function () {
@@ -128,34 +147,31 @@
       Shiny.setInputValue("go_to_step", 2);
     });
 
-    // Stepper number buttons (clickable for completed/current steps)
     UI.dom.stepper.addEventListener("click", function (e) {
       var num = e.target.closest(".stepper-num");
       if (!num) return;
       var step = parseInt(num.textContent);
-      if (step && step <= UI.basketCount() ? 3 : 1) {
-        // Allow going back, or forward only if basket has items
+      if (step && step <= (UI.basketCount() ? 3 : 1)) {
         Shiny.setInputValue("go_to_step", step);
       }
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // Tab switching
-    // ═══════════════════════════════════════════════════════════════════
-    Shiny.addCustomMessageHandler("highlight_tab", function (tab) {
-      UI.showTab(tab);
-    });
+    // ── Tab switching ───────────────────────────────────────────────────
 
     $(document).on("click", ".tab-link", function () {
       var tab = this.dataset.tab;
       Shiny.setInputValue("active_tab", tab);
+
+      if (tab === "insights") {
+        Shiny.setInputValue("load_insights", Date.now(), { priority: "event" });
+      }
     });
 
-    // ═══════════════════════════════════════════════════════════════════
-    // Initial search trigger
-    // ═══════════════════════════════════════════════════════════════════
+    // ── Initial load (page 1) ───────────────────────────────────────────
+
     setTimeout(function () {
-      Shiny.setInputValue("search_term", "");
+      Shiny.setInputValue("search_page", 1, { priority: "event" });
+      Shiny.setInputValue("exp_search_page", 1, { priority: "event" });
     }, 200);
   });
 })();
