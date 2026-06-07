@@ -12,24 +12,16 @@ server <- function(input, output, session) {
   # ── Reactive state ─────────────────────────────────────────────────────
   basket <- reactiveValues(eans = character(), info = list())
 
-  # ── Latest fecha & cutoff ──────────────────────────────────────────────
-
   latest_fecha <- reactiveVal(NULL)
   observe({
     latest_fecha(q_latest_fecha(con))
   })
 
-  cutoff_fecha <- reactive({
-    lf <- latest_fecha()
-    if (is.null(lf)) {
-      return(NULL)
-    }
-    days <- PERIOD_DAYS[[input$period %||% "mensual"]] %||% 30
-    target <- as.character(as.Date(lf) - days)
-    q_cutoff_fecha(con, target)
+  period_days <- reactive({
+    PERIOD_DAYS[[input$period %||% "mensual"]] %||% 30
   })
 
-  # ── Categories (sorted by count, sent to JS on startup) ────────────────
+  # ── Categories ─────────────────────────────────────────────────────────
 
   observe({
     cats <- q_categories(con)
@@ -39,33 +31,29 @@ server <- function(input, output, session) {
     )
   })
 
-  # ── Search (reactive to term, category, period) ────────────────────────
+  # ── Search ─────────────────────────────────────────────────────────────
 
   search_term_val <- reactiveVal("")
   search_cat_val <- reactiveVal("")
 
   observeEvent(input$search_term,
-    {
-      search_term_val(input$search_term %||% "")
-    },
+    { search_term_val(input$search_term %||% "") },
     ignoreNULL = FALSE
   )
 
   observeEvent(input$search_category,
-    {
-      search_cat_val(input$search_category %||% "")
-    },
+    { search_cat_val(input$search_category %||% "") },
     ignoreNULL = FALSE
   )
 
   observe({
     lf <- latest_fecha()
-    if (is.null(lf)) {
-      return()
-    }
-    sr <- q_search_products(
-      con, lf, cutoff_fecha(),
-      search_term_val(), search_cat_val()
+    if (is.null(lf)) return()
+
+    sr <- get_products(con,
+      search   = search_term_val(),
+      category = search_cat_val(),
+      dias     = period_days()
     )
     session$sendCustomMessage(
       "search_results",
@@ -77,9 +65,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$add_product, {
     ean <- input$add_product
-    if (is.null(ean) || !nzchar(ean) || ean %in% basket$eans) {
-      return()
-    }
+    if (is.null(ean) || !nzchar(ean) || ean %in% basket$eans) return()
 
     row <- tryCatch(
       dbGetQuery(con,
@@ -101,9 +87,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$remove_product, {
     ean <- input$remove_product
-    if (is.null(ean) || !nzchar(ean)) {
-      return()
-    }
+    if (is.null(ean) || !nzchar(ean)) return()
     basket$eans <- setdiff(basket$eans, ean)
     basket$info[[ean]] <- NULL
     send_basket_update()
@@ -111,16 +95,12 @@ server <- function(input, output, session) {
 
   send_basket_update <- function() {
     eans <- basket$eans
-    lf <- latest_fecha()
     if (length(eans) == 0) {
       session$sendCustomMessage("basket_data", "[]")
       return()
     }
-    if (is.null(lf)) {
-      return()
-    }
+    if (is.null(latest_fecha())) return()
 
-    # Basket info for UI
     info_json <- lapply(eans, function(ean) {
       inf <- basket$info[[ean]]
       list(ean = ean, name = inf$name, brand = inf$brand, category = inf$category)
@@ -130,15 +110,12 @@ server <- function(input, output, session) {
       toJSON(info_json, auto_unbox = TRUE)
     )
 
-    # Variations
-    bv <- q_basket_variations(con, eans, lf, cutoff_fecha())
+    bv <- get_products(con, eans = eans, dias = period_days())
     session$sendCustomMessage(
       "basket_data",
       toJSON(bv, auto_unbox = TRUE)
     )
   }
-
-  # ── Basket refresh on period change from step 2 ────────────────────────
 
   observeEvent(input$basket_refresh, {
     send_basket_update()
@@ -148,12 +125,9 @@ server <- function(input, output, session) {
 
   observeEvent(input$go_to_step, {
     step <- as.integer(input$go_to_step)
-    if (!step %in% 1:3) {
-      return()
-    }
+    if (!step %in% 1:3) return()
     session$sendCustomMessage("go_to_step", step)
 
-    # Auto-trigger calculate when navigating to step 3
     if (step == 3 && length(basket$eans) > 0) {
       trigger_calculate()
     }
@@ -165,20 +139,17 @@ server <- function(input, output, session) {
 
   trigger_calculate <- function() {
     eans <- basket$eans
-    lf <- latest_fecha()
-    if (length(eans) == 0 || is.null(lf)) {
-      return()
-    }
+    if (length(eans) == 0 || is.null(latest_fecha())) return()
 
     pd <- input$period %||% "mensual"
     ipc_val <- IPC[[pd]] %||% 0
 
-    product_data <- q_basket_variations(con, eans, lf, cutoff_fecha()) %>%
-      arrange(desc(variacion))
-    cadena_data <- q_cadena_prices(con, eans, lf)
+    product_data <- get_products(con, eans = eans, dias = period_days()) %>%
+      arrange(desc(variacion_pct))
+    cadena_data <- get_chain_prices(con, eans)
 
     personal_inflation <- if (nrow(product_data) > 0) {
-      round(mean(product_data$variacion, na.rm = TRUE), 1)
+      round(mean(product_data$variacion_pct, na.rm = TRUE), 1)
     } else {
       0
     }
@@ -213,8 +184,8 @@ server <- function(input, output, session) {
     df$cadena <- factor(df$cadena, levels = df$cadena)
 
     p <- ggplot(df, aes(
-      x = precio_promedio, y = cadena,
-      text = paste0(cadena, ": $", formatC(precio_promedio, format = "f", digits = 0, big.mark = "."))
+      x = precio_promedio_canasta, y = cadena,
+      text = paste0(cadena, ": $", formatC(precio_promedio_canasta, format = "f", digits = 0, big.mark = "."))
     )) +
       geom_col(fill = "#4ade80", width = 0.55) +
       scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
@@ -246,9 +217,7 @@ server <- function(input, output, session) {
   # ── Tab switching ──────────────────────────────────────────────────────
 
   observeEvent(input$active_tab,
-    {
-      session$sendCustomMessage("highlight_tab", input$active_tab)
-    },
+    { session$sendCustomMessage("highlight_tab", input$active_tab) },
     ignoreNULL = TRUE
   )
 }
