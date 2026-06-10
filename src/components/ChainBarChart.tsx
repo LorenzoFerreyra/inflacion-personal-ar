@@ -1,9 +1,3 @@
-/**
- * ChainBarChart.tsx — Gráfico de barras horizontales: precio promedio por cadena.
- *
- * Muestra un ranking de supermercados de más barato a más caro.
- */
-
 "use client";
 
 import {
@@ -13,6 +7,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from "recharts";
 import { ChainPrice } from "@/lib/types";
 
@@ -20,6 +15,16 @@ interface Props {
   data: ChainPrice[];
   height?: number;
 }
+
+const BAR_COLORS = [
+  "#4ade80", // cheapest: green
+  "#86efac",
+  "#a1a1aa",
+  "#a1a1aa",
+  "#a1a1aa",
+  "#f87171",
+  "#ef4444", // most expensive: red
+];
 
 export default function ChainBarChart({ data, height = 250 }: Props) {
   if (data.length === 0) {
@@ -35,11 +40,11 @@ export default function ChainBarChart({ data, height = 250 }: Props) {
       <BarChart
         data={data}
         layout="vertical"
-        margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        margin={{ top: 4, right: 8, bottom: 4, left: 8 }}
       >
         <XAxis
           type="number"
-          tick={{ fill: "#71717a", fontSize: 11 }}
+          tick={{ fill: "#52525b", fontSize: 10 }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(val: number) => `$${val.toLocaleString("es-AR")}`}
@@ -56,19 +61,25 @@ export default function ChainBarChart({ data, height = 250 }: Props) {
           contentStyle={{
             backgroundColor: "#18181b",
             border: "1px solid #27272a",
-            borderRadius: "6px",
+            borderRadius: "10px",
             fontSize: "12px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
           }}
           formatter={(value: number) => [
             `$${value.toLocaleString("es-AR")}`,
             "Precio promedio",
           ]}
+          cursor={{ fill: "rgba(255,255,255,0.03)" }}
         />
-        <Bar
-          dataKey="precio_promedio_canasta"
-          fill="#4ade80"
-          radius={[0, 4, 4, 0]}
-        />
+        <Bar dataKey="precio_promedio_canasta" radius={[0, 6, 6, 0]}>
+          {data.map((_, index) => (
+            <Cell
+              key={index}
+              fill={BAR_COLORS[Math.min(index, BAR_COLORS.length - 1)]}
+              fillOpacity={0.85}
+            />
+          ))}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );

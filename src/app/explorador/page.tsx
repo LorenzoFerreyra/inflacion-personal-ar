@@ -7,7 +7,7 @@ import ChainBarChart from "@/components/ChainBarChart";
 import { Product, PricePoint, ChainPrice, Category } from "@/lib/types";
 import { PERIODS, PAGE_SIZE } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
-import { Plus } from "lucide-react";
+import { Search } from "lucide-react";
 
 export default function ExploradorPage() {
   const { period } = usePeriod();
@@ -24,14 +24,12 @@ export default function ExploradorPage() {
   const [chainPrices, setChainPrices] = useState<ChainPrice[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // ─── Load categories ────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/categories")
       .then((res) => res.json())
       .then(setCategories);
   }, []);
 
-  // ─── Fetch products ─────────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({
@@ -54,7 +52,6 @@ export default function ExploradorPage() {
     setPage(1);
   }, [search, category, period]);
 
-  // ─── Load detail ────────────────────────────────────────────────────
   async function selectProduct(product: Product) {
     setSelectedProduct(product);
     setLoadingDetail(true);
@@ -69,7 +66,6 @@ export default function ExploradorPage() {
     setLoadingDetail(false);
   }
 
-  // ─── Cheapest chain ─────────────────────────────────────────────────
   const cheapestChain =
     chainPrices.length > 0
       ? chainPrices.reduce((min, c) =>
@@ -86,26 +82,30 @@ export default function ExploradorPage() {
         </h2>
 
         {/* Search bar */}
-        <div className="flex gap-3 mb-3">
+        <div className="relative mb-3">
+          <Search
+            size={15}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
+          />
           <input
             type="text"
             placeholder="Buscar por nombre o marca..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-zinc-900 border border-zinc-700 rounded-md px-3 py-2
+            className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg pl-10 pr-4 py-2.5
                        text-sm text-zinc-200 placeholder-zinc-500
-                       focus:outline-none focus:border-zinc-500"
+                       focus:outline-none focus:border-amber-500/40"
           />
         </div>
 
         {/* Category chips */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-1.5 mb-4">
           <button
             onClick={() => setCategory("")}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border ${
               category === ""
-                ? "bg-blue-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
             }`}
           >
             Todas
@@ -116,10 +116,10 @@ export default function ExploradorPage() {
               onClick={() =>
                 setCategory(category === cat.categoria ? "" : cat.categoria)
               }
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border ${
                 category === cat.categoria
-                  ? "bg-blue-600 text-white"
-                  : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                  ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                  : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
               }`}
             >
               {cat.categoria}
@@ -141,96 +141,109 @@ export default function ExploradorPage() {
 
       {/* Right: product detail */}
       <div className="w-96 flex-shrink-0">
-        <h2 className="text-lg font-semibold text-zinc-100 mb-4">
-          Detalle del producto
-        </h2>
+        <div className="sticky top-24">
+          <h2 className="text-lg font-semibold text-zinc-100 mb-4">
+            Detalle del producto
+          </h2>
 
-        {!selectedProduct ? (
-          <p className="text-sm text-zinc-500">
-            Seleccion&aacute; un producto de la tabla para ver su detalle.
-          </p>
-        ) : loadingDetail ? (
-          <p className="text-sm text-zinc-500">Cargando detalle...</p>
-        ) : (
-          <div className="space-y-5">
-            {/* Basic info */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-              <h3 className="text-base font-medium text-zinc-100">
-                {selectedProduct.product_description}
-              </h3>
-              <p className="text-sm text-zinc-400 mt-1">
-                {selectedProduct.marca} &middot; {selectedProduct.categoria}
+          {!selectedProduct ? (
+            <div className="rounded-xl border-2 border-dashed border-zinc-800/60 p-10 text-center">
+              <Search
+                size={36}
+                strokeWidth={1.2}
+                className="mx-auto text-zinc-700 mb-3"
+              />
+              <p className="text-sm text-zinc-500">
+                Seleccion&aacute; un producto para ver su detalle.
               </p>
-              <div className="flex items-baseline gap-4 mt-3">
-                <span className="text-xl font-bold text-zinc-100">
-                  ${selectedProduct.precio_actual?.toLocaleString("es-AR")}
-                </span>
-                {selectedProduct.variacion_pct !== null && (
-                  <span
-                    className={`text-sm font-medium ${
-                      selectedProduct.variacion_pct > 0
-                        ? "text-red-400"
-                        : "text-green-400"
-                    }`}
-                  >
-                    {selectedProduct.variacion_pct > 0 ? "+" : ""}
-                    {selectedProduct.variacion_pct}%
+            </div>
+          ) : loadingDetail ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <div className="w-8 h-8 border-2 border-zinc-700 border-t-amber-400 rounded-full animate-spin" />
+              <span className="text-sm text-zinc-500">Cargando detalle...</span>
+            </div>
+          ) : (
+            <div className="space-y-4 animate-fade-in">
+              {/* Info card */}
+              <div className="bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/40 rounded-xl p-5">
+                <h3 className="text-[15px] font-semibold text-zinc-100 leading-snug">
+                  {selectedProduct.product_description}
+                </h3>
+                <p className="text-[13px] text-zinc-400 mt-1.5">
+                  {selectedProduct.marca} &middot; {selectedProduct.categoria}
+                </p>
+                <div className="flex items-baseline gap-4 mt-3">
+                  <span className="text-2xl font-bold text-zinc-50">
+                    ${selectedProduct.precio_actual?.toLocaleString("es-AR")}
                   </span>
-                )}
-              </div>
-            </div>
-
-            {/* Price history chart */}
-            <div>
-              <h4 className="text-sm font-medium text-zinc-400 mb-2">
-                Evoluci&oacute;n de precios
-              </h4>
-              <PriceChart data={priceHistory} />
-            </div>
-
-            {/* 2x2 chain prices grid */}
-            {chainPrices.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-zinc-400 mb-2">
-                  Precio por cadena
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {chainPrices.map((c) => (
-                    <div
-                      key={c.cadena}
-                      className={`rounded-lg p-3 text-center ${
-                        c.cadena === cheapestChain
-                          ? "bg-green-500/10 border-2 border-green-500/40"
-                          : "bg-zinc-900 border border-zinc-800"
+                  {selectedProduct.variacion_pct !== null && (
+                    <span
+                      className={`text-sm font-semibold px-2 py-0.5 rounded-md ${
+                        selectedProduct.variacion_pct > 0
+                          ? "bg-red-500/10 text-red-400"
+                          : "bg-green-500/10 text-green-400"
                       }`}
                     >
-                      <p className="text-xs text-zinc-400 truncate">
-                        {c.cadena}
-                      </p>
-                      <p
-                        className={`text-lg font-bold mt-1 ${
-                          c.cadena === cheapestChain
-                            ? "text-green-400"
-                            : "text-zinc-200"
-                        }`}
-                      >
-                        $
-                        {c.precio_promedio_canasta.toLocaleString("es-AR", {
-                          maximumFractionDigits: 0,
-                        })}
-                      </p>
-                      {c.cadena === cheapestChain && (
-                        <span className="text-[10px] text-green-400 font-medium uppercase tracking-wide">
-                          M&aacute;s barato
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                      {selectedProduct.variacion_pct > 0 ? "+" : ""}
+                      {selectedProduct.variacion_pct}%
+                    </span>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* Price history */}
+              <div>
+                <h4 className="text-[13px] font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
+                  Evoluci&oacute;n de precios
+                </h4>
+                <PriceChart data={priceHistory} />
+              </div>
+
+              {/* 2x2 chain grid */}
+              {chainPrices.length > 0 && (
+                <div>
+                  <h4 className="text-[13px] font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
+                    Precio por cadena
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {chainPrices.map((c) => {
+                      const isCheapest = c.cadena === cheapestChain;
+                      return (
+                        <div
+                          key={c.cadena}
+                          className={`rounded-xl p-3.5 text-center ${
+                            isCheapest
+                              ? "bg-green-500/8 border-2 border-green-500/30"
+                              : "bg-zinc-900/50 border border-zinc-800/50"
+                          }`}
+                        >
+                          <p className="text-[11px] text-zinc-400 truncate font-medium uppercase tracking-wide">
+                            {c.cadena}
+                          </p>
+                          <p
+                            className={`text-xl font-bold mt-1.5 ${
+                              isCheapest ? "text-green-400" : "text-zinc-200"
+                            }`}
+                          >
+                            $
+                            {c.precio_promedio_canasta.toLocaleString("es-AR", {
+                              maximumFractionDigits: 0,
+                            })}
+                          </p>
+                          {isCheapest && (
+                            <span className="text-[10px] text-green-400/80 font-bold uppercase tracking-widest">
+                              M&aacute;s barato
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

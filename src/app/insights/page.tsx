@@ -6,6 +6,7 @@ import ChainBarChart from "@/components/ChainBarChart";
 import { Product, ChainPrice } from "@/lib/types";
 import { IPC, PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
+import { AlertTriangle, BarChart3, Scale } from "lucide-react";
 
 export default function InsightsPage() {
   const { period } = usePeriod();
@@ -35,8 +36,6 @@ export default function InsightsPage() {
     }
     load();
   }, [period]);
-
-  // ─── Compute insights ───────────────────────────────────────────────
 
   const ipcValue = IPC[period];
   const validProducts = products.filter((p) => p.variacion_pct !== null);
@@ -69,14 +68,15 @@ export default function InsightsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-zinc-500">
-        Cargando insights...
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="w-8 h-8 border-2 border-zinc-700 border-t-amber-400 rounded-full animate-spin" />
+        <span className="text-sm text-zinc-500">Cargando insights...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <h2 className="text-lg font-semibold text-zinc-100">Panorama general</h2>
 
       {/* KPIs */}
@@ -99,20 +99,24 @@ export default function InsightsPage() {
         />
       </div>
 
-      {/* Three columns: alerts, IPC comparison, chain ranking */}
       <div className="grid grid-cols-3 gap-6">
-        {/* Alerts with severity dots */}
+        {/* Alerts */}
         <div>
-          <h3 className="text-base font-medium text-zinc-200 mb-3">
+          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2">
+            <AlertTriangle size={15} className="text-amber-400/70" />
             Alertas de precio
           </h3>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-800 text-zinc-400 text-left">
-                  <th className="py-2.5 px-3 font-medium w-6"></th>
-                  <th className="py-2.5 px-3 font-medium">Producto</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Var %</th>
+                <tr className="border-b border-zinc-800/80">
+                  <th className="py-2.5 px-3 w-6"></th>
+                  <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    Producto
+                  </th>
+                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    Var %
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -120,28 +124,31 @@ export default function InsightsPage() {
                   const v = p.variacion_pct ?? 0;
                   const dotColor =
                     v > 20
-                      ? "bg-red-500"
+                      ? "bg-red-500 pulse-dot"
                       : v > 10
                       ? "bg-amber-500"
                       : "bg-green-500";
                   return (
-                    <tr key={p.ean} className="border-b border-zinc-800/50">
+                    <tr
+                      key={p.ean}
+                      className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
+                    >
                       <td className="py-2 px-3">
                         <span
-                          className={`inline-block w-2.5 h-2.5 rounded-full ${dotColor}`}
+                          className={`inline-block w-2 h-2 rounded-full ${dotColor}`}
                         />
                       </td>
-                      <td className="py-2 px-3 text-zinc-200 truncate max-w-36">
+                      <td className="py-2 px-3 text-zinc-200 truncate max-w-36 text-[13px]">
                         {p.product_description}
                       </td>
                       <td className="py-2 px-3 text-right">
                         <span
-                          className={`font-medium ${
+                          className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold ${
                             v > 20
-                              ? "text-red-400"
+                              ? "bg-red-500/10 text-red-400"
                               : v > 10
-                              ? "text-amber-400"
-                              : "text-green-400"
+                              ? "bg-amber-500/10 text-amber-400"
+                              : "bg-green-500/10 text-green-400"
                           }`}
                         >
                           +{p.variacion_pct}%
@@ -157,35 +164,45 @@ export default function InsightsPage() {
 
         {/* IPC comparison */}
         <div>
-          <h3 className="text-base font-medium text-zinc-200 mb-3">
+          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2">
+            <Scale size={15} className="text-amber-400/70" />
             vs. IPC ({ipcValue}%)
           </h3>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-800 text-zinc-400 text-left">
-                  <th className="py-2.5 px-3 font-medium">Producto</th>
-                  <th className="py-2.5 px-3 font-medium text-right">Var %</th>
-                  <th className="py-2.5 px-3 font-medium text-right">
+                <tr className="border-b border-zinc-800/80">
+                  <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    Producto
+                  </th>
+                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    Var %
+                  </th>
+                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                     &Delta; pp
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {ipcComparison.map((p) => (
-                  <tr key={p.ean} className="border-b border-zinc-800/50">
-                    <td className="py-2 px-3 text-zinc-200 truncate max-w-36">
+                  <tr
+                    key={p.ean}
+                    className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
+                  >
+                    <td className="py-2 px-3 text-zinc-200 truncate max-w-36 text-[13px]">
                       {p.product_description}
                     </td>
-                    <td className="py-2 px-3 text-right text-zinc-400">
+                    <td className="py-2 px-3 text-right text-zinc-500 text-[13px] tabular-nums">
                       {p.variacion_pct !== null
                         ? `${p.variacion_pct > 0 ? "+" : ""}${p.variacion_pct}%`
                         : "—"}
                     </td>
                     <td className="py-2 px-3 text-right">
                       <span
-                        className={`font-medium ${
-                          p.delta_pp > 0 ? "text-red-400" : "text-green-400"
+                        className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold tabular-nums ${
+                          p.delta_pp > 0
+                            ? "bg-red-500/10 text-red-400"
+                            : "bg-green-500/10 text-green-400"
                         }`}
                       >
                         {p.delta_pp > 0 ? "+" : ""}
@@ -201,10 +218,11 @@ export default function InsightsPage() {
 
         {/* Chain ranking */}
         <div>
-          <h3 className="text-base font-medium text-zinc-200 mb-3">
+          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2">
+            <BarChart3 size={15} className="text-amber-400/70" />
             Ranking de cadenas
           </h3>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">
             <ChainBarChart data={chains} height={350} />
           </div>
         </div>
