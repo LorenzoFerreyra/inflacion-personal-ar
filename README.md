@@ -26,7 +26,7 @@ El sistema usa tres familias cargadas via `next/font/google`, disponibles como v
 | `--font-dm-sans` | **DM Sans** | `font-sans` (default) | Todo el UI: labels, cuerpo, navegacion |
 | `--font-dm-mono` | **DM Mono** | `font-mono` | Precios, porcentajes, indices numericos |
 
-Fraunces es una serif variable de eje optico — a mayor tamaño, el trazo se vuelve mas expressivo. Se aplica a la marca en el nav y a los valores de los KPI cards. La logica: el observatorio tiene pretension analitica/periodistica, no de SaaS dashboard.
+Fraunces es una serif variable de eje optico (a mayor tamaño, el trazo se vuelve mas expressivo). Se aplica a la marca en el nav y a los valores de los KPI cards. El observatorio tiene pretension analitica/periodistica, y busca evitar ser un  dashboard de SaaS vibecodeado más.
 
 Para numeros en tablas se agrega `font-feature-settings: "tnum"` via la clase `.tabular` (definida en `globals.css`), que fuerza numeros de ancho fijo y alinea columnas de precios correctamente.
 
@@ -156,6 +156,8 @@ Recharts funciona 100% client-side. Los componentes son declarativos:
   <Bar dataKey="precio_promedio_canasta" fill="#4ade80" />
 </BarChart>
 ```
+
+## Responsiveness
 
 Cada grafico se envuelve en `<ResponsiveContainer>` para que escale al ancho del contenedor.
 
