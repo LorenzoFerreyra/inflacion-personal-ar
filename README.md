@@ -8,11 +8,72 @@ Seguimiento personalizado de inflacion en Argentina. Compara tu canasta real con
 |------|-----------|-----------|
 | Framework | Next.js 16 (App Router) | Routing, SSR, API routes integradas |
 | Lenguaje | TypeScript | Tipado estatico |
-| Estilos | Tailwind CSS | Utility-first, dark theme con clases `bg-zinc-*` |
+| Estilos | Tailwind CSS v4 | Utility-first, dark theme con clases `bg-zinc-*` |
 | Charts | Recharts | Wrapper declarativo sobre D3 para React |
 | Base de datos | better-sqlite3 | Driver SQLite sincronico, corre server-side |
 | Iconos | lucide-react | Iconos SVG livianos |
 | Bundler | Turbopack | Bundler de Next.js en dev, reemplaza Webpack |
+
+## Estilos
+
+### Tipografia
+
+El sistema usa tres familias cargadas via `next/font/google`, disponibles como variables CSS en el elemento `<html>`:
+
+| Variable CSS | Familia | Clase Tailwind | Uso |
+|---|---|---|---|
+| `--font-fraunces` | **Fraunces** | `font-display` | Titulos, logo, KPIs — serif variable con peso editorial |
+| `--font-dm-sans` | **DM Sans** | `font-sans` (default) | Todo el UI: labels, cuerpo, navegacion |
+| `--font-dm-mono` | **DM Mono** | `font-mono` | Precios, porcentajes, indices numericos |
+
+Fraunces es una serif variable de eje optico — a mayor tamaño, el trazo se vuelve mas expressivo. Se aplica a la marca en el nav y a los valores de los KPI cards. La logica: el observatorio tiene pretension analitica/periodistica, no de SaaS dashboard.
+
+Para numeros en tablas se agrega `font-feature-settings: "tnum"` via la clase `.tabular` (definida en `globals.css`), que fuerza numeros de ancho fijo y alinea columnas de precios correctamente.
+
+### Paleta de colores
+
+Base: **zinc-950** (`#09090b`) como fondo global. Monocromatica con zinc para superficies y bordes.
+
+Acento: **amber** como unico color semantico. Se usa en tres formas:
+
+| Token | Valor | Donde |
+|---|---|---|
+| `amber-300` | `#fcd34d` | Texto activo: periodo seleccionado, IPC badge, periodos |
+| `amber-400` | `#fbbf24` | Dot del badge, valores IPC |
+| `amber-450` | `#e0a535` | Custom token — punto medio para gradientes |
+| gradiente amber | `#f5e6c8 → #d9a64e` | Clase `.text-gradient`, logo y titulos destacados |
+
+Colores semanticos de datos:
+- `red-400` — inflacion por encima del IPC, variacion positiva de precios
+- `green-400` — inflacion por debajo del IPC, baja de precios
+
+### Superficies
+
+El sistema no usa negro puro ni blanco puro. Capas:
+
+```
+zinc-950  → fondo global
+zinc-900  → inputs, nav toggle pills
+zinc-800  → bordes internos, separadores
+zinc-700  → bordes de componentes en hover / activos
+zinc-100  → texto principal
+zinc-400  → texto secundario (labels, subtitulos)
+zinc-500  → texto terciario (placeholders, metadata)
+zinc-600  → iconos desactivados
+```
+
+Componentes usan `bg-zinc-900/60` (con opacidad) sobre el fondo para crear depth sin romper la escala monocromatica.
+
+### Clases utilitarias definidas en `globals.css`
+
+| Clase | Descripcion |
+|---|---|
+| `.font-display` | Aplica Fraunces |
+| `.tabular` | Aplica DM Mono con `tnum` para numeros alineados |
+| `.text-gradient` | Gradiente amber diagonal como `background-clip: text` |
+| `.glass` | Fondo semitransparente con `backdrop-blur` para overlays |
+| `.animate-fade-in` | Entrada suave: opacity + translateY en 300ms |
+| `.pulse-dot` | Pulso de opacidad para indicadores de estado en vivo |
 
 ## Instalacion
 

@@ -22,7 +22,7 @@ export default function Navigation() {
           <div className="flex items-center gap-5">
             <Link
               href="/"
-              className="text-lg font-bold tracking-tight text-gradient hover:opacity-80"
+              className="font-display text-xl font-semibold tracking-tight text-gradient hover:opacity-80"
             >
               Observatorio de inflaci&oacute;n
             </Link>
