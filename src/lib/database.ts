@@ -13,7 +13,7 @@ import path from "path";
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
 const DB_PATH = path.resolve(
-  "C:/Users/Lorenzo/Documents/Desktop project versions/scrapers-uflo/data/prices.db"
+  "/home/lorenzoferreyra/Documents/Projects/scrapers-uflo/data/prices.db",
 );
 
 /**
@@ -80,7 +80,7 @@ export function getCategories(): Category[] {
        FROM canonical_products
        WHERE categoria IS NOT NULL AND categoria != ''
        GROUP BY categoria
-       ORDER BY categoria`
+       ORDER BY categoria`,
     )
     .all() as Category[];
 }
@@ -117,9 +117,7 @@ export function getProducts(options: {
   const params: (string | number)[] = [];
 
   if (search.trim()) {
-    conditions.push(
-      "(cp.product_description LIKE ? OR cp.marca LIKE ?)"
-    );
+    conditions.push("(cp.product_description LIKE ? OR cp.marca LIKE ?)");
     params.push(`%${search}%`, `%${search}%`);
   }
 
@@ -177,7 +175,9 @@ export function getProducts(options: {
     LIMIT ${pageSize} OFFSET ${offset}
   `;
 
-  return getDb().prepare(sql).all(...params) as Product[];
+  return getDb()
+    .prepare(sql)
+    .all(...params) as Product[];
 }
 
 /**
@@ -219,5 +219,7 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
     ORDER BY precio_promedio_canasta
   `;
 
-  return getDb().prepare(sql).all(...eans) as ChainPrice[];
+  return getDb()
+    .prepare(sql)
+    .all(...eans) as ChainPrice[];
 }

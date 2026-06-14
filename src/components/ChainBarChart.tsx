@@ -65,8 +65,8 @@ export default function ChainBarChart({ data, height = 250 }: Props) {
             fontSize: "12px",
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
           }}
-          formatter={(value: number) => [
-            `$${value.toLocaleString("es-AR")}`,
+          formatter={(value) => [
+            `$${Number(value).toLocaleString("es-AR")}`,
             "Precio promedio",
           ]}
           cursor={{ fill: "rgba(255,255,255,0.03)" }}

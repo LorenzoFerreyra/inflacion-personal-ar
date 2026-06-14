@@ -29,7 +29,10 @@ export default function PriceChart({ data, height = 220 }: Props) {
   return (
     <div className="rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-3">
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+        <AreaChart
+          data={data}
+          margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        >
           <defs>
             <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#d9a64e" stopOpacity={0.2} />
@@ -59,8 +62,8 @@ export default function PriceChart({ data, height = 220 }: Props) {
               boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             }}
             labelStyle={{ color: "#71717a", fontSize: "11px" }}
-            formatter={(value: number) => [
-              `$${value.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
+            formatter={(value) => [
+              `$${Number(value).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
               "Precio",
             ]}
           />
@@ -71,7 +74,12 @@ export default function PriceChart({ data, height = 220 }: Props) {
             strokeWidth={2}
             fill="url(#priceGradient)"
             dot={false}
-            activeDot={{ r: 4, fill: "#d9a64e", stroke: "#18181b", strokeWidth: 2 }}
+            activeDot={{
+              r: 4,
+              fill: "#d9a64e",
+              stroke: "#18181b",
+              strokeWidth: 2,
+            }}
           />
         </AreaChart>
       </ResponsiveContainer>

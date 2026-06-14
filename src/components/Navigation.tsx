@@ -22,12 +22,17 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-16">
           {/* Logo + IPC badge */}
           <div className="flex items-center gap-5">
-            <Link href="/" className="text-lg font-bold tracking-tight text-gradient hover:opacity-80">
-              Observatorio de Inflaci&oacute;n
+            <Link
+              href="/"
+              className="text-lg font-bold tracking-tight text-gradient hover:opacity-80"
+            >
+              Observatorio de inflaci&oacute;n
             </Link>
             <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-700/50 rounded-full px-3.5 py-1.5 shadow-sm">
               <Activity size={12} className="text-amber-400/70" />
-              <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">IPC</span>
+              <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+                IPC
+              </span>
               <span className="text-sm font-bold text-amber-400">
                 {IPC[period]}%
               </span>

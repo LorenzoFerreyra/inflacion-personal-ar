@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Observatorio de Inflación",
+  title: "Observatorio de inflación",
   description: "Seguimiento personalizado de inflación en Argentina",
 };
 
