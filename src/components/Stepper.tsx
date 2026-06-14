@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check } from "@/components/Icons";
 
 interface Props {
   currentStep: number;
@@ -26,8 +26,8 @@ export default function Stepper({ currentStep, steps }: Props) {
                     isDone
                       ? "bg-green-500/20 text-green-400 border-2 border-green-500/60 shadow-green-500/10"
                       : isActive
-                      ? "bg-amber-500/15 text-amber-300 border-2 border-amber-400/50 shadow-amber-500/10"
-                      : "bg-zinc-800/60 text-zinc-500 border-2 border-zinc-700/50"
+                        ? "bg-amber-500/15 text-amber-300 border-2 border-amber-400/50 shadow-amber-500/10"
+                        : "bg-zinc-800/60 text-zinc-500 border-2 border-zinc-700/50"
                   }
                 `}
               >
@@ -38,8 +38,8 @@ export default function Stepper({ currentStep, steps }: Props) {
                   isDone
                     ? "text-green-400/80"
                     : isActive
-                    ? "text-amber-300/80"
-                    : "text-zinc-500"
+                      ? "text-amber-300/80"
+                      : "text-zinc-500"
                 }`}
               >
                 {label}

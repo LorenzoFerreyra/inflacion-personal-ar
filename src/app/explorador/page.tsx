@@ -7,7 +7,7 @@ import ChainBarChart from "@/components/ChainBarChart";
 import { Product, PricePoint, ChainPrice, Category } from "@/lib/types";
 import { PERIODS, PAGE_SIZE } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
-import { Search } from "lucide-react";
+import { Search } from "@/components/Icons";
 
 export default function ExploradorPage() {
   const { period } = usePeriod();
@@ -69,7 +69,7 @@ export default function ExploradorPage() {
   const cheapestChain =
     chainPrices.length > 0
       ? chainPrices.reduce((min, c) =>
-          c.precio_promedio_canasta < min.precio_promedio_canasta ? c : min
+          c.precio_promedio_canasta < min.precio_promedio_canasta ? c : min,
         ).cadena
       : null;
 
@@ -83,10 +83,7 @@ export default function ExploradorPage() {
 
         {/* Search bar */}
         <div className="relative mb-3">
-          <Search
-            size={15}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
-          />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             placeholder="Buscar por nombre o marca..."
@@ -148,11 +145,7 @@ export default function ExploradorPage() {
 
           {!selectedProduct ? (
             <div className="rounded-xl border-2 border-dashed border-zinc-800/60 p-10 text-center">
-              <Search
-                size={36}
-                strokeWidth={1.2}
-                className="mx-auto text-zinc-700 mb-3"
-              />
+              <Search size={36} strokeWidth={1.2} className="mx-auto text-zinc-700 mb-3" />
               <p className="text-sm text-zinc-500">
                 Seleccion&aacute; un producto para ver su detalle.
               </p>

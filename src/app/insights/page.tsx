@@ -6,7 +6,6 @@ import ChainBarChart from "@/components/ChainBarChart";
 import { Product, ChainPrice } from "@/lib/types";
 import { IPC, PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
-import { AlertTriangle, BarChart3, Scale } from "lucide-react";
 
 export default function InsightsPage() {
   const { period } = usePeriod();
@@ -43,14 +42,14 @@ export default function InsightsPage() {
   const maxUp =
     validProducts.length > 0
       ? validProducts.reduce((max, p) =>
-          (p.variacion_pct ?? 0) > (max.variacion_pct ?? 0) ? p : max
+          (p.variacion_pct ?? 0) > (max.variacion_pct ?? 0) ? p : max,
         )
       : null;
 
   const maxDown =
     validProducts.length > 0
       ? validProducts.reduce((min, p) =>
-          (p.variacion_pct ?? 0) < (min.variacion_pct ?? 0) ? p : min
+          (p.variacion_pct ?? 0) < (min.variacion_pct ?? 0) ? p : min,
         )
       : null;
 
@@ -102,8 +101,8 @@ export default function InsightsPage() {
       <div className="grid grid-cols-3 gap-6">
         {/* Alerts */}
         <div>
-          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2">
-            <AlertTriangle size={15} className="text-amber-400/70" />
+          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
+            <span className="w-0.5 h-4 rounded-full bg-red-400/70 flex-shrink-0" />
             Alertas de precio
           </h3>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
@@ -126,8 +125,8 @@ export default function InsightsPage() {
                     v > 20
                       ? "bg-red-500 pulse-dot"
                       : v > 10
-                      ? "bg-amber-500"
-                      : "bg-green-500";
+                        ? "bg-amber-500"
+                        : "bg-green-500";
                   return (
                     <tr
                       key={p.ean}
@@ -147,8 +146,8 @@ export default function InsightsPage() {
                             v > 20
                               ? "bg-red-500/10 text-red-400"
                               : v > 10
-                              ? "bg-amber-500/10 text-amber-400"
-                              : "bg-green-500/10 text-green-400"
+                                ? "bg-amber-500/10 text-amber-400"
+                                : "bg-green-500/10 text-green-400"
                           }`}
                         >
                           +{p.variacion_pct}%
@@ -164,8 +163,8 @@ export default function InsightsPage() {
 
         {/* IPC comparison */}
         <div>
-          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2">
-            <Scale size={15} className="text-amber-400/70" />
+          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
+            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
             vs. IPC ({ipcValue}%)
           </h3>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
@@ -218,8 +217,8 @@ export default function InsightsPage() {
 
         {/* Chain ranking */}
         <div>
-          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2">
-            <BarChart3 size={15} className="text-amber-400/70" />
+          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
+            <span className="w-0.5 h-4 rounded-full bg-zinc-500/80 flex-shrink-0" />
             Ranking de cadenas
           </h3>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">

@@ -15,7 +15,7 @@ import {
   RotateCcw,
   ShoppingBasket,
   Sparkles,
-} from "lucide-react";
+} from "@/components/Icons";
 
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
@@ -113,7 +113,7 @@ export default function MiCanastaPage() {
       ipc,
       diff: Math.round((personal - ipc) * 10) / 10,
       products: basketProducts.sort(
-        (a, b) => (b.variacion_pct ?? 0) - (a.variacion_pct ?? 0)
+        (a, b) => (b.variacion_pct ?? 0) - (a.variacion_pct ?? 0),
       ),
       chains,
     });
@@ -188,11 +188,7 @@ export default function MiCanastaPage() {
 
               {basket.length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-zinc-800/60 p-8 text-center">
-                  <ShoppingBasket
-                    size={36}
-                    strokeWidth={1.2}
-                    className="mx-auto text-zinc-700 mb-3"
-                  />
+                  <ShoppingBasket size={36} strokeWidth={1.2} className="mx-auto text-zinc-700 mb-3" />
                   <p className="text-sm text-zinc-500">
                     Hac&eacute; click en productos de la tabla para agregarlos.
                   </p>
@@ -319,7 +315,7 @@ export default function MiCanastaPage() {
                         onClick={() => removeFromBasket(p.ean)}
                         className="text-zinc-600 hover:text-red-400"
                       >
-                        <X size={14} />
+                        <span className="text-[10px]">✕</span>
                       </button>
                     </td>
                   </tr>

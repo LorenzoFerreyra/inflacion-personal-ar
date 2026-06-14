@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, Search, TrendingUp, Activity } from "lucide-react";
 import { usePeriod } from "@/lib/PeriodContext";
 import { IPC, PERIODS, PeriodKey } from "@/lib/constants";
-
 const tabs = [
-  { href: "/", label: "Mi canasta", icon: ShoppingCart },
-  { href: "/explorador", label: "Explorador", icon: Search },
-  { href: "/insights", label: "Insights", icon: TrendingUp },
-] as const;
+  { href: "/", label: "Mi canasta" },
+  { href: "/explorador", label: "Explorador" },
+  { href: "/insights", label: "Insights" },
+];
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -29,7 +27,7 @@ export default function Navigation() {
               Observatorio de inflaci&oacute;n
             </Link>
             <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-700/50 rounded-full px-3.5 py-1.5 shadow-sm">
-              <Activity size={12} className="text-amber-400/70" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/80 flex-shrink-0" />
               <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                 IPC
               </span>
@@ -45,7 +43,7 @@ export default function Navigation() {
           {/* Tabs + period toggle */}
           <div className="flex items-center gap-3">
             <div className="flex bg-zinc-900/50 rounded-lg p-1">
-              {tabs.map(({ href, label, icon: Icon }) => {
+              {tabs.map(({ href, label }) => {
                 const isActive =
                   href === "/" ? pathname === "/" : pathname.startsWith(href);
                 return (
@@ -53,7 +51,7 @@ export default function Navigation() {
                     key={href}
                     href={href}
                     className={`
-                      flex items-center gap-2 px-3.5 py-1.5 rounded-md text-[13px] font-medium
+                      px-3.5 py-1.5 rounded-md text-[13px] font-medium
                       ${
                         isActive
                           ? "bg-zinc-800 text-zinc-50 shadow-sm"
@@ -61,7 +59,6 @@ export default function Navigation() {
                       }
                     `}
                   >
-                    <Icon size={15} strokeWidth={isActive ? 2.2 : 1.8} />
                     {label}
                   </Link>
                 );

@@ -1,7 +1,7 @@
 "use client";
 
 import { Product } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, Package } from "@/components/Icons";
 
 interface Props {
   products: Product[];
@@ -146,8 +146,8 @@ function VariationBadge({ value }: { value: number | null }) {
   const classes = isZero
     ? "bg-zinc-800/50 text-zinc-400"
     : isPositive
-    ? "bg-red-500/10 text-red-400"
-    : "bg-green-500/10 text-green-400";
+      ? "bg-red-500/10 text-red-400"
+      : "bg-green-500/10 text-green-400";
 
   const sign = isPositive ? "+" : "";
 
@@ -155,7 +155,8 @@ function VariationBadge({ value }: { value: number | null }) {
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-semibold tabular-nums ${classes}`}
     >
-      {sign}{value.toFixed(1)}%
+      {sign}
+      {value.toFixed(1)}%
     </span>
   );
 }
