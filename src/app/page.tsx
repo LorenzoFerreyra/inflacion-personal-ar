@@ -187,7 +187,11 @@ export default function MiCanastaPage() {
 
               {basket.length === 0 ? (
                 <div className="rounded-xl border-2 border-dashed border-zinc-800/60 p-8 text-center">
-                  <ShoppingBasket size={36} strokeWidth={1.2} className="mx-auto text-zinc-700 mb-3" />
+                  <ShoppingBasket
+                    size={36}
+                    strokeWidth={1.2}
+                    className="mx-auto text-zinc-700 mb-3"
+                  />
                   <p className="text-sm text-zinc-500">
                     Hac&eacute; click en productos de la tabla para agregarlos.
                   </p>
@@ -395,7 +399,7 @@ export default function MiCanastaPage() {
             />
             <KpiCard
               label="Diferencia"
-              value={`${result.diff > 0 ? "+" : ""}${result.diff} pp`}
+              value={`${result.diff > 0 ? "+" : ""}${result.diff} %`}
               subtitle={
                 result.diff > 0 ? "por encima del IPC" : "por debajo del IPC"
               }
