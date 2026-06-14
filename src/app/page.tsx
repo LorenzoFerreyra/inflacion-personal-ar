@@ -181,8 +181,7 @@ export default function MiCanastaPage() {
           {/* Basket sidebar */}
           <div className="w-80 flex-shrink-0">
             <div className="sticky top-24">
-              <h2 className="text-lg font-semibold text-zinc-100 mb-4 flex items-center gap-2">
-                <ShoppingBasket size={18} className="text-amber-400/70" />
+              <h2 className="text-lg font-semibold text-zinc-100 mb-4">
                 Tu canasta
               </h2>
 

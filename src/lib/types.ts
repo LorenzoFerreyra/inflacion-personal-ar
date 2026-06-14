@@ -20,7 +20,7 @@ export interface PricePoint {
 
 export interface ChainPrice {
   cadena: string;
-  precio_promedio_canasta: number;
+  total_canasta: number;
 }
 
 export interface Category {

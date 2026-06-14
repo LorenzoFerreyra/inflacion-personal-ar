@@ -69,7 +69,7 @@ export default function ExploradorPage() {
   const cheapestChain =
     chainPrices.length > 0
       ? chainPrices.reduce((min, c) =>
-          c.precio_promedio_canasta < min.precio_promedio_canasta ? c : min,
+          c.total_canasta < min.total_canasta ? c : min,
         ).cadena
       : null;
 
@@ -219,7 +219,7 @@ export default function ExploradorPage() {
                             }`}
                           >
                             $
-                            {c.precio_promedio_canasta.toLocaleString("es-AR", {
+                            {c.total_canasta.toLocaleString("es-AR", {
                               maximumFractionDigits: 0,
                             })}
                           </p>

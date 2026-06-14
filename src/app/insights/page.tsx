@@ -178,7 +178,7 @@ export default function InsightsPage() {
                     Var %
                   </th>
                   <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                    &Delta; pp
+                    &Delta; %
                   </th>
                 </tr>
               </thead>
@@ -205,7 +205,7 @@ export default function InsightsPage() {
                         }`}
                       >
                         {p.delta_pp > 0 ? "+" : ""}
-                        {p.delta_pp} pp
+                        {p.delta_pp}%
                       </span>
                     </td>
                   </tr>

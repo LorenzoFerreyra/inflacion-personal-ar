@@ -208,13 +208,13 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
   const sql = `
     SELECT
       cadena,
-      ROUND(AVG(precio_lista), 0) AS precio_promedio_canasta
+      ROUND(SUM(precio_lista), 0) AS total_canasta
     FROM price_series
     WHERE ean IN (${placeholders})
       AND fecha = (SELECT MAX(fecha) FROM price_series)
       AND precio_lista > 0
     GROUP BY cadena
-    ORDER BY precio_promedio_canasta
+    ORDER BY total_canasta
   `;
 
   return getDb()

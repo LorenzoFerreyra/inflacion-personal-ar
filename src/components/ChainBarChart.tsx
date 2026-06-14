@@ -60,18 +60,21 @@ export default function ChainBarChart({ data, height = 250 }: Props) {
         <Tooltip
           contentStyle={{
             backgroundColor: "#18181b",
-            border: "1px solid #27272a",
-            borderRadius: "10px",
+            border: "1px solid #3f3f46",
+            borderRadius: "8px",
             fontSize: "12px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            color: "#e4e4e7",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
           }}
+          labelStyle={{ color: "#a1a1aa", marginBottom: 2 }}
+          itemStyle={{ color: "#e4e4e7" }}
           formatter={(value) => [
             `$${Number(value).toLocaleString("es-AR")}`,
-            "Precio promedio",
+            "Total canasta",
           ]}
-          cursor={{ fill: "rgba(255,255,255,0.03)" }}
+          cursor={{ fill: "rgba(255,255,255,0.04)" }}
         />
-        <Bar dataKey="precio_promedio_canasta" radius={[0, 6, 6, 0]}>
+        <Bar dataKey="total_canasta" radius={[0, 6, 6, 0]}>
           {data.map((_, index) => (
             <Cell
               key={index}
