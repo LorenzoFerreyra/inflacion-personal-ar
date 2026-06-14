@@ -10,6 +10,7 @@ export interface Product {
   categoria: string;
   precio_actual: number;
   variacion_pct: number | null;
+  cobertura_cadenas: number;
 }
 
 export interface PricePoint {

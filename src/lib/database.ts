@@ -2,13 +2,14 @@
  * database.ts — Capa de acceso a datos (SQLite)
  *
  * Todas las queries viven acá. El resto de la app nunca toca SQL directo.
- * La base de datos viene del scraper UFLO y tiene dos tablas principales:
+ * La base de datos viene del scraper (no público) y tiene dos tablas principales:
  *   - price_series: registros diarios de precios por EAN y cadena
  *   - canonical_products: catálogo de productos con descripción, marca, categoría
  */
 
 import Database from "better-sqlite3";
 import path from "path";
+import type { Product, PricePoint, ChainPrice, Category } from "./types";
 
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
@@ -30,32 +31,6 @@ function getDb(): Database.Database {
     db.pragma("mmap_size = 268435456"); // 256MB
   }
   return db;
-}
-
-// ─── Tipos ───────────────────────────────────────────────────────────────────
-
-export interface Product {
-  ean: string;
-  product_description: string;
-  marca: string;
-  categoria: string;
-  precio_actual: number;
-  variacion_pct: number | null;
-}
-
-export interface PricePoint {
-  fecha: string;
-  precio_promedio: number;
-}
-
-export interface ChainPrice {
-  cadena: string;
-  precio_promedio_canasta: number;
-}
-
-export interface Category {
-  categoria: string;
-  n: number;
 }
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -156,6 +131,13 @@ export function getProducts(options: {
       )
         AND precio_lista > 0
       GROUP BY ean
+    ),
+    cobertura AS (
+      SELECT ean, COUNT(DISTINCT cadena) AS cobertura_cadenas
+      FROM price_series
+      WHERE fecha = (SELECT MAX(fecha) FROM price_series)
+        AND precio_lista > 0
+      GROUP BY ean
     )
     SELECT
       cp.ean,
@@ -166,12 +148,14 @@ export function getProducts(options: {
       ROUND(
         (pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100,
         1
-      ) AS variacion_pct
+      ) AS variacion_pct,
+      COALESCE(cob.cobertura_cadenas, 1) AS cobertura_cadenas
     FROM precio_actual pa
     JOIN precio_base pb USING (ean)
     JOIN canonical_products cp USING (ean)
+    LEFT JOIN cobertura cob USING (ean)
     ${whereClause}
-    ORDER BY cp.product_description
+    ORDER BY cobertura_cadenas DESC, cp.product_description
     LIMIT ${pageSize} OFFSET ${offset}
   `;
 
