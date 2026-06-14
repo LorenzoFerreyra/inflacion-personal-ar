@@ -33,6 +33,22 @@ function getDb(): Database.Database {
   return db;
 }
 
+/**
+ * Cache de prepared statements por forma de SQL.
+ * better-sqlite3 compila cada SQL string una vez; reutilizarlo evita
+ * re-compilación en cada request con los mismos filtros activos.
+ */
+const stmtCache = new Map<string, Database.Statement>();
+
+function prepare(sql: string): Database.Statement {
+  let stmt = stmtCache.get(sql);
+  if (!stmt) {
+    stmt = getDb().prepare(sql);
+    stmtCache.set(sql, stmt);
+  }
+  return stmt;
+}
+
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
 /**
@@ -159,9 +175,7 @@ export function getProducts(options: {
     LIMIT ${pageSize} OFFSET ${offset}
   `;
 
-  return getDb()
-    .prepare(sql)
-    .all(...params) as Product[];
+  return prepare(sql).all(...params) as Product[];
 }
 
 /**
