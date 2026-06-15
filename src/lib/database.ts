@@ -181,7 +181,7 @@ export function getProducts(options: {
     LIMIT ? OFFSET ?
   `;
 
-  return prepare(sql).all(...params, dias, pageSize, offset) as Product[];
+  return prepare(sql).all(dias, ...params, pageSize, offset) as Product[];
 }
 
 /**
