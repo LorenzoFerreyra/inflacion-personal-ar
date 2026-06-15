@@ -1,24 +1,58 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   Area,
   AreaChart,
+  Line,
 } from "recharts";
-import { PricePoint } from "@/lib/types";
+import { PriceHistoryData } from "@/lib/types";
+
+const CHAIN_COLORS = [
+  "#6ee7b7",
+  "#7dd3fc",
+  "#c4b5fd",
+  "#fca5a5",
+  "#fcd34d",
+  "#f0abfc",
+  "#a5f3fc",
+  "#fda4af",
+];
 
 interface Props {
-  data: PricePoint[];
+  data: PriceHistoryData;
   height?: number;
 }
 
 export default function PriceChart({ data, height = 220 }: Props) {
-  if (data.length < 2) {
+  const chains = useMemo(() => Object.keys(data.byChain), [data.byChain]);
+  const [showChains, setShowChains] = useState(true);
+
+  const mergedData = useMemo(() => {
+    const dateMap = new Map<string, Record<string, number>>();
+
+    for (const pt of data.average) {
+      dateMap.set(pt.fecha, { precio_promedio: pt.precio_promedio });
+    }
+
+    for (const [cadena, points] of Object.entries(data.byChain)) {
+      for (const pt of points) {
+        const existing = dateMap.get(pt.fecha) || {};
+        existing[cadena] = pt.precio;
+        dateMap.set(pt.fecha, existing);
+      }
+    }
+
+    return Array.from(dateMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([fecha, values]) => ({ fecha, ...values }));
+  }, [data]);
+
+  if (data.average.length < 2) {
     return (
       <div className="flex items-center justify-center py-8 text-zinc-500 text-sm rounded-xl border border-zinc-800/40 bg-zinc-900/30">
         No hay suficientes datos para graficar.
@@ -28,9 +62,49 @@ export default function PriceChart({ data, height = 220 }: Props) {
 
   return (
     <div className="rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-3">
+      {chains.length > 0 && (
+        <div className="flex items-center gap-3 mb-2 px-1">
+          <button
+            onClick={() => setShowChains(!showChains)}
+            className={`text-[11px] font-medium px-2.5 py-1 rounded-full transition-colors ${
+              showChains
+                ? "bg-zinc-700/60 text-zinc-200"
+                : "bg-zinc-800/40 text-zinc-500 hover:text-zinc-400"
+            }`}
+          >
+            {showChains ? "Ocultar cadenas" : "Ver por cadena"}
+          </button>
+          {showChains && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {chains.map((chain, i) => (
+                <span
+                  key={chain}
+                  className="flex items-center gap-1 text-[10px] text-zinc-400"
+                >
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{
+                      backgroundColor:
+                        CHAIN_COLORS[i % CHAIN_COLORS.length],
+                    }}
+                  />
+                  {chain}
+                </span>
+              ))}
+              <span className="flex items-center gap-1 text-[10px] text-zinc-400">
+                <span
+                  className="inline-block w-2 h-2 rounded-full"
+                  style={{ backgroundColor: "#d9a64e" }}
+                />
+                promedio
+              </span>
+            </div>
+          )}
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart
-          data={data}
+          data={mergedData}
           margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
         >
           <defs>
@@ -62,9 +136,9 @@ export default function PriceChart({ data, height = 220 }: Props) {
               boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             }}
             labelStyle={{ color: "#71717a", fontSize: "11px" }}
-            formatter={(value) => [
+            formatter={(value, name) => [
               `$${Number(value).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
-              "Precio",
+              name === "precio_promedio" ? "Promedio" : String(name),
             ]}
           />
           <Area
@@ -81,6 +155,24 @@ export default function PriceChart({ data, height = 220 }: Props) {
               strokeWidth: 2,
             }}
           />
+          {showChains &&
+            chains.map((chain, i) => (
+              <Line
+                key={chain}
+                type="monotone"
+                dataKey={chain}
+                stroke={CHAIN_COLORS[i % CHAIN_COLORS.length]}
+                strokeWidth={1.5}
+                dot={false}
+                connectNulls
+                activeDot={{
+                  r: 3,
+                  fill: CHAIN_COLORS[i % CHAIN_COLORS.length],
+                  stroke: "#18181b",
+                  strokeWidth: 2,
+                }}
+              />
+            ))}
         </AreaChart>
       </ResponsiveContainer>
     </div>

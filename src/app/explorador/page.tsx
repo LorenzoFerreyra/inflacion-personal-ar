@@ -1,69 +1,41 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import ProductTable from "@/components/ProductTable";
 import PriceChart from "@/components/PriceChart";
 import ChainBarChart from "@/components/ChainBarChart";
-import { Product, PricePoint, ChainPrice, Category } from "@/lib/types";
-import { PERIODS, PAGE_SIZE } from "@/lib/constants";
-import { usePeriod } from "@/lib/PeriodContext";
+import { Product, PriceHistoryData, ChainPrice } from "@/lib/types";
+import { useProducts } from "@/lib/useProducts";
 import { Search } from "@/components/Icons";
 
 export default function ExploradorPage() {
-  const { period } = usePeriod();
-
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [page, setPage] = useState(1);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { search, setSearch, category, setCategory, page, setPage, products, categories, loading } = useProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([]);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryData>({ average: [], byChain: {} });
   const [chainPrices, setChainPrices] = useState<ChainPrice[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then(setCategories);
-  }, []);
-
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({
-      search,
-      category,
-      dias: String(PERIODS[period].dias),
-      page: String(page),
-      pageSize: String(PAGE_SIZE),
-    });
-    const res = await fetch(`/api/products?${params}`);
-    setProducts(await res.json());
-    setLoading(false);
-  }, [search, category, period, page]);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, category, period]);
 
   async function selectProduct(product: Product) {
     setSelectedProduct(product);
     setLoadingDetail(true);
 
-    const [historyRes, chainsRes] = await Promise.all([
-      fetch(`/api/history?ean=${product.ean}`),
-      fetch(`/api/chains?eans=${product.ean}`),
-    ]);
+    try {
+      const [historyRes, chainsRes] = await Promise.all([
+        fetch(`/api/history?ean=${product.ean}`),
+        fetch(`/api/chains?eans=${product.ean}`),
+      ]);
 
-    setPriceHistory(await historyRes.json());
-    setChainPrices(await chainsRes.json());
-    setLoadingDetail(false);
+      if (!historyRes.ok || !chainsRes.ok) throw new Error("Error al obtener detalle");
+
+      setPriceHistory(await historyRes.json());
+      setChainPrices(await chainsRes.json());
+    } catch {
+      setPriceHistory({ average: [], byChain: {} });
+      setChainPrices([]);
+    } finally {
+      setLoadingDetail(false);
+    }
   }
 
   const cheapestChain =

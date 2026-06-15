@@ -14,7 +14,8 @@ import type { Product, PricePoint, ChainPrice, Category } from "./types";
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
 const DB_PATH = path.resolve(
-  "/home/lorenzoferreyra/Documents/Projects/scrapers-uflo/data/prices.db",
+  process.env.DATABASE_PATH ??
+    "/home/lorenzoferreyra/Documents/Projects/scrapers-uflo/data/prices.db",
 );
 
 /**
@@ -23,7 +24,7 @@ const DB_PATH = path.resolve(
  */
 let db: Database.Database | null = null;
 
-function getDb(): Database.Database {
+export function getDb(): Database.Database {
   if (!db) {
     db = new Database(DB_PATH, { readonly: true });
     // Performance: WAL mode + memory-mapped I/O
@@ -38,11 +39,16 @@ function getDb(): Database.Database {
  * better-sqlite3 compila cada SQL string una vez; reutilizarlo evita
  * re-compilación en cada request con los mismos filtros activos.
  */
+const STMT_CACHE_MAX = 50;
 const stmtCache = new Map<string, Database.Statement>();
 
 function prepare(sql: string): Database.Statement {
   let stmt = stmtCache.get(sql);
   if (!stmt) {
+    if (stmtCache.size >= STMT_CACHE_MAX) {
+      const oldest = stmtCache.keys().next().value;
+      if (oldest !== undefined) stmtCache.delete(oldest);
+    }
     stmt = getDb().prepare(sql);
     stmtCache.set(sql, stmt);
   }
@@ -143,7 +149,7 @@ export function getProducts(options: {
       WHERE fecha = (
         SELECT MIN(fecha)
         FROM price_series
-        WHERE fecha >= DATE('now', '-${dias} days')
+        WHERE fecha >= DATE('now', '-' || ? || ' days')
       )
         AND precio_lista > 0
       GROUP BY ean
@@ -172,10 +178,10 @@ export function getProducts(options: {
     LEFT JOIN cobertura cob USING (ean)
     ${whereClause}
     ORDER BY cobertura_cadenas DESC, cp.product_description
-    LIMIT ${pageSize} OFFSET ${offset}
+    LIMIT ? OFFSET ?
   `;
 
-  return prepare(sql).all(...params) as Product[];
+  return prepare(sql).all(...params, dias, pageSize, offset) as Product[];
 }
 
 /**
@@ -194,6 +200,23 @@ export function getPriceHistory(ean: string): PricePoint[] {
     ORDER BY fecha
   `;
   return getDb().prepare(sql).all(ean) as PricePoint[];
+}
+
+export function getPriceHistoryByChain(
+  ean: string
+): { fecha: string; cadena: string; precio: number }[] {
+  const sql = `
+    SELECT fecha, cadena, precio_lista AS precio
+    FROM price_series
+    WHERE ean = ?
+      AND precio_lista > 0
+    ORDER BY fecha, cadena
+  `;
+  return getDb().prepare(sql).all(ean) as {
+    fecha: string;
+    cadena: string;
+    precio: number;
+  }[];
 }
 
 /**

@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getPriceHistory } from "@/lib/database";
+import { getPriceHistory, getPriceHistoryByChain } from "@/lib/database";
 
 export async function GET(request: NextRequest) {
   const ean = request.nextUrl.searchParams.get("ean");
@@ -18,6 +18,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const history = getPriceHistory(ean);
-  return NextResponse.json(history);
+  const average = getPriceHistory(ean);
+  const rawByChain = getPriceHistoryByChain(ean);
+
+  const byChain: Record<string, { fecha: string; precio: number }[]> = {};
+  for (const row of rawByChain) {
+    if (!byChain[row.cadena]) byChain[row.cadena] = [];
+    byChain[row.cadena].push({ fecha: row.fecha, precio: row.precio });
+  }
+
+  return NextResponse.json({ average, byChain });
 }

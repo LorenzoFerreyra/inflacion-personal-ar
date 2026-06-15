@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePeriod } from "@/lib/PeriodContext";
-import { IPC, PERIODS, PeriodKey } from "@/lib/constants";
+import { PERIODS, PeriodKey } from "@/lib/constants";
 const tabs = [
   { href: "/", label: "Mi canasta" },
   { href: "/explorador", label: "Explorador" },
@@ -12,7 +12,7 @@ const tabs = [
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { period, setPeriod } = usePeriod();
+  const { period, setPeriod, ipc } = usePeriod();
 
   return (
     <nav className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/80 backdrop-blur-xl">
@@ -32,7 +32,7 @@ export default function Navigation() {
                 IPC
               </span>
               <span className="text-sm font-bold text-amber-400">
-                {IPC[period]}%
+                {ipc[period]}%
               </span>
               <span className="text-[11px] text-zinc-500 font-medium">
                 {PERIODS[period].label.toLowerCase()}

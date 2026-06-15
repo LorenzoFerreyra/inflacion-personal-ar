@@ -1,11 +1,13 @@
 "use client";
 
 import { Product } from "@/lib/types";
+import { PAGE_SIZE } from "@/lib/constants";
 import { ChevronLeft, ChevronRight, Package } from "@/components/Icons";
 
 interface Props {
   products: Product[];
   page: number;
+  pageSize?: number;
   onPageChange: (page: number) => void;
   onSelect?: (product: Product) => void;
   selectedEans?: Set<string>;
@@ -15,6 +17,7 @@ interface Props {
 export default function ProductTable({
   products,
   page,
+  pageSize = PAGE_SIZE,
   onPageChange,
   onSelect,
   selectedEans,
@@ -122,7 +125,7 @@ export default function ProductTable({
 
         <button
           onClick={() => onPageChange(page + 1)}
-          disabled={products.length < 30}
+          disabled={products.length < pageSize}
           className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] rounded-lg font-medium
                      bg-zinc-900/60 border border-zinc-800/60 text-zinc-300 hover:bg-zinc-800/60 hover:text-zinc-100
                      disabled:opacity-30 disabled:cursor-not-allowed"

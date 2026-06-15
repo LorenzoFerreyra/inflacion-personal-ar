@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import KpiCard from "@/components/KpiCard";
 import ChainBarChart from "@/components/ChainBarChart";
 import { Product, ChainPrice } from "@/lib/types";
-import { IPC, PERIODS } from "@/lib/constants";
+import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
 
 export default function InsightsPage() {
-  const { period } = usePeriod();
+  const { period, ipc: ipcValues } = usePeriod();
   const [products, setProducts] = useState<Product[]>([]);
   const [chains, setChains] = useState<ChainPrice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export default function InsightsPage() {
     load();
   }, [period]);
 
-  const ipcValue = IPC[period];
+  const ipcValue = ipcValues[period];
   const validProducts = products.filter((p) => p.variacion_pct !== null);
 
   const maxUp =

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import ProductTable from "@/components/ProductTable";
 import KpiCard from "@/components/KpiCard";
 import ChainBarChart from "@/components/ChainBarChart";
 import Stepper from "@/components/Stepper";
-import { Product, ChainPrice, Category } from "@/lib/types";
-import { IPC, PERIODS, PAGE_SIZE } from "@/lib/constants";
+import { Product, ChainPrice } from "@/lib/types";
+import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
+import { useProducts } from "@/lib/useProducts";
 import {
   X,
   ArrowRight,
@@ -20,15 +21,10 @@ import {
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
 export default function MiCanastaPage() {
-  const { period } = usePeriod();
+  const { period, ipc: ipcValues } = usePeriod();
+  const { search, setSearch, category, setCategory, page, setPage, products, categories, loading } = useProducts();
 
   const [step, setStep] = useState(1);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [page, setPage] = useState(1);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const [basket, setBasket] = useState<Product[]>([]);
   const [result, setResult] = useState<{
     personal: number;
@@ -38,34 +34,6 @@ export default function MiCanastaPage() {
     chains: ChainPrice[];
   } | null>(null);
   const [calculating, setCalculating] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then(setCategories);
-  }, []);
-
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({
-      search,
-      category,
-      dias: String(PERIODS[period].dias),
-      page: String(page),
-      pageSize: String(PAGE_SIZE),
-    });
-    const res = await fetch(`/api/products?${params}`);
-    setProducts(await res.json());
-    setLoading(false);
-  }, [search, category, period, page]);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, category, period]);
 
   function addToBasket(product: Product) {
     setBasket((prev) => {
@@ -82,44 +50,49 @@ export default function MiCanastaPage() {
     if (basket.length === 0) return;
     setCalculating(true);
 
-    const eans = basket.map((p) => p.ean);
-    const params = new URLSearchParams({
-      eans: eans.join(","),
-      dias: String(PERIODS[period].dias),
-      pageSize: "200",
-    });
+    try {
+      const eans = basket.map((p) => p.ean);
+      const params = new URLSearchParams({
+        eans: eans.join(","),
+        dias: String(PERIODS[period].dias),
+        pageSize: "200",
+      });
 
-    const [productsRes, chainsRes] = await Promise.all([
-      fetch(`/api/products?${params}`),
-      fetch(`/api/chains?eans=${eans.join(",")}`),
-    ]);
+      const [productsRes, chainsRes] = await Promise.all([
+        fetch(`/api/products?${params}`),
+        fetch(`/api/chains?eans=${eans.join(",")}`),
+      ]);
 
-    const basketProducts: Product[] = await productsRes.json();
-    const chains: ChainPrice[] = await chainsRes.json();
+      if (!productsRes.ok || !chainsRes.ok) throw new Error("Error al obtener datos");
 
-    const validVariations = basketProducts
-      .map((p) => p.variacion_pct)
-      .filter((v): v is number => v !== null);
+      const basketProducts: Product[] = await productsRes.json();
+      const chains: ChainPrice[] = await chainsRes.json();
 
-    const personal =
-      validVariations.length > 0
-        ? validVariations.reduce((a, b) => a + b, 0) / validVariations.length
-        : 0;
+      const validVariations = basketProducts
+        .map((p) => p.variacion_pct)
+        .filter((v): v is number => v !== null);
 
-    const ipc = IPC[period];
+      const personal =
+        validVariations.length > 0
+          ? validVariations.reduce((a, b) => a + b, 0) / validVariations.length
+          : 0;
 
-    setResult({
-      personal: Math.round(personal * 10) / 10,
-      ipc,
-      diff: Math.round((personal - ipc) * 10) / 10,
-      products: basketProducts.sort(
-        (a, b) => (b.variacion_pct ?? 0) - (a.variacion_pct ?? 0),
-      ),
-      chains,
-    });
+      const ipc = ipcValues[period];
 
-    setCalculating(false);
-    setStep(3);
+      setResult({
+        personal: Math.round(personal * 10) / 10,
+        ipc,
+        diff: Math.round((personal - ipc) * 10) / 10,
+        products: basketProducts.sort(
+          (a, b) => (b.variacion_pct ?? 0) - (a.variacion_pct ?? 0),
+        ),
+        chains,
+      });
+
+      setStep(3);
+    } finally {
+      setCalculating(false);
+    }
   }
 
   function reset() {

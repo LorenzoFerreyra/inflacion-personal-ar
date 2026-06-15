@@ -1,17 +1,12 @@
 /**
  * constants.ts — Valores de referencia para la app
  *
- * IPC: índices oficiales de inflación (INDEC) para comparar con la canasta personal.
  * PERIODS: mapeo entre nombre legible y cantidad de días para cada período.
  */
 
-export const IPC = {
-  mensual: 8.8,
-  trimestral: 26.5,
-  interanual: 118.4,
-} as const;
+export type PeriodKey = "mensual" | "trimestral" | "interanual";
 
-export type PeriodKey = keyof typeof IPC;
+export type IpcValues = Record<PeriodKey, number>;
 
 export const PERIODS: Record<PeriodKey, { label: string; dias: number }> = {
   mensual: { label: "Mensual", dias: 30 },

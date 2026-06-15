@@ -20,13 +20,15 @@ export async function GET(request: NextRequest) {
 
   const search = params.get("search") ?? "";
   const category = params.get("category") ?? "";
-  const dias = parseInt(params.get("dias") ?? "30", 10);
-  const page = parseInt(params.get("page") ?? "1", 10);
-  const pageSize = parseInt(params.get("pageSize") ?? "30", 10);
+  const dias = Math.min(365, Math.max(1, parseInt(params.get("dias") ?? "30", 10) || 30));
+  const page = Math.max(1, parseInt(params.get("page") ?? "1", 10) || 1);
+  const pageSize = Math.min(200, Math.max(1, parseInt(params.get("pageSize") ?? "30", 10) || 30));
 
   // "eans" viene como string separado por comas: "123,456,789"
   const eansParam = params.get("eans");
-  const eans = eansParam ? eansParam.split(",").filter(Boolean) : undefined;
+  const eans = eansParam
+    ? eansParam.split(",").map((e) => e.trim()).filter((e) => /^\d{1,14}$/.test(e)).slice(0, 200)
+    : undefined;
 
   const products = getProducts({ search, category, dias, eans, page, pageSize });
 
