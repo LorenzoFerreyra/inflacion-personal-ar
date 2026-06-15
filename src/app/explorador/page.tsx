@@ -14,6 +14,7 @@ export default function ExploradorPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistoryData>({ average: [], byChain: {} });
   const [chainPrices, setChainPrices] = useState<ChainPrice[]>([]);
+  const [selectedChains, setSelectedChains] = useState<Set<string>>(new Set());
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   async function selectProduct(product: Product) {
@@ -161,7 +162,7 @@ export default function ExploradorPage() {
                 <h4 className="text-[13px] font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
                   Evoluci&oacute;n de precios
                 </h4>
-                <PriceChart data={priceHistory} />
+                <PriceChart data={priceHistory} selectedChains={selectedChains} />
               </div>
 
               {/* 2x2 chain grid */}
@@ -173,13 +174,27 @@ export default function ExploradorPage() {
                   <div className="grid grid-cols-2 gap-2">
                     {chainPrices.map((c) => {
                       const isCheapest = c.cadena === cheapestChain;
+                      const isSelected = selectedChains.has(c.cadena);
                       return (
                         <div
                           key={c.cadena}
-                          className={`rounded-xl p-3.5 text-center ${
-                            isCheapest
-                              ? "bg-green-500/8 border-2 border-green-500/30"
-                              : "bg-zinc-900/50 border border-zinc-800/50"
+                          onClick={() => {
+                            setSelectedChains((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(c.cadena)) {
+                                next.delete(c.cadena);
+                              } else {
+                                next.add(c.cadena);
+                              }
+                              return next;
+                            });
+                          }}
+                          className={`rounded-xl p-3.5 text-center cursor-pointer transition-all ${
+                            isSelected
+                              ? "ring-2 ring-amber-500/60 bg-amber-500/8 border border-amber-500/30"
+                              : isCheapest
+                                ? "bg-green-500/8 border-2 border-green-500/30"
+                                : "bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/60"
                           }`}
                         >
                           <p className="text-[11px] text-zinc-400 truncate font-medium uppercase tracking-wide">
