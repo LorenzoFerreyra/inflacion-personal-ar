@@ -23,7 +23,7 @@ const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
 export default function MiCanastaPage() {
   const { period, ipc: ipcValues } = usePeriod();
-  const { search, setSearch, category, setCategory, page, setPage, products, categories, loading } = useProducts();
+  const { search, setSearch, category, setCategory, page, setPage, products, totalCount, categories, loading } = useProducts();
 
   const [step, setStep] = useState(1);
   const [basket, setBasket] = useState<Product[]>([]);
@@ -145,6 +145,7 @@ export default function MiCanastaPage() {
             <ProductTable
               products={products}
               page={page}
+              totalCount={totalCount}
               onPageChange={setPage}
               onSelect={addToBasket}
               selectedEans={basketEans}

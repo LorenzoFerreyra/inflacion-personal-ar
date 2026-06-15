@@ -92,6 +92,65 @@ export function getCategories(): Category[] {
  * Soporta filtrado por texto, categoría, y lista de EANs.
  * Paginación con LIMIT/OFFSET.
  */
+export function getProductCount(options: {
+  search?: string;
+  category?: string;
+  dias?: number;
+  eans?: string[];
+}): number {
+  const { search = "", category = "", dias = 30, eans } = options;
+
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (search.trim()) {
+    conditions.push("(cp.product_description LIKE ? OR cp.marca LIKE ?)");
+    params.push(`%${search}%`, `%${search}%`);
+  }
+  if (category.trim()) {
+    conditions.push("cp.categoria = ?");
+    params.push(category);
+  }
+  if (eans && eans.length > 0) {
+    const placeholders = eans.map(() => "?").join(", ");
+    conditions.push(`cp.ean IN (${placeholders})`);
+    params.push(...eans);
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const sql = `
+    WITH
+    precio_actual AS (
+      SELECT ean
+      FROM price_series
+      WHERE fecha = (SELECT MAX(fecha) FROM price_series)
+        AND precio_lista > 0
+      GROUP BY ean
+    ),
+    precio_base AS (
+      SELECT ean
+      FROM price_series
+      WHERE fecha = (
+        SELECT MIN(fecha)
+        FROM price_series
+        WHERE fecha >= DATE('now', '-' || ? || ' days')
+      )
+        AND precio_lista > 0
+      GROUP BY ean
+    )
+    SELECT COUNT(*) AS total
+    FROM precio_actual pa
+    JOIN precio_base pb USING (ean)
+    JOIN canonical_products cp USING (ean)
+    ${whereClause}
+  `;
+
+  const row = prepare(sql).get(dias, ...params) as { total: number };
+  return row.total;
+}
+
 export function getProducts(options: {
   search?: string;
   category?: string;

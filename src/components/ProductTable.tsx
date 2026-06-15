@@ -8,6 +8,7 @@ import ProductImage from "@/components/ProductImage";
 interface Props {
   products: Product[];
   page: number;
+  totalCount: number;
   pageSize?: number;
   onPageChange: (page: number) => void;
   onSelect?: (product: Product) => void;
@@ -18,12 +19,14 @@ interface Props {
 export default function ProductTable({
   products,
   page,
+  totalCount,
   pageSize = PAGE_SIZE,
   onPageChange,
   onSelect,
   selectedEans,
   loading = false,
 }: Props) {
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-zinc-500 gap-3">
@@ -114,34 +117,91 @@ export default function ProductTable({
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between mt-4 px-1">
+      <Pagination page={page} totalPages={totalPages} totalCount={totalCount} onPageChange={onPageChange} />
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  totalCount,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  onPageChange: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const nearby: number[] = [];
+  for (let i = Math.max(1, page - 1); i <= Math.min(totalPages, page + 1); i++) {
+    nearby.push(i);
+  }
+
+  const showFirst = nearby[0] > 1;
+  const showLast = nearby[nearby.length - 1] < totalPages;
+  const gapAfterFirst = nearby[0] > 2;
+  const gapBeforeLast = nearby[nearby.length - 1] < totalPages - 1;
+
+  const pgBtn = (n: number, label?: string) => (
+    <button
+      key={n}
+      onClick={() => onPageChange(n)}
+      className={`h-8 rounded-md text-[13px] font-medium
+        ${label ? "px-3" : "w-8 tabular-nums"}
+        ${
+          n === page
+            ? "bg-amber-500/15 text-amber-300 border border-amber-500/25"
+            : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+        }`}
+    >
+      {label ?? n}
+    </button>
+  );
+
+  return (
+    <div className="flex items-center justify-between mt-5 px-1">
+      <span className="text-[12px] text-zinc-500 tabular-nums font-medium min-w-[120px]">
+        {totalCount.toLocaleString("es-AR")} productos
+      </span>
+
+      <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] rounded-lg font-medium
-                     bg-zinc-900/60 border border-zinc-800/60 text-zinc-300 hover:bg-zinc-800/60 hover:text-zinc-100
-                     disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-100
+                     hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
         >
-          <ChevronLeft size={14} />
-          Anterior
+          <ChevronLeft size={15} />
         </button>
 
-        <span className="text-[13px] text-zinc-500 font-medium">
-          P&aacute;gina {page}
-        </span>
+        {showFirst && pgBtn(1, "Primera")}
+        {gapAfterFirst && (
+          <span className="w-6 h-8 flex items-center justify-center text-[12px] text-zinc-600">&hellip;</span>
+        )}
+
+        {nearby.map((n) => pgBtn(n))}
+
+        {gapBeforeLast && (
+          <span className="w-6 h-8 flex items-center justify-center text-[12px] text-zinc-600">&hellip;</span>
+        )}
+        {showLast && pgBtn(totalPages, "Última")}
 
         <button
-          onClick={() => onPageChange(page + 1)}
-          disabled={products.length < pageSize}
-          className="flex items-center gap-1.5 px-3.5 py-2 text-[13px] rounded-lg font-medium
-                     bg-zinc-900/60 border border-zinc-800/60 text-zinc-300 hover:bg-zinc-800/60 hover:text-zinc-100
-                     disabled:opacity-30 disabled:cursor-not-allowed"
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          disabled={page >= totalPages}
+          className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-100
+                     hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
         >
-          Siguiente
-          <ChevronRight size={14} />
+          <ChevronRight size={15} />
         </button>
       </div>
+
+      <span className="text-[12px] text-zinc-500 tabular-nums font-medium min-w-[120px] text-right">
+        Pág. {page} de {totalPages.toLocaleString("es-AR")}
+      </span>
     </div>
   );
 }

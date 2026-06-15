@@ -8,6 +8,7 @@ const tabs = [
   { href: "/", label: "Mi canasta" },
   { href: "/explorador", label: "Explorador" },
   { href: "/insights", label: "Insights" },
+  { href: "/cobertura", label: "Cobertura" },
 ];
 
 export default function Navigation() {

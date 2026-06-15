@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getProducts } from "@/lib/database";
+import { getProducts, getProductCount } from "@/lib/database";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -30,7 +30,9 @@ export async function GET(request: NextRequest) {
     ? eansParam.split(",").map((e) => e.trim()).filter((e) => /^\d{1,14}$/.test(e)).slice(0, 200)
     : undefined;
 
-  const products = getProducts({ search, category, dias, eans, page, pageSize });
+  const filterOpts = { search, category, dias, eans };
+  const products = getProducts({ ...filterOpts, page, pageSize });
+  const total = getProductCount(filterOpts);
 
-  return NextResponse.json(products);
+  return NextResponse.json({ products, total });
 }

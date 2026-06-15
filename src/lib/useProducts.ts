@@ -13,6 +13,7 @@ export function useProducts() {
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,9 +41,12 @@ export function useProducts() {
       });
       const res = await fetch(`/api/products?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setProducts(await res.json());
+      const data = await res.json();
+      setProducts(data.products);
+      setTotalCount(data.total);
     } catch {
       setProducts([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -56,5 +60,5 @@ export function useProducts() {
     setPage(1);
   }, [debouncedSearch, category, period]);
 
-  return { search, setSearch, category, setCategory, page, setPage, products, categories, loading };
+  return { search, setSearch, category, setCategory, page, setPage, products, totalCount, categories, loading };
 }

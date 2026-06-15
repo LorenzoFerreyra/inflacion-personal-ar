@@ -9,7 +9,7 @@ import { useProducts } from "@/lib/useProducts";
 import { Search } from "@/components/Icons";
 
 export default function ExploradorPage() {
-  const { search, setSearch, category, setCategory, page, setPage, products, categories, loading } = useProducts();
+  const { search, setSearch, category, setCategory, page, setPage, products, totalCount, categories, loading } = useProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistoryData>({ average: [], byChain: {} });
@@ -100,6 +100,7 @@ export default function ExploradorPage() {
         <ProductTable
           products={products}
           page={page}
+          totalCount={totalCount}
           onPageChange={setPage}
           onSelect={selectProduct}
           selectedEans={
