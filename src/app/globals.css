@@ -75,20 +75,54 @@ input:focus, select:focus {
   box-shadow: 0 0 0 2px rgba(217, 166, 78, 0.15);
 }
 
-/* Product image preview float */
-.product-preview-float {
-  animation: previewIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-  pointer-events: none;
+/* Image lightbox overlay */
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: lightboxFadeIn 0.2s ease-out both;
+  cursor: pointer;
 }
 
-@keyframes previewIn {
+.image-lightbox-card {
+  max-width: 420px;
+  width: 90vw;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(63, 63, 70, 0.5);
+  background: rgba(24, 24, 27, 0.97);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  animation: lightboxScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  cursor: default;
+}
+
+.image-lightbox-img {
+  width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+}
+
+@keyframes lightboxFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lightboxScaleIn {
   from {
     opacity: 0;
-    transform: translateX(-4px) scale(0.95);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: scale(1);
   }
 }
 
