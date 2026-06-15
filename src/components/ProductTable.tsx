@@ -3,6 +3,7 @@
 import { Product } from "@/lib/types";
 import { PAGE_SIZE } from "@/lib/constants";
 import { ChevronLeft, ChevronRight, Package } from "@/components/Icons";
+import ProductImage from "@/components/ProductImage";
 
 interface Props {
   products: Product[];
@@ -83,7 +84,14 @@ export default function ProductTable({
                   `}
                 >
                   <td className="py-2.5 px-3 text-zinc-200 font-medium">
-                    {product.product_description}
+                    <div className="flex items-center gap-2.5">
+                      <ProductImage
+                        src={product.image_url}
+                        alt={product.product_description}
+                        marca={product.marca}
+                      />
+                      <span className="truncate">{product.product_description}</span>
+                    </div>
                   </td>
                   <td className="py-2.5 px-3 text-zinc-500 text-[13px]">
                     {product.marca}

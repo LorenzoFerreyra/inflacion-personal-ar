@@ -166,6 +166,7 @@ export function getProducts(options: {
       cp.product_description,
       cp.marca,
       cp.categoria,
+      cp.image_url,
       ROUND(pa.precio_hoy, 0) AS precio_actual,
       ROUND(
         (pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100,

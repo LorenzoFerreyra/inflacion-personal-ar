@@ -75,6 +75,31 @@ input:focus, select:focus {
   box-shadow: 0 0 0 2px rgba(217, 166, 78, 0.15);
 }
 
+/* Product image preview float */
+.product-preview-float {
+  animation: previewIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  pointer-events: none;
+}
+
+@keyframes previewIn {
+  from {
+    opacity: 0;
+    transform: translateX(-4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Pulse for severity dots */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }

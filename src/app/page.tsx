@@ -17,6 +17,7 @@ import {
   ShoppingBasket,
   Sparkles,
 } from "@/components/Icons";
+import ProductImage from "@/components/ProductImage";
 
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
@@ -178,6 +179,11 @@ export default function MiCanastaPage() {
                         className="group flex items-center justify-between bg-zinc-900/50 border border-zinc-800/50
                                    rounded-lg px-3 py-2.5 text-sm hover:border-zinc-700/60"
                       >
+                        <ProductImage
+                          src={p.image_url}
+                          alt={p.product_description}
+                          marca={p.marca}
+                        />
                         <div className="min-w-0 mr-2">
                           <span className="text-zinc-200 truncate block text-[13px] font-medium">
                             {p.product_description}

@@ -11,6 +11,7 @@ export interface Product {
   precio_actual: number;
   variacion_pct: number | null;
   cobertura_cadenas: number;
+  image_url: string | null;
 }
 
 export interface PricePoint {
