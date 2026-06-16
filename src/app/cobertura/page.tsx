@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getBranches } from "@/lib/database";
+import BranchMapLoader from "@/components/BranchMapLoader";
 
 export const metadata: Metadata = {
   title: "Cobertura — Observatorio de inflación",
@@ -19,6 +21,13 @@ const CHAINS = [
 ];
 
 export default function CoberturaPage() {
+  const branches = getBranches();
+
+  const countByChain: Record<string, number> = {};
+  for (const b of branches) {
+    countByChain[b.cadena] = (countByChain[b.cadena] ?? 0) + 1;
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -33,24 +42,10 @@ export default function CoberturaPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-[1fr_320px] gap-6">
-        {/* Map placeholder */}
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden min-h-[560px] flex items-center justify-center">
-          {/* TODO: embed Leaflet / Mapbox map here */}
-          <div className="text-center px-8">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-zinc-800/80 flex items-center justify-center">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-            </div>
-            <p className="text-sm text-zinc-500 font-medium">
-              Mapa de sucursales
-            </p>
-            <p className="text-[12px] text-zinc-600 mt-1">
-              Aquí se integrará un mapa interactivo con la ubicación de todas las sucursales relevadas.
-            </p>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        {/* Map */}
+        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden min-h-[560px]">
+          <BranchMapLoader branches={branches} chains={CHAINS} />
         </div>
 
         {/* Chain list sidebar */}
@@ -67,23 +62,35 @@ export default function CoberturaPage() {
                            hover:border-zinc-700/60"
               >
                 <span
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: chain.color }}
+                  className="w-2.5 h-2.5 flex-shrink-0"
+                  style={{
+                    backgroundColor: chain.color,
+                    borderRadius: "2px",
+                    transform: "rotate(45deg)",
+                    boxShadow: `0 0 4px ${chain.color}80`,
+                  }}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] text-zinc-200 font-medium">
                     {chain.name}
                   </p>
                 </div>
-                <span className="text-[11px] text-zinc-600 font-medium">
-                  {/* placeholder for branch count */}
-                  —
+                <span className="text-[11px] text-zinc-500 tabular font-medium">
+                  {countByChain[chain.id] ?? 0}
                 </span>
               </li>
             ))}
           </ul>
 
           <div className="pt-3 border-t border-zinc-800/40">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-zinc-500">
+                Total sucursales
+              </span>
+              <span className="text-[11px] text-zinc-400 tabular font-semibold">
+                {branches.length}
+              </span>
+            </div>
             <p className="text-[11px] text-zinc-500 leading-relaxed">
               Los datos se actualizan diariamente. La cobertura varía según
               la disponibilidad de catálogos públicos de cada cadena.

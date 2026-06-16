@@ -142,3 +142,22 @@ input:focus, select:focus {
 .pulse-dot {
   animation: pulse-dot 2s ease-in-out infinite;
 }
+
+/* Leaflet popup dark theme */
+.branch-popup .leaflet-popup-content-wrapper {
+  background: rgba(24, 24, 27, 0.95);
+  color: #e4e4e7;
+  border: 1px solid rgba(63, 63, 70, 0.6);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 0;
+}
+.branch-popup .leaflet-popup-content {
+  margin: 10px 14px;
+}
+.branch-popup .leaflet-popup-tip {
+  background: rgba(24, 24, 27, 0.95);
+  border: 1px solid rgba(63, 63, 70, 0.6);
+  border-top: none;
+  border-left: none;
+}

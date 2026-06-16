@@ -39,3 +39,13 @@ export interface Category {
   categoria: string;
   n: number;
 }
+
+export interface Branch {
+  cadena: string;
+  formato: string;
+  direccion: string;
+  latitud: number;
+  longitud: number;
+  provincia: string;
+  localidad: string;
+}

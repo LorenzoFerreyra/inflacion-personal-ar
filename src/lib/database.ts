@@ -9,7 +9,7 @@
 
 import Database from "better-sqlite3";
 import path from "path";
-import type { Product, PricePoint, ChainPrice, Category } from "./types";
+import type { Product, PricePoint, ChainPrice, Category, Branch } from "./types";
 
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
@@ -448,4 +448,14 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
 
   return prepare(sql)
     .all(...eans) as ChainPrice[];
+}
+
+export function getBranches(): Branch[] {
+  const sql = `
+    SELECT cadena, formato, direccion, latitud, longitud, provincia, localidad
+    FROM sucursales
+    WHERE latitud IS NOT NULL AND longitud IS NOT NULL
+    ORDER BY cadena, localidad
+  `;
+  return prepare(sql).all() as Branch[];
 }
