@@ -35,13 +35,7 @@
  */
 
 import { getDb } from "./database";
-import type { PeriodKey } from "./constants";
-
-interface IpcValues {
-  mensual: number;
-  trimestral: number;
-  interanual: number;
-}
+import type { PeriodKey, IpcValues } from "./constants";
 
 const PERIOD_DAYS: Record<PeriodKey, number> = {
   mensual: 30,

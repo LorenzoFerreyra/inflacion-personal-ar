@@ -22,7 +22,7 @@ export default function InsightsPage() {
         pageSize: "200",
       });
       const productsRes = await fetch(`/api/products?${params}`);
-      const allProducts: Product[] = await productsRes.json();
+      const { products: allProducts } = await productsRes.json() as { products: Product[] };
       setProducts(allProducts);
 
       const eans = allProducts.slice(0, 50).map((p) => p.ean);

@@ -14,8 +14,7 @@ import type { Product, PricePoint, ChainPrice, Category } from "./types";
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
 const DB_PATH = path.resolve(
-  process.env.DATABASE_PATH ??
-    "/home/lorenzoferreyra/Documents/Projects/scrapers-uflo/data/prices.db",
+  process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "prices.db"),
 );
 
 /**
@@ -29,8 +28,9 @@ export function getDb(): Database.Database {
     db = new Database(DB_PATH, { readonly: true });
     db.pragma("journal_mode = WAL");
     db.pragma("mmap_size = 268435456"); // 256MB
-    db.function("normalize", (str: string | null) =>
-      str ? str.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() : "",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    db.function("normalize", (str: any) =>
+      str != null ? String(str).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() : "",
     );
   }
   return db;
@@ -65,14 +65,18 @@ const stmtCache = new Map<string, Database.Statement>();
 
 function prepare(sql: string): Database.Statement {
   let stmt = stmtCache.get(sql);
-  if (!stmt) {
-    if (stmtCache.size >= STMT_CACHE_MAX) {
-      const oldest = stmtCache.keys().next().value;
-      if (oldest !== undefined) stmtCache.delete(oldest);
-    }
-    stmt = getDb().prepare(sql);
+  if (stmt) {
+    // Move to end (most recently used) so eviction targets least recently used
+    stmtCache.delete(sql);
     stmtCache.set(sql, stmt);
+    return stmt;
   }
+  if (stmtCache.size >= STMT_CACHE_MAX) {
+    const oldest = stmtCache.keys().next().value;
+    if (oldest !== undefined) stmtCache.delete(oldest);
+  }
+  stmt = getDb().prepare(sql);
+  stmtCache.set(sql, stmt);
   return stmt;
 }
 
@@ -282,7 +286,7 @@ export function getPriceHistory(ean: string): PricePoint[] {
 }
 
 export function getPriceHistoryByChain(
-  ean: string
+  ean: string,
 ): { fecha: string; cadena: string; precio: number }[] {
   const sql = `
     SELECT fecha, cadena, precio_lista AS precio
@@ -302,6 +306,131 @@ export function getPriceHistoryByChain(
  * Precio promedio por cadena de supermercado para un conjunto de EANs.
  * Útil para comparar dónde conviene comprar la canasta.
  */
+export function getProductByEan(ean: string): Product | null {
+  const sql = `
+    WITH
+    precio_actual AS (
+      SELECT ean, AVG(precio_lista) AS precio_hoy
+      FROM price_series
+      WHERE ean = ?
+        AND fecha = (SELECT MAX(fecha) FROM price_series)
+        AND precio_lista > 0
+      GROUP BY ean
+    ),
+    precio_base AS (
+      SELECT ean, AVG(precio_lista) AS precio_antes
+      FROM price_series
+      WHERE ean = ?
+        AND fecha = (
+          SELECT MIN(fecha)
+          FROM price_series
+          WHERE fecha >= DATE('now', '-30 days')
+        )
+        AND precio_lista > 0
+      GROUP BY ean
+    ),
+    cobertura AS (
+      SELECT ean, COUNT(DISTINCT cadena) AS cobertura_cadenas
+      FROM price_series
+      WHERE ean = ?
+        AND fecha = (SELECT MAX(fecha) FROM price_series)
+        AND precio_lista > 0
+      GROUP BY ean
+    )
+    SELECT
+      cp.ean,
+      cp.product_description,
+      cp.marca,
+      cp.categoria,
+      cp.image_url,
+      ROUND(pa.precio_hoy, 0) AS precio_actual,
+      ROUND(
+        (pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100,
+        1
+      ) AS variacion_pct,
+      COALESCE(cob.cobertura_cadenas, 1) AS cobertura_cadenas
+    FROM canonical_products cp
+    LEFT JOIN precio_actual pa ON pa.ean = cp.ean
+    LEFT JOIN precio_base pb ON pb.ean = cp.ean
+    LEFT JOIN cobertura cob ON cob.ean = cp.ean
+    WHERE cp.ean = ?
+  `;
+  const row = getDb().prepare(sql).get(ean, ean, ean, ean) as
+    | Product
+    | undefined;
+  return row ?? null;
+}
+
+export function getPriceStats(ean: string): {
+  min_historico: number;
+  max_historico: number;
+  min_chain: string | null;
+  max_chain: string | null;
+  min_fecha: string;
+  max_fecha: string;
+  dias_datos: number;
+} | null {
+  const sql = `
+    WITH stats AS (
+      SELECT
+        MIN(precio_lista) AS min_historico,
+        MAX(precio_lista) AS max_historico,
+        COUNT(DISTINCT fecha) AS dias_datos
+      FROM price_series
+      WHERE ean = ? AND precio_lista > 0
+    ),
+    min_row AS (
+      SELECT cadena AS min_chain, fecha AS min_fecha
+      FROM price_series
+      WHERE ean = ? AND precio_lista > 0
+      ORDER BY precio_lista ASC
+      LIMIT 1
+    ),
+    max_row AS (
+      SELECT cadena AS max_chain, fecha AS max_fecha
+      FROM price_series
+      WHERE ean = ? AND precio_lista > 0
+      ORDER BY precio_lista DESC
+      LIMIT 1
+    )
+    SELECT
+      s.min_historico, s.max_historico, s.dias_datos,
+      mn.min_chain, mn.min_fecha,
+      mx.max_chain, mx.max_fecha
+    FROM stats s
+    LEFT JOIN min_row mn ON 1=1
+    LEFT JOIN max_row mx ON 1=1
+  `;
+  const row = getDb().prepare(sql).get(ean, ean, ean) as
+    | {
+        min_historico: number;
+        max_historico: number;
+        min_chain: string | null;
+        max_chain: string | null;
+        min_fecha: string;
+        max_fecha: string;
+        dias_datos: number;
+      }
+    | undefined;
+  if (!row || row.min_historico == null) return null;
+  return row;
+}
+
+export function getCategoryPriceHistory(category: string): PricePoint[] {
+  const sql = `
+    SELECT
+      ps.fecha,
+      EXP(AVG(LN(ps.precio_lista))) AS precio_promedio
+    FROM price_series ps
+    JOIN canonical_products cp ON cp.ean = ps.ean
+    WHERE cp.categoria = ?
+      AND ps.precio_lista > 0
+    GROUP BY ps.fecha
+    ORDER BY ps.fecha
+  `;
+  return getDb().prepare(sql).all(category) as PricePoint[];
+}
+
 export function getChainPrices(eans: string[]): ChainPrice[] {
   if (eans.length === 0) return [];
 

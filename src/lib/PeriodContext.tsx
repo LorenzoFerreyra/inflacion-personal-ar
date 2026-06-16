@@ -20,7 +20,8 @@ export function PeriodProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetch("/api/ipc")
       .then((res) => res.json())
-      .then(setIpc);
+      .then(setIpc)
+      .catch(() => {});
   }, []);
 
   return (

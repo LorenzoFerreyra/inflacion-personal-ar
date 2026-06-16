@@ -6,7 +6,8 @@ import PriceChart from "@/components/PriceChart";
 import ChainBarChart from "@/components/ChainBarChart";
 import { Product, PriceHistoryData, ChainPrice } from "@/lib/types";
 import { useProducts } from "@/lib/useProducts";
-import { Search } from "@/components/Icons";
+import { Search, ArrowRight } from "@/components/Icons";
+import Link from "next/link";
 
 export default function ExploradorPage() {
   const { search, setSearch, category, setCategory, page, setPage, products, totalCount, categories, loading } = useProducts();
@@ -160,9 +161,18 @@ export default function ExploradorPage() {
 
               {/* Price history */}
               <div>
-                <h4 className="text-[13px] font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
-                  Evoluci&oacute;n de precios
-                </h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-[13px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    Evoluci&oacute;n de precios
+                  </h4>
+                  <Link
+                    href={`/historial/${selectedProduct.ean}`}
+                    className="flex items-center gap-1 text-[11px] text-amber-400/70 hover:text-amber-300 transition-colors"
+                  >
+                    Ver completo
+                    <ArrowRight size={10} />
+                  </Link>
+                </div>
                 <PriceChart data={priceHistory} selectedChains={selectedChains} />
               </div>
 

@@ -32,8 +32,8 @@
   background: #52525b;
 }
 
-/* Smooth transitions everywhere */
-*, *::before, *::after {
+/* Smooth transitions on interactive elements */
+a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]) {
   transition-property: background-color, border-color, color, opacity, box-shadow;
   transition-duration: 150ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);

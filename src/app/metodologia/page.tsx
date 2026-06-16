@@ -1,4 +1,9 @@
-"use client";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Metodología — Observatorio de inflación",
+  description: "Metodología del cálculo de variación de precios",
+};
 
 export default function MetodologiaPage() {
   return (
@@ -29,7 +34,7 @@ export default function MetodologiaPage() {
           <p className="text-sm text-zinc-400 leading-relaxed">
             La variación porcentual de cada producto se calcula comparando el
             precio más reciente contra el precio registrado al inicio del
-            período seleccionado (7, 30, 90 o 365 días).
+            período seleccionado (30, 90 o 365 días).
           </p>
         </div>
 

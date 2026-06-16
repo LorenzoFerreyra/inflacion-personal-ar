@@ -6,7 +6,20 @@ import { PERIODS, PAGE_SIZE } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
 import { useDebounce } from "@/lib/useDebounce";
 
-export function useProducts() {
+interface UseProductsReturn {
+  search: string;
+  setSearch: React.Dispatch<React.SetStateAction<string>>;
+  category: string;
+  setCategory: React.Dispatch<React.SetStateAction<string>>;
+  page: number;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+  products: Product[];
+  totalCount: number;
+  categories: Category[];
+  loading: boolean;
+}
+
+export function useProducts(): UseProductsReturn {
   const { period } = usePeriod();
 
   const [search, setSearch] = useState("");

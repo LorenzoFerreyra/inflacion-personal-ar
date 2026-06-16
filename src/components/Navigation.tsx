@@ -8,6 +8,7 @@ import { PERIODS, PeriodKey } from "@/lib/constants";
 const tabs = [
   { href: "/", label: "Mi canasta" },
   { href: "/explorador", label: "Explorador" },
+  { href: "/historial", label: "Historial" },
   { href: "/insights", label: "Insights" },
   { href: "/cobertura", label: "Cobertura" },
   { href: "/metodologia", label: "Metodología" },

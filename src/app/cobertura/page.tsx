@@ -1,4 +1,4 @@
-"use client";
+import type { Metadata } from "next";
 
 const CHAINS = [
   { id: "carrefour", name: "Carrefour", color: "#1a56db" },

@@ -75,9 +75,9 @@ export default function ChainBarChart({ data, height = 250 }: Props) {
           cursor={{ fill: "rgba(255,255,255,0.04)" }}
         />
         <Bar dataKey="total_canasta" radius={[0, 6, 6, 0]}>
-          {data.map((_, index) => (
+          {data.map((item, index) => (
             <Cell
-              key={index}
+              key={item.cadena}
               fill={BAR_COLORS[Math.min(index, BAR_COLORS.length - 1)]}
               fillOpacity={0.85}
             />

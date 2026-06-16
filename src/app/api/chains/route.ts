@@ -14,11 +14,15 @@ export async function GET(request: NextRequest) {
   if (!eansParam) {
     return NextResponse.json(
       { error: "El parámetro 'eans' es requerido" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  const eans = eansParam.split(",").filter(Boolean);
+  const eans = eansParam
+    .split(",")
+    .map((e) => e.trim())
+    .filter((e) => /^\d{1,14}$/.test(e))
+    .slice(0, 200);
   const chains = getChainPrices(eans);
 
   return NextResponse.json(chains);

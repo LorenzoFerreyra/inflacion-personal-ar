@@ -35,6 +35,11 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [imgError, setImgError] = useState(false);
 
+  // Reset error state when the image source changes
+  useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
   const px = size === "sm" ? 28 : 36;
   const hasImage = src && !imgError;
 
@@ -92,31 +97,26 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
         )}
       </div>
 
-      {expanded && hasImage && createPortal(
-        <div
-          className="image-lightbox"
-          onClick={close}
-        >
-          <div
-            className="image-lightbox-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt={alt}
-              className="image-lightbox-img"
-            />
-            <div className="px-4 py-3 border-t border-zinc-800/60">
-              <p className="text-[13px] text-zinc-200 font-medium leading-snug line-clamp-2">
-                {alt}
-              </p>
-              <p className="text-[11px] text-zinc-500 mt-1">{marca}</p>
+      {expanded &&
+        hasImage &&
+        createPortal(
+          <div className="image-lightbox" onClick={close}>
+            <div
+              className="image-lightbox-card"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={alt} className="image-lightbox-img" />
+              <div className="px-4 py-3 border-t border-zinc-800/60">
+                <p className="text-[13px] text-zinc-200 font-medium leading-snug line-clamp-2">
+                  {alt}
+                </p>
+                <p className="text-[11px] text-zinc-500 mt-1">{marca}</p>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

@@ -23,7 +23,18 @@ const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
 export default function MiCanastaPage() {
   const { period, ipc: ipcValues } = usePeriod();
-  const { search, setSearch, category, setCategory, page, setPage, products, totalCount, categories, loading } = useProducts();
+  const {
+    search,
+    setSearch,
+    category,
+    setCategory,
+    page,
+    setPage,
+    products,
+    totalCount,
+    categories,
+    loading,
+  } = useProducts();
 
   const [step, setStep] = useState(1);
   const [basket, setBasket] = useState<Product[]>([]);
@@ -64,9 +75,10 @@ export default function MiCanastaPage() {
         fetch(`/api/chains?eans=${eans.join(",")}`),
       ]);
 
-      if (!productsRes.ok || !chainsRes.ok) throw new Error("Error al obtener datos");
+      if (!productsRes.ok || !chainsRes.ok)
+        throw new Error("Error al obtener datos");
 
-      const basketProducts: Product[] = await productsRes.json();
+      const { products: basketProducts } = await productsRes.json() as { products: Product[] };
       const chains: ChainPrice[] = await chainsRes.json();
 
       const validVariations = basketProducts
