@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, use } from "react";
 import { Product, PriceHistoryData, ChainPrice, PricePoint } from "@/lib/types";
 import PriceChart from "@/components/PriceChart";
 import ProductImage from "@/components/ProductImage";
-import { ArrowLeft, TrendingUp } from "@/components/Icons";
+import { ArrowLeft, TrendingUp, Download } from "@/components/Icons";
+import { downloadCsv } from "@/lib/exportCsv";
 import Link from "next/link";
 
 interface PriceStats {
@@ -362,9 +363,31 @@ export default function HistorialProductPage({
       {/* Price history table */}
       {priceTable.length > 0 && (
         <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-zinc-200 uppercase tracking-wider mb-4">
-            Tabla de precios
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+              Tabla de precios
+            </h2>
+            <button
+              onClick={() => {
+                const chains = allChains.slice(0, 6);
+                downloadCsv(
+                  `historial-${product.product_description.replace(/\s+/g, "-").toLowerCase()}.csv`,
+                  ["Fecha", "Promedio", ...chains],
+                  priceTable.map((row) => [
+                    row.fecha,
+                    String(row.precio),
+                    ...chains.map((c) => (row.cadenas[c] != null ? String(row.cadenas[c]) : "")),
+                  ])
+                );
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium
+                         text-zinc-400 border border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60
+                         transition-all"
+            >
+              <Download size={13} />
+              Exportar Excel
+            </button>
+          </div>
           <div className="overflow-x-auto rounded-lg border border-zinc-800/40">
             <table className="w-full text-sm">
               <thead>

@@ -6,6 +6,8 @@ import ChainBarChart from "@/components/ChainBarChart";
 import { Product, ChainPrice } from "@/lib/types";
 import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
+import { Download } from "@/components/Icons";
+import { downloadCsv } from "@/lib/exportCsv";
 
 export default function InsightsPage() {
   const { period, ipc: ipcValues } = usePeriod();
