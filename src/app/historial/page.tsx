@@ -9,6 +9,7 @@ import { Search, TrendingUp, ArrowRight } from "@/components/Icons";
 import ProductImage from "@/components/ProductImage";
 import Link from "next/link";
 import PriceChart from "@/components/PriceChart";
+import Pagination from "@/components/Pagination";
 import {
   ResponsiveContainer,
   LineChart,
@@ -242,29 +243,13 @@ export default function HistorialPage() {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <button
-            onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page <= 1}
-            className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-zinc-100
-                       hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
-          >
-            Anterior
-          </button>
-          <span className="text-sm text-zinc-500 tabular-nums">
-            {page} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(Math.min(totalPages, page + 1))}
-            disabled={page >= totalPages}
-            className="px-3 py-1.5 rounded-lg text-sm text-zinc-400 hover:text-zinc-100
-                       hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
-          >
-            Siguiente
-          </button>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        onPageChange={setPage}
+        label="productos"
+      />
     </div>
   );
 }
