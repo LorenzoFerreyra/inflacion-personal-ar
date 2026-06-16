@@ -27,11 +27,32 @@ let db: Database.Database | null = null;
 export function getDb(): Database.Database {
   if (!db) {
     db = new Database(DB_PATH, { readonly: true });
-    // Performance: WAL mode + memory-mapped I/O
     db.pragma("journal_mode = WAL");
     db.pragma("mmap_size = 268435456"); // 256MB
+    db.function("normalize", (str: string | null) =>
+      str ? str.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() : "",
+    );
   }
   return db;
+}
+
+function stripDiacritics(str: string): string {
+  return str.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function buildSearchConditions(
+  search: string,
+  conditions: string[],
+  params: (string | number)[],
+) {
+  const tokens = search.trim().split(/\s+/).filter(Boolean);
+  for (const token of tokens) {
+    conditions.push(
+      "(normalize(cp.product_description) LIKE ? OR normalize(cp.marca) LIKE ?)",
+    );
+    const pattern = `%${stripDiacritics(token)}%`;
+    params.push(pattern, pattern);
+  }
 }
 
 /**
@@ -104,8 +125,7 @@ export function getProductCount(options: {
   const params: (string | number)[] = [];
 
   if (search.trim()) {
-    conditions.push("(cp.product_description LIKE ? OR cp.marca LIKE ?)");
-    params.push(`%${search}%`, `%${search}%`);
+    buildSearchConditions(search, conditions, params);
   }
   if (category.trim()) {
     conditions.push("cp.categoria = ?");
@@ -173,8 +193,7 @@ export function getProducts(options: {
   const params: (string | number)[] = [];
 
   if (search.trim()) {
-    conditions.push("(cp.product_description LIKE ? OR cp.marca LIKE ?)");
-    params.push(`%${search}%`, `%${search}%`);
+    buildSearchConditions(search, conditions, params);
   }
 
   if (category.trim()) {
