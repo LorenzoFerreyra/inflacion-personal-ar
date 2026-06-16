@@ -3,10 +3,11 @@ import { getBranches } from "@/lib/database";
 import BranchMapLoader from "@/components/BranchMapLoader";
 
 export const metadata: Metadata = {
-  title: "Cobertura — Observatorio de inflación",
+  title: "Cobertura del observatorio de inflación",
   description: "Cadenas de supermercados relevadas",
 };
-
+// to do: avoid hardcoded values for supermarkets and pull from database
+// this entails modifying the original schema
 const CHAINS = [
   { id: "carrefour", name: "Carrefour", color: "#1a56db" },
   { id: "coto", name: "Coto", color: "#dc2626" },
@@ -92,8 +93,8 @@ export default function CoberturaPage() {
               </span>
             </div>
             <p className="text-[11px] text-zinc-500 leading-relaxed">
-              Los datos se actualizan diariamente. La cobertura varía según
-              la disponibilidad de catálogos públicos de cada cadena.
+              Los datos se actualizan diariamente. La cobertura varía según la
+              disponibilidad de catálogos públicos de cada cadena.
             </p>
           </div>
         </div>
