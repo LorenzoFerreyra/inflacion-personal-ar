@@ -14,26 +14,38 @@ export default function InsightsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
       setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          dias: String(PERIODS[period].dias),
+          pageSize: "200",
+        });
+        const productsRes = await fetch(`/api/products?${params}`);
+        if (!productsRes.ok) throw new Error(`HTTP ${productsRes.status}`);
+        const { products: allProducts } = await productsRes.json() as { products: Product[]; total: number };
+        if (cancelled) return;
+        setProducts(allProducts);
 
-      const params = new URLSearchParams({
-        dias: String(PERIODS[period].dias),
-        pageSize: "200",
-      });
-      const productsRes = await fetch(`/api/products?${params}`);
-      const { products: allProducts } = await productsRes.json() as { products: Product[] };
-      setProducts(allProducts);
-
-      const eans = allProducts.slice(0, 50).map((p) => p.ean);
-      if (eans.length > 0) {
-        const chainsRes = await fetch(`/api/chains?eans=${eans.join(",")}`);
-        setChains(await chainsRes.json());
+        const eans = allProducts.slice(0, 50).map((p) => p.ean);
+        if (eans.length > 0) {
+          const chainsRes = await fetch(`/api/chains?eans=${eans.join(",")}`);
+          if (!chainsRes.ok) throw new Error(`HTTP ${chainsRes.status}`);
+          const chainsData = await chainsRes.json() as ChainPrice[];
+          if (!cancelled) setChains(chainsData);
+        }
+      } catch {
+        if (!cancelled) {
+          setProducts([]);
+          setChains([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-
-      setLoading(false);
     }
     load();
+    return () => { cancelled = true; };
   }, [period]);
 
   const ipcValue = ipcValues[period];

@@ -78,7 +78,7 @@ export default function MiCanastaPage() {
       if (!productsRes.ok || !chainsRes.ok)
         throw new Error("Error al obtener datos");
 
-      const { products: basketProducts } = await productsRes.json() as { products: Product[] };
+      const { products: basketProducts } = await productsRes.json() as { products: Product[]; total: number };
       const chains: ChainPrice[] = await chainsRes.json();
 
       const validVariations = basketProducts

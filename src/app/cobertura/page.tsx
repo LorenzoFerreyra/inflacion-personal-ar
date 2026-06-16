@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 
+export const metadata: Metadata = {
+  title: "Cobertura — Observatorio de inflación",
+  description: "Cadenas de supermercados relevadas",
+};
+
 const CHAINS = [
   { id: "carrefour", name: "Carrefour", color: "#1a56db" },
   { id: "coto", name: "Coto", color: "#dc2626" },

@@ -29,7 +29,7 @@ export function getDb(): Database.Database {
     db.pragma("journal_mode = WAL");
     db.pragma("mmap_size = 268435456"); // 256MB
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    db.function("normalize", (str: any) =>
+    db.function("normalize", (str: unknown) =>
       str != null ? String(str).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() : "",
     );
   }
@@ -86,8 +86,7 @@ function prepare(sql: string): Database.Statement {
  * Devuelve la fecha más reciente con datos de precios.
  */
 export function getLatestDate(): string | null {
-  const row = getDb()
-    .prepare("SELECT MAX(fecha) AS fecha FROM price_series")
+  const row = prepare("SELECT MAX(fecha) AS fecha FROM price_series")
     .get() as { fecha: string | null } | undefined;
   return row?.fecha ?? null;
 }
@@ -96,14 +95,13 @@ export function getLatestDate(): string | null {
  * Lista de categorías con cantidad de productos en cada una.
  */
 export function getCategories(): Category[] {
-  return getDb()
-    .prepare(
-      `SELECT categoria, COUNT(*) AS n
-       FROM canonical_products
-       WHERE categoria IS NOT NULL AND categoria != ''
-       GROUP BY categoria
-       ORDER BY categoria`,
-    )
+  return prepare(
+    `SELECT categoria, COUNT(*) AS n
+     FROM canonical_products
+     WHERE categoria IS NOT NULL AND categoria != ''
+     GROUP BY categoria
+     ORDER BY categoria`,
+  )
     .all() as Category[];
 }
 
@@ -282,7 +280,7 @@ export function getPriceHistory(ean: string): PricePoint[] {
     GROUP BY fecha
     ORDER BY fecha
   `;
-  return getDb().prepare(sql).all(ean) as PricePoint[];
+  return prepare(sql).all(ean) as PricePoint[];
 }
 
 export function getPriceHistoryByChain(
@@ -295,7 +293,7 @@ export function getPriceHistoryByChain(
       AND precio_lista > 0
     ORDER BY fecha, cadena
   `;
-  return getDb().prepare(sql).all(ean) as {
+  return prepare(sql).all(ean) as {
     fecha: string;
     cadena: string;
     precio: number;
@@ -355,7 +353,7 @@ export function getProductByEan(ean: string): Product | null {
     LEFT JOIN cobertura cob ON cob.ean = cp.ean
     WHERE cp.ean = ?
   `;
-  const row = getDb().prepare(sql).get(ean, ean, ean, ean) as
+  const row = prepare(sql).get(ean, ean, ean, ean) as
     | Product
     | undefined;
   return row ?? null;
@@ -401,7 +399,7 @@ export function getPriceStats(ean: string): {
     LEFT JOIN min_row mn ON 1=1
     LEFT JOIN max_row mx ON 1=1
   `;
-  const row = getDb().prepare(sql).get(ean, ean, ean) as
+  const row = prepare(sql).get(ean, ean, ean) as
     | {
         min_historico: number;
         max_historico: number;
@@ -428,7 +426,7 @@ export function getCategoryPriceHistory(category: string): PricePoint[] {
     GROUP BY ps.fecha
     ORDER BY ps.fecha
   `;
-  return getDb().prepare(sql).all(category) as PricePoint[];
+  return prepare(sql).all(category) as PricePoint[];
 }
 
 export function getChainPrices(eans: string[]): ChainPrice[] {
@@ -448,7 +446,6 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
     ORDER BY total_canasta
   `;
 
-  return getDb()
-    .prepare(sql)
+  return prepare(sql)
     .all(...eans) as ChainPrice[];
 }

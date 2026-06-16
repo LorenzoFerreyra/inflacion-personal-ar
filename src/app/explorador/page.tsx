@@ -20,6 +20,7 @@ export default function ExploradorPage() {
 
   async function selectProduct(product: Product) {
     setSelectedProduct(product);
+    setSelectedChains(new Set());
     setLoadingDetail(true);
 
     try {
