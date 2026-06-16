@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { Branch } from "@/lib/types";
+import type { Map } from "leaflet";
 
 interface Props {
   branches: Branch[];
@@ -12,11 +13,14 @@ const CHAIN_COLORS: Record<string, string> = {};
 
 export default function BranchMap({ branches, chains }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const leafletMap = useRef<any>(null);
+  const leafletMap = useRef<Map | null>(null);
   const [ready, setReady] = useState(false);
 
-  for (const c of chains) CHAIN_COLORS[c.id] = c.color;
+  const chainColors = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of chains) map[c.id] = c.color;
+    return map;
+  }, [chains]);
 
   useEffect(() => {
     if (!mapRef.current || leafletMap.current) return;
@@ -47,7 +51,7 @@ export default function BranchMap({ branches, chains }: Props) {
       ).addTo(map);
 
       for (const b of branches) {
-        const color = CHAIN_COLORS[b.cadena] ?? "#888";
+        const color = chainColors[b.cadena] ?? "#888";
         const icon = L.divIcon({
           className: "",
           html: `<div style="
@@ -94,7 +98,7 @@ export default function BranchMap({ branches, chains }: Props) {
   }, [branches]);
 
   return (
-    <div className="relative w-full h-full min-h-[560px]">
+    <div className="relative w-full h-full min-h-140">
       <div ref={mapRef} className="absolute inset-0 rounded-xl" />
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import DataFlowDiagram from "@/components/DataFlowDiagram";
 
 export const metadata: Metadata = {
   title: "Metodología — Observatorio de inflación",
@@ -66,6 +67,8 @@ export default function MetodologiaPage() {
           </p>
         </div>
       </div>
+
+      <DataFlowDiagram />
     </div>
   );
 }

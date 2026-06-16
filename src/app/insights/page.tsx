@@ -100,13 +100,13 @@ export default function InsightsPage() {
           label="Mayor suba"
           value={maxUp ? `+${maxUp.variacion_pct}%` : "—"}
           subtitle={maxUp?.product_description}
-          color="red"
+          color="green"
         />
         <KpiCard
           label="Mayor baja"
           value={maxDown ? `${maxDown.variacion_pct}%` : "—"}
           subtitle={maxDown?.product_description}
-          color="green"
+          color="red"
         />
       </div>
 
@@ -212,8 +212,8 @@ export default function InsightsPage() {
                       <span
                         className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold tabular-nums ${
                           p.delta_pp > 0
-                            ? "bg-red-500/10 text-red-400"
-                            : "bg-green-500/10 text-green-400"
+                            ? "bg-green-500/10 text-green-400"
+                            : "bg-red-500/10 text-red-400"
                         }`}
                       >
                         {p.delta_pp > 0 ? "+" : ""}

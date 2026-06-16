@@ -21,13 +21,18 @@ const DB_PATH = path.resolve(
  * Singleton: una sola conexión reutilizada entre requests.
  * better-sqlite3 es sincrónico, ideal para Next.js API routes.
  */
-let db: Database.Database | null = null;
+const globalForDb = globalThis as unknown as {
+  __db: Database.Database | undefined;
+};
+
+let db = globalForDb.__db;
 
 export function getDb(): Database.Database {
   if (!db) {
     db = new Database(DB_PATH, { readonly: true });
     db.pragma("journal_mode = WAL");
     db.pragma("mmap_size = 268435456"); // 256MB
+    globalForDb.__db = db;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     db.function("normalize", (str: unknown) =>
       str != null ? String(str).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() : "",

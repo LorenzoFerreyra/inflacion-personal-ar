@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 
 interface Props {
   src: string | null;
@@ -35,10 +36,11 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  // Reset error state when the image source changes
-  useEffect(() => {
+  const [prevSrc, setPrevSrc] = useState(src);
+  if (src !== prevSrc) {
+    setPrevSrc(src);
     setImgError(false);
-  }, [src]);
+  }
 
   const px = size === "sm" ? 28 : 36;
   const hasImage = src && !imgError;
@@ -63,7 +65,7 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
   return (
     <>
       <div
-        className="relative flex-shrink-0"
+        className="relative shrink-0"
         onClick={handleClick}
         style={{ cursor: hasImage ? "pointer" : "default" }}
       >
@@ -72,14 +74,12 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
             className="rounded-md overflow-hidden border border-zinc-700/40 bg-zinc-800/60"
             style={{ width: px, height: px }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={src}
               alt={alt}
               width={px}
               height={px}
               className="object-cover w-full h-full"
-              loading="lazy"
               onError={() => setImgError(true)}
             />
           </div>
@@ -105,8 +105,13 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
               className="image-lightbox-card"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt={alt} className="image-lightbox-img" />
+              <Image
+                src={src}
+                alt={alt}
+                width={600}
+                height={600}
+                className="image-lightbox-img"
+              />
               <div className="px-4 py-3 border-t border-zinc-800/60">
                 <p className="text-[13px] text-zinc-200 font-medium leading-snug line-clamp-2">
                   {alt}

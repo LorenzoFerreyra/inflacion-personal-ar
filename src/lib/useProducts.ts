@@ -22,13 +22,37 @@ interface UseProductsReturn {
 export function useProducts(): UseProductsReturn {
   const { period } = usePeriod();
 
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, _setSearch] = useState("");
+  const [category, _setCategory] = useState("");
+  const [page, _setPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [prevPeriod, setPrevPeriod] = useState(period);
+  if (period !== prevPeriod) {
+    setPrevPeriod(period);
+    setLoading(true);
+    _setPage(1);
+  }
+
+  const setSearch = useCallback((val: React.SetStateAction<string>) => {
+    setLoading(true);
+    _setSearch(val);
+    _setPage(1);
+  }, []);
+
+  const setCategory = useCallback((val: React.SetStateAction<string>) => {
+    setLoading(true);
+    _setCategory(val);
+    _setPage(1);
+  }, []);
+
+  const setPage = useCallback((val: React.SetStateAction<number>) => {
+    setLoading(true);
+    _setPage(val);
+  }, []);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -43,7 +67,6 @@ export function useProducts(): UseProductsReturn {
   }, []);
 
   const fetchProducts = useCallback(async () => {
-    setLoading(true);
     try {
       const params = new URLSearchParams({
         search: debouncedSearch,
@@ -68,10 +91,6 @@ export function useProducts(): UseProductsReturn {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, category, period]);
 
   return { search, setSearch, category, setCategory, page, setPage, products, totalCount, categories, loading };
 }

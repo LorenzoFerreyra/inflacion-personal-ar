@@ -46,6 +46,7 @@ export default function MiCanastaPage() {
     chains: ChainPrice[];
   } | null>(null);
   const [calculating, setCalculating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function addToBasket(product: Product) {
     setBasket((prev) => {
@@ -61,6 +62,7 @@ export default function MiCanastaPage() {
   async function calculate() {
     if (basket.length === 0) return;
     setCalculating(true);
+    setError(null);
 
     try {
       const eans = basket.map((p) => p.ean);
@@ -103,6 +105,8 @@ export default function MiCanastaPage() {
       });
 
       setStep(3);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al obtener datos");
     } finally {
       setCalculating(false);
     }
@@ -166,7 +170,7 @@ export default function MiCanastaPage() {
           </div>
 
           {/* Basket sidebar */}
-          <div className="w-80 flex-shrink-0">
+          <div className="w-80 shrink-0">
             <div className="sticky top-24">
               <h2 className="text-lg font-semibold text-zinc-100 mb-4">
                 Tu canasta
@@ -185,7 +189,7 @@ export default function MiCanastaPage() {
                 </div>
               ) : (
                 <>
-                  <ul className="space-y-2 mb-4 max-h-[420px] overflow-y-auto pr-1">
+                  <ul className="space-y-2 mb-4 max-h-105 overflow-y-auto pr-1">
                     {basket.map((p) => (
                       <li
                         key={p.ean}
@@ -207,8 +211,8 @@ export default function MiCanastaPage() {
                               <span
                                 className={`ml-2 font-medium ${
                                   p.variacion_pct > 0
-                                    ? "text-red-400/80"
-                                    : "text-green-400/80"
+                                    ? "text-green-400/80"
+                                    : "text-red-400/80"
                                 }`}
                               >
                                 {p.variacion_pct > 0 ? "+" : ""}
@@ -219,7 +223,7 @@ export default function MiCanastaPage() {
                         </div>
                         <button
                           onClick={() => removeFromBasket(p.ean)}
-                          className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                          className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 shrink-0"
                         >
                           <X size={14} />
                         </button>
@@ -294,8 +298,8 @@ export default function MiCanastaPage() {
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-semibold ${
                             p.variacion_pct > 0
-                              ? "bg-red-500/10 text-red-400"
-                              : "bg-green-500/10 text-green-400"
+                              ? "bg-green-500/10 text-green-400"
+                              : "bg-red-500/10 text-red-400"
                           }`}
                         >
                           {p.variacion_pct > 0 ? "+" : ""}
@@ -320,7 +324,7 @@ export default function MiCanastaPage() {
           </div>
 
           {/* Summary */}
-          <div className="bg-gradient-to-br from-zinc-800/40 to-zinc-800/20 border border-zinc-700/40 rounded-xl p-6 mb-6">
+          <div className="bg-linear-to-br from-zinc-800/40 to-zinc-800/20 border border-zinc-700/40 rounded-xl p-6 mb-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[13px] text-zinc-400 font-medium">
@@ -371,6 +375,11 @@ export default function MiCanastaPage() {
               )}
             </button>
           </div>
+          {error && (
+            <p className="text-red-400 text-sm mt-4 text-center">
+              {error}
+            </p>
+          )}
         </div>
       )}
 
@@ -382,7 +391,7 @@ export default function MiCanastaPage() {
               label="Tu inflaci&oacute;n personal"
               value={`${result.personal}%`}
               subtitle={PERIODS[period].label.toLowerCase()}
-              color={result.personal > result.ipc ? "red" : "green"}
+              color={result.personal > result.ipc ? "green" : "red"}
             />
             <KpiCard
               label="IPC oficial"
@@ -395,7 +404,7 @@ export default function MiCanastaPage() {
               subtitle={
                 result.diff > 0 ? "por encima del IPC" : "por debajo del IPC"
               }
-              color={result.diff > 0 ? "red" : "green"}
+              color={result.diff > 0 ? "green" : "red"}
             />
           </div>
 
@@ -437,8 +446,8 @@ export default function MiCanastaPage() {
                             <span
                               className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold ${
                                 p.variacion_pct > 0
-                                  ? "bg-red-500/10 text-red-400"
-                                  : "bg-green-500/10 text-green-400"
+                                  ? "bg-green-500/10 text-green-400"
+                                  : "bg-red-500/10 text-red-400"
                               }`}
                             >
                               {p.variacion_pct > 0 ? "+" : ""}
