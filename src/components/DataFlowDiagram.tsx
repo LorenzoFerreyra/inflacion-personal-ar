@@ -277,21 +277,6 @@ export default function DataFlowDiagram() {
         </svg>
       </div>
 
-      {/* Source chains grid */}
-      <div className="pt-2">
-        <div className="flex flex-wrap gap-2 justify-center">
-          {CHAINS.map((chain) => (
-            <span
-              key={chain}
-              className="px-3 py-1.5 rounded-lg bg-zinc-800/80 border border-zinc-700/40 text-xs text-zinc-400 font-medium
-                hover:border-amber-400/30 hover:text-amber-300/80 transition-all duration-200 cursor-default"
-            >
-              {chain}
-            </span>
-          ))}
-        </div>
-      </div>
-
       {/* Detail panel */}
       <div
         className={`overflow-hidden transition-all duration-500 ${
