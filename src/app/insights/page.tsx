@@ -6,8 +6,6 @@ import ChainBarChart from "@/components/ChainBarChart";
 import { Product, ChainPrice } from "@/lib/types";
 import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
-import { Download } from "@/components/Icons";
-import { downloadCsv } from "@/lib/exportCsv";
 
 export default function InsightsPage() {
   const { period, ipc: ipcValues } = usePeriod();
@@ -26,7 +24,10 @@ export default function InsightsPage() {
         });
         const productsRes = await fetch(`/api/products?${params}`);
         if (!productsRes.ok) throw new Error(`HTTP ${productsRes.status}`);
-        const { products: allProducts } = await productsRes.json() as { products: Product[]; total: number };
+        const { products: allProducts } = (await productsRes.json()) as {
+          products: Product[];
+          total: number;
+        };
         if (cancelled) return;
         setProducts(allProducts);
 
@@ -34,7 +35,7 @@ export default function InsightsPage() {
         if (eans.length > 0) {
           const chainsRes = await fetch(`/api/chains?eans=${eans.join(",")}`);
           if (!chainsRes.ok) throw new Error(`HTTP ${chainsRes.status}`);
-          const chainsData = await chainsRes.json() as ChainPrice[];
+          const chainsData = (await chainsRes.json()) as ChainPrice[];
           if (!cancelled) setChains(chainsData);
         }
       } catch {
@@ -47,7 +48,9 @@ export default function InsightsPage() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [period]);
 
   const ipcValue = ipcValues[period];

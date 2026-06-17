@@ -3,17 +3,30 @@
 import { useState } from "react";
 import ProductTable from "@/components/ProductTable";
 import PriceChart from "@/components/PriceChart";
-import ChainBarChart from "@/components/ChainBarChart";
 import { Product, PriceHistoryData, ChainPrice } from "@/lib/types";
 import { useProducts } from "@/lib/useProducts";
 import { Search, ArrowRight } from "@/components/Icons";
 import Link from "next/link";
 
 export default function ExploradorPage() {
-  const { search, setSearch, category, setCategory, page, setPage, products, totalCount, categories, loading } = useProducts();
+  const {
+    search,
+    setSearch,
+    category,
+    setCategory,
+    page,
+    setPage,
+    products,
+    totalCount,
+    categories,
+    loading,
+  } = useProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [priceHistory, setPriceHistory] = useState<PriceHistoryData>({ average: [], byChain: {} });
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryData>({
+    average: [],
+    byChain: {},
+  });
   const [chainPrices, setChainPrices] = useState<ChainPrice[]>([]);
   const [selectedChains, setSelectedChains] = useState<Set<string>>(new Set());
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -29,7 +42,8 @@ export default function ExploradorPage() {
         fetch(`/api/chains?eans=${product.ean}`),
       ]);
 
-      if (!historyRes.ok || !chainsRes.ok) throw new Error("Error al obtener detalle");
+      if (!historyRes.ok || !chainsRes.ok)
+        throw new Error("Error al obtener detalle");
 
       setPriceHistory(await historyRes.json());
       setChainPrices(await chainsRes.json());
@@ -58,7 +72,10 @@ export default function ExploradorPage() {
 
         {/* Search bar */}
         <div className="relative mb-3">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Search
+            size={15}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
+          />
           <input
             type="text"
             placeholder="Buscar por nombre o marca..."
@@ -121,7 +138,11 @@ export default function ExploradorPage() {
 
           {!selectedProduct ? (
             <div className="rounded-xl border-2 border-dashed border-zinc-800/60 p-10 text-center">
-              <Search size={36} strokeWidth={1.2} className="mx-auto text-zinc-700 mb-3" />
+              <Search
+                size={36}
+                strokeWidth={1.2}
+                className="mx-auto text-zinc-700 mb-3"
+              />
               <p className="text-sm text-zinc-500">
                 Seleccion&aacute; un producto para ver su detalle.
               </p>
@@ -174,7 +195,10 @@ export default function ExploradorPage() {
                     <ArrowRight size={10} />
                   </Link>
                 </div>
-                <PriceChart data={priceHistory} selectedChains={selectedChains} />
+                <PriceChart
+                  data={priceHistory}
+                  selectedChains={selectedChains}
+                />
               </div>
 
               {/* 2x2 chain grid */}
