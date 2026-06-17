@@ -37,8 +37,8 @@ describe("products route parameter parsing", () => {
       expect(parseDias("0")).toBe(30);
     });
 
-    it("treats negative as invalid and falls back to 30", () => {
-      expect(parseDias("-10")).toBe(30);
+    it("clamps negative values to 1", () => {
+      expect(parseDias("-10")).toBe(1);
     });
 
     it("clamps to maximum 365", () => {

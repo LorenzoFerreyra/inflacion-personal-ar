@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import Pagination from "@/components/Pagination";
+
+afterEach(cleanup);
 
 describe("Pagination", () => {
   const defaults = {
@@ -35,18 +37,20 @@ describe("Pagination", () => {
 
   it("calls onPageChange when clicking a page button", () => {
     const onPageChange = vi.fn();
-    render(<Pagination {...defaults} page={1} onPageChange={onPageChange} />);
+    const { container } = render(<Pagination {...defaults} page={1} onPageChange={onPageChange} />);
 
-    fireEvent.click(screen.getByText("2"));
+    const buttons = within(container).getAllByRole("button");
+    // buttons: [back, 1(active), 2, Última, forward]
+    fireEvent.click(buttons[2]);
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
   it("calls onPageChange with previous page on back button", () => {
     const onPageChange = vi.fn();
-    render(<Pagination {...defaults} page={3} onPageChange={onPageChange} />);
+    const { container } = render(<Pagination {...defaults} page={3} onPageChange={onPageChange} />);
 
-    const backButton = screen.getAllByRole("button")[0];
-    fireEvent.click(backButton);
+    const buttons = within(container).getAllByRole("button");
+    fireEvent.click(buttons[0]);
     expect(onPageChange).toHaveBeenCalledWith(2);
   });
 
