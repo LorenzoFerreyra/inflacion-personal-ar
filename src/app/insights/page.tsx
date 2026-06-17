@@ -115,10 +115,27 @@ export default function InsightsPage() {
       <div className="grid grid-cols-3 gap-6">
         {/* Alerts */}
         <div>
-          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-red-400/70 flex-shrink-0" />
-            Alertas de precio
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
+              <span className="w-0.5 h-4 rounded-full bg-red-400/70 flex-shrink-0" />
+              Alertas de precio
+            </h3>
+            <button
+              onClick={() =>
+                downloadCsv(
+                  "alertas-precio.csv",
+                  ["Producto", "Variación %"],
+                  alerts.map((p) => [p.product_description, String(p.variacion_pct ?? "")])
+                )
+              }
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium
+                         text-zinc-500 border border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60
+                         transition-all"
+            >
+              <Download size={11} />
+              Excel
+            </button>
+          </div>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -177,10 +194,31 @@ export default function InsightsPage() {
 
         {/* IPC comparison */}
         <div>
-          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
-            vs. IPC ({ipcValue}%)
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
+              <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
+              vs. IPC ({ipcValue}%)
+            </h3>
+            <button
+              onClick={() =>
+                downloadCsv(
+                  "comparacion-ipc.csv",
+                  ["Producto", "Variación %", `Delta vs IPC (${ipcValue}%)`],
+                  ipcComparison.map((p) => [
+                    p.product_description,
+                    String(p.variacion_pct ?? ""),
+                    String(p.delta_pp),
+                  ])
+                )
+              }
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium
+                         text-zinc-500 border border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60
+                         transition-all"
+            >
+              <Download size={11} />
+              Excel
+            </button>
+          </div>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
             <table className="w-full text-sm">
               <thead>

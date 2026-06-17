@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import DataFlowDiagram from "@/components/DataFlowDiagram";
 
 export const metadata: Metadata = {
-  title: "Metodología — Observatorio de inflación",
+  title: "Metodología del observatorio de inflación",
   description: "Metodología del cálculo de variación de precios",
 };
 

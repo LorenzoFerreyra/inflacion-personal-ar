@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Acerca de — Observatorio de inflación",
-  description: "Creador del proyecto y otros trabajos",
+  description: "Creador del proyecto",
 };
 
 const GithubIcon = () => (
