@@ -2,7 +2,6 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import {
   getProducts,
-  getProductCount,
   getCategories,
   getPriceHistory,
   getPriceHistoryByChain,
@@ -38,8 +37,7 @@ const handler = createMcpHandler(
           page: page ?? 1,
           pageSize: Math.min(pageSize ?? 20, 50),
         };
-        const products = getProducts(opts);
-        const total = getProductCount(opts);
+        const { products, total } = getProducts(opts);
         return {
           content: [
             {

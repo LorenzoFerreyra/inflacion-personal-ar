@@ -4,9 +4,9 @@ import { getProductByEan, getPriceStats } from "@/lib/database";
 export async function GET(request: NextRequest) {
   const ean = request.nextUrl.searchParams.get("ean");
 
-  if (!ean) {
+  if (!ean || !/^\d{1,14}$/.test(ean)) {
     return NextResponse.json(
-      { error: "El parámetro 'ean' es requerido" },
+      { error: "El parámetro 'ean' es requerido y debe ser numérico (1-14 dígitos)" },
       { status: 400 }
     );
   }

@@ -76,7 +76,7 @@ export default function HistorialProductPage({
         if (histData) setPriceHistory(histData);
         if (chainsData) setChainPrices(chainsData);
       })
-      .catch(() => {})
+      .catch((err) => console.error("Failed to load product data:", err))
       .finally(() => setLoading(false));
   }, [ean]);
 
@@ -384,7 +384,7 @@ export default function HistorialProductPage({
                          transition-all"
             >
               <Download size={13} />
-              Exportar Excel
+              Exportar CSV
             </button>
           </div>
           <div className="overflow-x-auto rounded-lg border border-zinc-800/40">

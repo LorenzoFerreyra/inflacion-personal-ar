@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import ProductTable from "@/components/ProductTable";
 import KpiCard from "@/components/KpiCard";
 import ChainBarChart from "@/components/ChainBarChart";
@@ -27,11 +27,14 @@ export default function MiCanastaPage() {
     setSearch,
     category,
     setCategory,
+    cadena,
+    setCadena,
     page,
     setPage,
     products,
     totalCount,
     categories,
+    chains,
     loading,
   } = useProducts();
 
@@ -97,7 +100,7 @@ export default function MiCanastaPage() {
         personal: Math.round(personal * 10) / 10,
         ipc,
         diff: Math.round((personal - ipc) * 10) / 10,
-        products: basketProducts.sort(
+        products: [...basketProducts].sort(
           (a, b) => (b.variacion_pct ?? 0) - (a.variacion_pct ?? 0),
         ),
         chains,
@@ -116,7 +119,7 @@ export default function MiCanastaPage() {
     setResult(null);
   }
 
-  const basketEans = new Set(basket.map((p) => p.ean));
+  const basketEans = useMemo(() => new Set(basket.map((p) => p.ean)), [basket]);
 
   return (
     <div>
@@ -130,11 +133,11 @@ export default function MiCanastaPage() {
               Buscar productos
             </h2>
 
-            <div className="flex gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
               <div className="flex-1 relative">
                 <input
                   type="text"
-                  placeholder="Buscar por nombre o marca..."
+                  placeholder="Buscar por nombre, marca o EAN..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-4 py-2.5
@@ -152,6 +155,19 @@ export default function MiCanastaPage() {
                 {categories.map((cat) => (
                   <option key={cat.categoria} value={cat.categoria}>
                     {cat.categoria}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={cadena}
+                onChange={(e) => setCadena(e.target.value)}
+                className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
+                           text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
+              >
+                <option value="">Todos los supermercados</option>
+                {chains.map((ch) => (
+                  <option key={ch} value={ch}>
+                    {ch}
                   </option>
                 ))}
               </select>
@@ -210,8 +226,8 @@ export default function MiCanastaPage() {
                               <span
                                 className={`ml-2 font-medium ${
                                   p.variacion_pct > 0
-                                    ? "text-green-400/80"
-                                    : "text-red-400/80"
+                                    ? "text-red-400/80"
+                                    : "text-green-400/80"
                                 }`}
                               >
                                 {p.variacion_pct > 0 ? "+" : ""}
@@ -297,8 +313,8 @@ export default function MiCanastaPage() {
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-semibold ${
                             p.variacion_pct > 0
-                              ? "bg-green-500/10 text-green-400"
-                              : "bg-red-500/10 text-red-400"
+                              ? "bg-red-500/10 text-red-400"
+                              : "bg-green-500/10 text-green-400"
                           }`}
                         >
                           {p.variacion_pct > 0 ? "+" : ""}
@@ -387,7 +403,7 @@ export default function MiCanastaPage() {
               label="Tu inflaci&oacute;n personal"
               value={`${result.personal}%`}
               subtitle={PERIODS[period].label.toLowerCase()}
-              color={result.personal > result.ipc ? "green" : "red"}
+              color={result.personal > result.ipc ? "red" : "green"}
             />
             <KpiCard
               label="IPC oficial"
@@ -400,7 +416,7 @@ export default function MiCanastaPage() {
               subtitle={
                 result.diff > 0 ? "por encima del IPC" : "por debajo del IPC"
               }
-              color={result.diff > 0 ? "green" : "red"}
+              color={result.diff > 0 ? "red" : "green"}
             />
           </div>
 
@@ -442,8 +458,8 @@ export default function MiCanastaPage() {
                             <span
                               className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold ${
                                 p.variacion_pct > 0
-                                  ? "bg-green-500/10 text-green-400"
-                                  : "bg-red-500/10 text-red-400"
+                                  ? "bg-red-500/10 text-red-400"
+                                  : "bg-green-500/10 text-green-400"
                               }`}
                             >
                               {p.variacion_pct > 0 ? "+" : ""}

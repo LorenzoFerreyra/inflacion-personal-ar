@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import ProductTable from "@/components/ProductTable";
 import ProductDetail from "@/components/ProductDetail";
 import { Product } from "@/lib/types";
@@ -22,6 +22,10 @@ export default function ExploradorPage() {
   } = useProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const selectedEans = useMemo(
+    () => (selectedProduct ? new Set([selectedProduct.ean]) : undefined),
+    [selectedProduct],
+  );
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -83,9 +87,7 @@ export default function ExploradorPage() {
           totalCount={totalCount}
           onPageChange={setPage}
           onSelect={setSelectedProduct}
-          selectedEans={
-            selectedProduct ? new Set([selectedProduct.ean]) : undefined
-          }
+          selectedEans={selectedEans}
           loading={loading}
         />
       </div>

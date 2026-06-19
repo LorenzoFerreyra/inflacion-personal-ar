@@ -52,11 +52,19 @@ function buildSearchConditions(
 ) {
   const tokens = search.trim().split(/\s+/).filter(Boolean);
   for (const token of tokens) {
-    conditions.push(
-      "(normalize(cp.product_description) LIKE ? OR normalize(cp.marca) LIKE ?)",
-    );
-    const pattern = `%${stripDiacritics(token)}%`;
-    params.push(pattern, pattern);
+    if (/^\d+$/.test(token)) {
+      conditions.push(
+        "(cp.ean LIKE ? OR normalize(cp.product_description) LIKE ? OR normalize(cp.marca) LIKE ?)",
+      );
+      const pattern = `%${token}%`;
+      params.push(pattern, pattern, pattern);
+    } else {
+      conditions.push(
+        "(normalize(cp.product_description) LIKE ? OR normalize(cp.marca) LIKE ?)",
+      );
+      const pattern = `%${stripDiacritics(token)}%`;
+      params.push(pattern, pattern);
+    }
   }
 }
 
@@ -66,22 +74,32 @@ function buildSearchConditions(
  * re-compilación en cada request con los mismos filtros activos.
  */
 const STMT_CACHE_MAX = 50;
-const stmtCache = new Map<string, Database.Statement>();
+
+const globalForStmtCache = globalThis as unknown as {
+  __stmtCache: Map<string, Database.Statement> | undefined;
+};
+
+function getStmtCache(): Map<string, Database.Statement> {
+  if (!globalForStmtCache.__stmtCache) {
+    globalForStmtCache.__stmtCache = new Map();
+  }
+  return globalForStmtCache.__stmtCache;
+}
 
 function prepare(sql: string): Database.Statement {
-  let stmt = stmtCache.get(sql);
+  const cache = getStmtCache();
+  let stmt = cache.get(sql);
   if (stmt) {
-    // Move to end (most recently used) so eviction targets least recently used
-    stmtCache.delete(sql);
-    stmtCache.set(sql, stmt);
+    cache.delete(sql);
+    cache.set(sql, stmt);
     return stmt;
   }
-  if (stmtCache.size >= STMT_CACHE_MAX) {
-    const oldest = stmtCache.keys().next().value;
-    if (oldest !== undefined) stmtCache.delete(oldest);
+  if (cache.size >= STMT_CACHE_MAX) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
   }
   stmt = getDb().prepare(sql);
-  stmtCache.set(sql, stmt);
+  cache.set(sql, stmt);
   return stmt;
 }
 
@@ -120,13 +138,25 @@ export function getCategories(): Category[] {
  * Soporta filtrado por texto, categoría, y lista de EANs.
  * Paginación con LIMIT/OFFSET.
  */
-export function getProductCount(options: {
+export function getChainList(): string[] {
+  const rows = prepare(
+    `SELECT DISTINCT cadena FROM price_series WHERE cadena IS NOT NULL AND cadena != '' ORDER BY cadena`,
+  ).all() as { cadena: string }[];
+  return rows.map((r) => r.cadena);
+}
+
+interface ProductQueryOptions {
   search?: string;
   category?: string;
   dias?: number;
   eans?: string[];
-}): number {
-  const { search = "", category = "", dias = 30, eans } = options;
+  cadena?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+function buildProductQueryParts(options: ProductQueryOptions) {
+  const { search = "", category = "", eans, cadena = "" } = options;
 
   const conditions: string[] = [];
   const params: (string | number)[] = [];
@@ -146,76 +176,21 @@ export function getProductCount(options: {
 
   const whereClause =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const cadenaFilter = cadena.trim() ? "AND cadena = ?" : "";
+  const cadenaParams = cadena.trim() ? [cadena] : [];
 
-  const sql = `
-    WITH
-    precio_actual AS (
-      SELECT ean
-      FROM price_series
-      WHERE fecha = (SELECT MAX(fecha) FROM price_series)
-        AND precio_lista > 0
-      GROUP BY ean
-    ),
-    precio_base AS (
-      SELECT ean
-      FROM price_series
-      WHERE fecha = (
-        SELECT MIN(fecha)
-        FROM price_series
-        WHERE fecha >= DATE('now', '-' || ? || ' days')
-      )
-        AND precio_lista > 0
-      GROUP BY ean
-    )
-    SELECT COUNT(*) AS total
-    FROM precio_actual pa
-    JOIN precio_base pb USING (ean)
-    JOIN canonical_products cp USING (ean)
-    ${whereClause}
-  `;
-
-  const row = prepare(sql).get(dias, ...params) as { total: number };
-  return row.total;
+  return { conditions, params, whereClause, cadenaFilter, cadenaParams };
 }
 
-export function getProducts(options: {
-  search?: string;
-  category?: string;
-  dias?: number;
-  eans?: string[];
-  page?: number;
-  pageSize?: number;
-}): Product[] {
+export function getProducts(options: ProductQueryOptions): { products: Product[]; total: number } {
   const {
-    search = "",
-    category = "",
     dias = 30,
-    eans,
     page = 1,
     pageSize = 30,
   } = options;
 
-  // Construir condiciones WHERE dinámicas
-  const conditions: string[] = [];
-  const params: (string | number)[] = [];
-
-  if (search.trim()) {
-    buildSearchConditions(search, conditions, params);
-  }
-
-  if (category.trim()) {
-    conditions.push("cp.categoria = ?");
-    params.push(category);
-  }
-
-  if (eans && eans.length > 0) {
-    const placeholders = eans.map(() => "?").join(", ");
-    conditions.push(`cp.ean IN (${placeholders})`);
-    params.push(...eans);
-  }
-
-  const whereClause =
-    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const { params, whereClause, cadenaFilter, cadenaParams } =
+    buildProductQueryParts(options);
 
   const offset = (Math.max(page, 1) - 1) * pageSize;
 
@@ -226,6 +201,7 @@ export function getProducts(options: {
       FROM price_series
       WHERE fecha = (SELECT MAX(fecha) FROM price_series)
         AND precio_lista > 0
+        ${cadenaFilter}
       GROUP BY ean
     ),
     precio_base AS (
@@ -237,6 +213,7 @@ export function getProducts(options: {
         WHERE fecha >= DATE('now', '-' || ? || ' days')
       )
         AND precio_lista > 0
+        ${cadenaFilter}
       GROUP BY ean
     ),
     cobertura AS (
@@ -257,7 +234,8 @@ export function getProducts(options: {
         (pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100,
         1
       ) AS variacion_pct,
-      COALESCE(cob.cobertura_cadenas, 1) AS cobertura_cadenas
+      COALESCE(cob.cobertura_cadenas, 1) AS cobertura_cadenas,
+      COUNT(*) OVER() AS _total
     FROM precio_actual pa
     JOIN precio_base pb USING (ean)
     JOIN canonical_products cp USING (ean)
@@ -267,7 +245,10 @@ export function getProducts(options: {
     LIMIT ? OFFSET ?
   `;
 
-  return prepare(sql).all(dias, ...params, pageSize, offset) as Product[];
+  const rows = prepare(sql).all(dias, ...cadenaParams, ...cadenaParams, ...params, pageSize, offset) as (Product & { _total: number })[];
+  const total = rows.length > 0 ? rows[0]._total : 0;
+  const products = rows.map(({ _total, ...product }) => product) as Product[];
+  return { products, total };
 }
 
 /**
@@ -333,59 +314,9 @@ export function getPriceHistoryByChain(
  * Precio promedio por cadena de supermercado para un conjunto de EANs.
  * Útil para comparar dónde conviene comprar la canasta.
  */
-export function getProductByEan(ean: string): Product | null {
-  const sql = `
-    WITH
-    precio_actual AS (
-      SELECT ean, AVG(precio_lista) AS precio_hoy
-      FROM price_series
-      WHERE ean = ?
-        AND fecha = (SELECT MAX(fecha) FROM price_series)
-        AND precio_lista > 0
-      GROUP BY ean
-    ),
-    precio_base AS (
-      SELECT ean, AVG(precio_lista) AS precio_antes
-      FROM price_series
-      WHERE ean = ?
-        AND fecha = (
-          SELECT MIN(fecha)
-          FROM price_series
-          WHERE fecha >= DATE('now', '-30 days')
-        )
-        AND precio_lista > 0
-      GROUP BY ean
-    ),
-    cobertura AS (
-      SELECT ean, COUNT(DISTINCT cadena) AS cobertura_cadenas
-      FROM price_series
-      WHERE ean = ?
-        AND fecha = (SELECT MAX(fecha) FROM price_series)
-        AND precio_lista > 0
-      GROUP BY ean
-    )
-    SELECT
-      cp.ean,
-      cp.product_description,
-      cp.marca,
-      cp.categoria,
-      cp.image_url,
-      ROUND(pa.precio_hoy, 0) AS precio_actual,
-      ROUND(
-        (pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100,
-        1
-      ) AS variacion_pct,
-      COALESCE(cob.cobertura_cadenas, 1) AS cobertura_cadenas
-    FROM canonical_products cp
-    LEFT JOIN precio_actual pa ON pa.ean = cp.ean
-    LEFT JOIN precio_base pb ON pb.ean = cp.ean
-    LEFT JOIN cobertura cob ON cob.ean = cp.ean
-    WHERE cp.ean = ?
-  `;
-  const row = prepare(sql).get(ean, ean, ean, ean) as
-    | Product
-    | undefined;
-  return row ?? null;
+export function getProductByEan(ean: string, dias = 30): Product | null {
+  const result = getProducts({ eans: [ean], dias, page: 1, pageSize: 1 });
+  return result.products[0] ?? null;
 }
 
 export function getPriceStats(ean: string): {

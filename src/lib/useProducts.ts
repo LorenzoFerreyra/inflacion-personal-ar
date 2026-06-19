@@ -11,11 +11,14 @@ interface UseProductsReturn {
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   category: string;
   setCategory: React.Dispatch<React.SetStateAction<string>>;
+  cadena: string;
+  setCadena: React.Dispatch<React.SetStateAction<string>>;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
   products: Product[];
   totalCount: number;
   categories: Category[];
+  chains: string[];
   loading: boolean;
 }
 
@@ -24,10 +27,12 @@ export function useProducts(): UseProductsReturn {
 
   const [search, _setSearch] = useState("");
   const [category, _setCategory] = useState("");
+  const [cadena, _setCadena] = useState("");
   const [page, _setPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [chains, setChains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [prevPeriod, setPrevPeriod] = useState(period);
@@ -49,6 +54,12 @@ export function useProducts(): UseProductsReturn {
     _setPage(1);
   }, []);
 
+  const setCadena = useCallback((val: React.SetStateAction<string>) => {
+    setLoading(true);
+    _setCadena(val);
+    _setPage(1);
+  }, []);
+
   const setPage = useCallback((val: React.SetStateAction<number>) => {
     setLoading(true);
     _setPage(val);
@@ -59,11 +70,19 @@ export function useProducts(): UseProductsReturn {
   useEffect(() => {
     fetch("/api/categories")
       .then((res) => {
-        if (!res.ok) return null;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
-      .then((data) => data && setCategories(data))
-      .catch(() => {});
+      .then((data) => setCategories(data))
+      .catch((err) => console.error("Failed to load categories:", err));
+
+    fetch("/api/chains-list")
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => setChains(data))
+      .catch((err) => console.error("Failed to load chains:", err));
   }, []);
 
   const fetchProducts = useCallback(async () => {
@@ -71,6 +90,7 @@ export function useProducts(): UseProductsReturn {
       const params = new URLSearchParams({
         search: debouncedSearch,
         category,
+        cadena,
         dias: String(PERIODS[period].dias),
         page: String(page),
         pageSize: String(PAGE_SIZE),
@@ -86,11 +106,11 @@ export function useProducts(): UseProductsReturn {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, category, period, page]);
+  }, [debouncedSearch, category, cadena, period, page]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  return { search, setSearch, category, setCategory, page, setPage, products, totalCount, categories, loading };
+  return { search, setSearch, category, setCategory, cadena, setCadena, page, setPage, products, totalCount, categories, chains, loading };
 }
