@@ -273,32 +273,56 @@ export function getProducts(options: {
 /**
  * Serie histórica de precios para un EAN.
  * Usa media geométrica (EXP(AVG(LN(x)))) para agregar precios de distintas cadenas.
+ * Filtra outliers: excluye precios > 5x la mediana del EAN para evitar que
+ * errores de datos (ej: disco reportando $549K en vez de $6.6K) distorsionen el promedio.
  */
 export function getPriceHistory(ean: string): PricePoint[] {
   const sql = `
+    WITH mediana AS (
+      SELECT precio_lista AS med
+      FROM price_series
+      WHERE ean = ? AND precio_lista > 0
+      ORDER BY precio_lista
+      LIMIT 1 OFFSET (
+        SELECT COUNT(*) / 2 FROM price_series
+        WHERE ean = ? AND precio_lista > 0
+      )
+    )
     SELECT
       fecha,
       EXP(AVG(LN(precio_lista))) AS precio_promedio
-    FROM price_series
+    FROM price_series, mediana
     WHERE ean = ?
       AND precio_lista > 0
+      AND precio_lista <= med * 5
     GROUP BY fecha
     ORDER BY fecha
   `;
-  return prepare(sql).all(ean) as PricePoint[];
+  return prepare(sql).all(ean, ean, ean) as PricePoint[];
 }
 
 export function getPriceHistoryByChain(
   ean: string,
 ): { fecha: string; cadena: string; precio: number }[] {
   const sql = `
+    WITH mediana AS (
+      SELECT precio_lista AS med
+      FROM price_series
+      WHERE ean = ? AND precio_lista > 0
+      ORDER BY precio_lista
+      LIMIT 1 OFFSET (
+        SELECT COUNT(*) / 2 FROM price_series
+        WHERE ean = ? AND precio_lista > 0
+      )
+    )
     SELECT fecha, cadena, precio_lista AS precio
-    FROM price_series
+    FROM price_series, mediana
     WHERE ean = ?
       AND precio_lista > 0
+      AND precio_lista <= med * 5
     ORDER BY fecha, cadena
   `;
-  return prepare(sql).all(ean) as {
+  return prepare(sql).all(ean, ean, ean) as {
     fecha: string;
     cadena: string;
     precio: number;
