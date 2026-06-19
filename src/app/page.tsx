@@ -151,7 +151,7 @@ export default function MiCanastaPage() {
                 <option value="">Todas las categor&iacute;as</option>
                 {categories.map((cat) => (
                   <option key={cat.categoria} value={cat.categoria}>
-                    {cat.categoria} ({cat.n})
+                    {cat.categoria}
                   </option>
                 ))}
               </select>
