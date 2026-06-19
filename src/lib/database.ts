@@ -45,25 +45,74 @@ let db = globalForDb.__db;
 
 export function getDb(): Database.Database {
   if (!db) {
-    db = new Database(DB_PATH, { readonly: false });
+    db = new Database(DB_PATH, { readonly: true });
     db.pragma("journal_mode = WAL");
     db.pragma("mmap_size = 268435456"); // 256MB
     globalForDb.__db = db;
     const normalizeFn = (str: unknown): string =>
       str != null ? stripDiacritics(String(str)) : "";
     db.function("normalize", normalizeFn);
-
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS _cache_precio_actual (
-        fecha TEXT NOT NULL,
-        ean TEXT NOT NULL,
-        precio_hoy REAL NOT NULL,
-        cobertura_cadenas INTEGER NOT NULL,
-        PRIMARY KEY (fecha, ean)
-      )
-    `);
   }
   return db;
+}
+
+interface CachedProduct extends Product {
+  product_description_norm: string;
+  marca_norm: string;
+}
+
+interface ProductsSnapshot {
+  latestDate: string;
+  baseDate: string | null;
+  dias: number;
+  products: CachedProduct[];
+}
+
+let productsSnapshot: ProductsSnapshot | null = null;
+
+function getProductsSnapshot(dias: number): CachedProduct[] {
+  const latestDate = (
+    prepare("SELECT MAX(fecha) AS f FROM price_series").get() as { f: string | null }
+  )?.f;
+  if (!latestDate) return [];
+
+  if (productsSnapshot && productsSnapshot.latestDate === latestDate && productsSnapshot.dias === dias) {
+    return productsSnapshot.products;
+  }
+
+  const baseDateSql = "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days')";
+  const baseDate = (prepare(baseDateSql).get(dias) as { f: string | null })?.f ?? null;
+
+  const products = prepare(`
+    WITH
+    precio_actual AS (
+      SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
+      FROM price_series WHERE fecha = ? AND precio_lista > 0 GROUP BY ean
+    ),
+    precio_base AS (
+      SELECT ean, AVG(precio_lista) AS precio_antes
+      FROM price_series WHERE fecha = ? AND precio_lista > 0 GROUP BY ean
+    )
+    SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
+      ROUND(pa.precio_hoy, 0) AS precio_actual,
+      CASE WHEN pb.precio_antes IS NOT NULL AND pb.precio_antes > 0
+        THEN ROUND((pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100, 1)
+        ELSE NULL END AS variacion_pct,
+      pa.cobertura_cadenas
+    FROM precio_actual pa
+    LEFT JOIN precio_base pb USING (ean)
+    JOIN canonical_products cp USING (ean)
+    ORDER BY pa.cobertura_cadenas DESC, cp.product_description
+  `).all(latestDate, baseDate) as Product[];
+
+  const cached: CachedProduct[] = products.map((p) => ({
+    ...p,
+    product_description_norm: stripDiacritics(p.product_description ?? ""),
+    marca_norm: stripDiacritics(p.marca ?? ""),
+  }));
+
+  productsSnapshot = { latestDate, baseDate, dias, products: cached };
+  return cached;
 }
 
 /** Normaliza un string: elimina acentos y pasa a minúsculas. */
@@ -214,128 +263,103 @@ function buildProductQueryParts(options: ProductQueryOptions) {
  * Soporta filtrado por texto, categoría, cadena y lista de EANs.
  * Paginación con LIMIT/OFFSET.
  *
- * Caches the expensive per-date aggregation in _cache_precio_actual so only
- * the first request per date pays the full scan cost.
+ * For the common case (no chain filter), uses an in-memory cache of per-date
+ * price aggregations so only the first request per date pays the full scan.
  */
-
-function ensurePriceCache(fecha: string): void {
-  const cached = prepare(
-    "SELECT 1 FROM _cache_precio_actual WHERE fecha = ? LIMIT 1",
-  ).get(fecha);
-  if (cached) return;
-
-  prepare("DELETE FROM _cache_precio_actual WHERE fecha != ?").run(fecha);
-  prepare(`
-    INSERT OR IGNORE INTO _cache_precio_actual (fecha, ean, precio_hoy, cobertura_cadenas)
-    SELECT fecha, ean, AVG(precio_lista), COUNT(DISTINCT cadena)
-    FROM price_series
-    WHERE fecha = ? AND precio_lista > 0
-    GROUP BY ean
-  `).run(fecha);
-}
-
-function ensureBasePriceCache(fecha: string): void {
-  const cached = prepare(
-    "SELECT 1 FROM _cache_precio_actual WHERE fecha = ? LIMIT 1",
-  ).get(fecha);
-  if (cached) return;
-
-  prepare(`
-    INSERT OR IGNORE INTO _cache_precio_actual (fecha, ean, precio_hoy, cobertura_cadenas)
-    SELECT fecha, ean, AVG(precio_lista), COUNT(DISTINCT cadena)
-    FROM price_series
-    WHERE fecha = ? AND precio_lista > 0
-    GROUP BY ean
-  `).run(fecha);
-}
-
 export function getProducts(options: ProductQueryOptions): {
   products: Product[];
   total: number;
 } {
   const { dias = 30, page = 1, pageSize = 30, cadena = "" } = options;
-
-  const { conditions, params } = buildProductQueryParts(options);
-
-  const offset = (Math.max(page, 1) - 1) * pageSize;
-
   const hasCadena = cadena.trim().length > 0;
 
-  const latestDateSql = hasCadena
-    ? "SELECT MAX(fecha) AS f FROM price_series WHERE cadena = ?"
-    : "SELECT MAX(fecha) AS f FROM price_series";
-  const latestDate = (
-    prepare(latestDateSql).get(...(hasCadena ? [cadena] : [])) as {
-      f: string | null;
-    }
-  )?.f;
+  if (hasCadena) return getProductsFromDb(options);
+  return getProductsCached(options);
+}
 
+function getProductsFromDb(options: ProductQueryOptions): {
+  products: Product[];
+  total: number;
+} {
+  const { dias = 30, page = 1, pageSize = 30, cadena = "" } = options;
+  const { params, whereClause } = buildProductQueryParts(options);
+  const offset = (Math.max(page, 1) - 1) * pageSize;
+
+  const latestDate = (
+    prepare("SELECT MAX(fecha) AS f FROM price_series WHERE cadena = ?").get(cadena) as { f: string | null }
+  )?.f;
   if (!latestDate) return { products: [], total: 0 };
 
-  const baseDateSql = hasCadena
-    ? "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days') AND cadena = ?"
-    : "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days')";
   const baseDate = (
-    prepare(baseDateSql).get(...(hasCadena ? [dias, cadena] : [dias])) as {
-      f: string | null;
-    }
+    prepare("SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days') AND cadena = ?").get(dias, cadena) as { f: string | null }
   )?.f;
-
-  if (!hasCadena) {
-    ensurePriceCache(latestDate);
-    if (baseDate) ensureBasePriceCache(baseDate);
-  }
-
-  // Build WHERE clause: always filter pa.fecha for cache table, plus user filters
-  const allConditions = [...conditions];
-  if (!hasCadena) allConditions.unshift("pa.fecha = ?");
-  const whereClause =
-    allConditions.length > 0 ? `WHERE ${allConditions.join(" AND ")}` : "";
-
-  const precioActualFrom = hasCadena
-    ? `(SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
-        FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pa`
-    : `_cache_precio_actual pa`;
-
-  const precioBaseFrom = hasCadena
-    ? `(SELECT ean, AVG(precio_lista) AS precio_base_val
-        FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pb`
-    : `(SELECT ean, precio_hoy AS precio_base_val FROM _cache_precio_actual WHERE fecha = ?) pb`;
-
-  // Separate count avoids expensive COUNT(*) OVER() window function.
-  const countParams = hasCadena
-    ? [latestDate, cadena, ...params]
-    : [latestDate, ...params];
 
   const total = (
     prepare(
-      `SELECT COUNT(*) AS cnt FROM ${precioActualFrom}
+      `SELECT COUNT(*) AS cnt FROM
+       (SELECT ean FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pa
        JOIN canonical_products cp USING (ean) ${whereClause}`,
-    ).get(...countParams) as { cnt: number }
+    ).get(latestDate, cadena, ...params) as { cnt: number }
   ).cnt;
 
   if (total === 0) return { products: [], total: 0 };
 
-  const dataParams = hasCadena
-    ? [latestDate, cadena, baseDate, cadena, ...params, pageSize, offset]
-    : [baseDate, latestDate, ...params, pageSize, offset];
-
   const products = prepare(`
     SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
       ROUND(pa.precio_hoy, 0) AS precio_actual,
-      CASE WHEN pb.precio_base_val IS NOT NULL AND pb.precio_base_val > 0
-        THEN ROUND((pa.precio_hoy - pb.precio_base_val) / pb.precio_base_val * 100, 1)
+      CASE WHEN pb.precio_antes IS NOT NULL AND pb.precio_antes > 0
+        THEN ROUND((pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100, 1)
         ELSE NULL END AS variacion_pct,
       pa.cobertura_cadenas
-    FROM ${precioActualFrom}
-    LEFT JOIN ${precioBaseFrom} USING (ean)
+    FROM (SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
+          FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pa
+    LEFT JOIN (SELECT ean, AVG(precio_lista) AS precio_antes
+               FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pb USING (ean)
     JOIN canonical_products cp USING (ean)
     ${whereClause}
     ORDER BY pa.cobertura_cadenas DESC, cp.product_description
     LIMIT ? OFFSET ?
-  `).all(...dataParams) as Product[];
+  `).all(latestDate, cadena, baseDate, cadena, ...params, pageSize, offset) as Product[];
 
   return { products, total };
+}
+
+function getProductsCached(options: ProductQueryOptions): {
+  products: Product[];
+  total: number;
+} {
+  const { dias = 30, page = 1, pageSize = 30, search = "", category = "", eans } = options;
+  const offset = (Math.max(page, 1) - 1) * pageSize;
+
+  const all = getProductsSnapshot(dias);
+  if (all.length === 0) return { products: [], total: 0 };
+
+  let filtered: CachedProduct[] = all;
+
+  if (category.trim()) {
+    filtered = filtered.filter((p) => p.categoria === category);
+  }
+
+  if (eans && eans.length > 0) {
+    const eanSet = new Set(eans);
+    filtered = filtered.filter((p) => eanSet.has(p.ean));
+  }
+
+  if (search.trim()) {
+    const terms = stripDiacritics(search).split(/\s+/).filter(Boolean);
+    filtered = filtered.filter((p) =>
+      terms.every(
+        (t) => p.product_description_norm.includes(t) || p.marca_norm.includes(t),
+      ),
+    );
+  }
+
+  // Already sorted by cobertura DESC, product_description ASC from the snapshot
+  const products = filtered.slice(offset, offset + pageSize).map(
+    ({ product_description_norm: _, marca_norm: __, ...rest }) => rest,
+  );
+
+  return { products, total: filtered.length };
 }
 
 /**
