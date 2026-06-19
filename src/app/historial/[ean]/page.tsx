@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, use } from "react";
 import { Product, PriceHistoryData, ChainPrice, PricePoint } from "@/lib/types";
 import PriceChart from "@/components/PriceChart";
 import ProductImage from "@/components/ProductImage";
-import { ArrowLeft, TrendingUp, Download } from "@/components/Icons";
+import { ArrowLeft, Download } from "@/components/Icons";
 import { downloadCsv } from "@/lib/exportCsv";
 import Link from "next/link";
 
@@ -223,7 +223,6 @@ export default function HistorialProductPage({
                 : "bg-red-500/10 text-red-400 border border-red-500/20"
             }`}
           >
-            <TrendingUp size={14} />
             {priceBadge.text}
           </div>
         )}
