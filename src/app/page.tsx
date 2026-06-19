@@ -114,7 +114,7 @@ export default function MiCanastaPage() {
 
       setStep(3);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al obtener datos");
+      setError("Error al obtener datos. Reintentá más tarde.");
     } finally {
       setCalculating(false);
     }

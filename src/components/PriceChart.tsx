@@ -88,6 +88,7 @@ export default function PriceChart({
           </span>
         </div>
       )}
+      <div role="img" aria-label="Gráfico de evolución de precios">
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart
           data={mergedData}
@@ -160,6 +161,7 @@ export default function PriceChart({
           ))}
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

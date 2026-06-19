@@ -19,8 +19,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const eans = parseEans(eansParam);
-  const chains = getChainPrices(eans);
-
-  return NextResponse.json(chains);
+  try {
+    const eans = parseEans(eansParam);
+    const chains = getChainPrices(eans);
+    return NextResponse.json(chains);
+  } catch {
+    return NextResponse.json(
+      { error: "Error al obtener precios por cadena" },
+      { status: 500 },
+    );
+  }
 }

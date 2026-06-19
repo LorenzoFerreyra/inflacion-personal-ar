@@ -15,3 +15,7 @@ export const PERIODS: Record<PeriodKey, { label: string; dias: number }> = {
 };
 
 export const PAGE_SIZE = 30;
+
+export const MAX_COMPARE_PRODUCTS = 4;
+export const MAX_PRICE_TABLE_ROWS = 30;
+export const MAX_CHAIN_COLUMNS = 6;

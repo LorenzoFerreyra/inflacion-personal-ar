@@ -6,6 +6,7 @@ import PriceChart from "@/components/PriceChart";
 import ProductImage from "@/components/ProductImage";
 import { ArrowLeft, Download } from "@/components/Icons";
 import { downloadCsv } from "@/lib/exportCsv";
+import { MAX_PRICE_TABLE_ROWS, MAX_CHAIN_COLUMNS } from "@/lib/constants";
 import Link from "next/link";
 
 interface PriceStats {
@@ -67,10 +68,8 @@ export default function HistorialProductPage({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      setLoading(true);
-      setError(null);
-    });
+    setLoading(true);
+    setError(null);
     Promise.all([
       fetch(`/api/product?ean=${ean}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/history?ean=${ean}`).then((r) => (r.ok ? r.json() : null)),
@@ -399,7 +398,7 @@ export default function HistorialProductPage({
             </h2>
             <button
               onClick={() => {
-                const chains = allChains.slice(0, 6);
+                const chains = allChains.slice(0, MAX_CHAIN_COLUMNS);
                 downloadCsv(
                   `historial-${product.product_description.replace(/\s+/g, "-").toLowerCase()}.csv`,
                   ["Fecha", "Promedio", ...chains],
@@ -430,7 +429,7 @@ export default function HistorialProductPage({
                   <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                     Promedio
                   </th>
-                  {allChains.slice(0, 6).map((chain) => (
+                  {allChains.slice(0, MAX_CHAIN_COLUMNS).map((chain) => (
                     <th
                       key={chain}
                       className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider"
@@ -441,7 +440,7 @@ export default function HistorialProductPage({
                 </tr>
               </thead>
               <tbody>
-                {priceTable.slice(0, 30).map((row) => (
+                {priceTable.slice(0, MAX_PRICE_TABLE_ROWS).map((row) => (
                   <tr
                     key={row.fecha}
                     className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
@@ -455,7 +454,7 @@ export default function HistorialProductPage({
                         maximumFractionDigits: 0,
                       })}
                     </td>
-                    {allChains.slice(0, 6).map((chain) => (
+                    {allChains.slice(0, MAX_CHAIN_COLUMNS).map((chain) => (
                       <td
                         key={chain}
                         className="py-2 px-3 text-right text-zinc-400 font-mono text-[13px]"
@@ -470,9 +469,9 @@ export default function HistorialProductPage({
               </tbody>
             </table>
           </div>
-          {priceTable.length > 30 && (
+          {priceTable.length > MAX_PRICE_TABLE_ROWS && (
             <p className="text-center text-[12px] text-zinc-500 mt-3">
-              Mostrando últimas 30 fechas de {priceTable.length} disponibles.
+              Mostrando últimas {MAX_PRICE_TABLE_ROWS} fechas de {priceTable.length} disponibles.
             </p>
           )}
         </div>

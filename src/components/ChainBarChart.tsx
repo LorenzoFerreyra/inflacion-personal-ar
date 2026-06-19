@@ -33,6 +33,7 @@ export default function ChainBarChart({ data, height = 250 }: Props) {
   }
 
   return (
+    <div role="img" aria-label="Gráfico de precios por cadena de supermercado">
     <ResponsiveContainer width="100%" height={height}>
       <BarChart
         data={data}
@@ -82,5 +83,6 @@ export default function ChainBarChart({ data, height = 250 }: Props) {
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 }

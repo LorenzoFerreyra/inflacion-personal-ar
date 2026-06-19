@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Product, Category, PricePoint } from "@/lib/types";
-import { PERIODS, PAGE_SIZE } from "@/lib/constants";
+import { PERIODS, PAGE_SIZE, MAX_COMPARE_PRODUCTS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
 import { useDebounce } from "@/lib/useDebounce";
 import { Search, TrendingUp, ArrowRight } from "@/components/Icons";
@@ -49,7 +49,7 @@ export default function HistorialPage() {
   }, []);
 
   const fetchProducts = useCallback(async () => {
-    queueMicrotask(() => setLoading(true));
+    setLoading(true);
     try {
       const params = new URLSearchParams({
         search: debouncedSearch,
@@ -72,19 +72,19 @@ export default function HistorialPage() {
   }, [debouncedSearch, category, period, page]);
 
   useEffect(() => {
-    queueMicrotask(() => fetchProducts());
+    fetchProducts();
   }, [fetchProducts]);
 
   useEffect(() => {
-    queueMicrotask(() => setPage(1));
+    setPage(1);
   }, [debouncedSearch, category, period]);
 
   useEffect(() => {
     if (!category) {
-      queueMicrotask(() => setCategoryHistory([]));
+      setCategoryHistory([]);
       return;
     }
-    queueMicrotask(() => setLoadingCategoryHistory(true));
+    setLoadingCategoryHistory(true);
     fetch(`/api/category-history?category=${encodeURIComponent(category)}`)
       .then((res) => (res.ok ? res.json() : []))
       .then(setCategoryHistory)
@@ -97,7 +97,7 @@ export default function HistorialPage() {
       const next = new Set(prev);
       if (next.has(product.ean)) {
         next.delete(product.ean);
-      } else if (next.size < 4) {
+      } else if (next.size < MAX_COMPARE_PRODUCTS) {
         next.add(product.ean);
       }
       return next;
@@ -106,11 +106,11 @@ export default function HistorialPage() {
 
   useEffect(() => {
     if (compareEans.size === 0) {
-      queueMicrotask(() => setCompareProducts([]));
+      setCompareProducts([]);
       return;
     }
-    queueMicrotask(() => setLoadingCompare(true));
-    Promise.all(
+    setLoadingCompare(true);
+    Promise.allSettled(
       Array.from(compareEans).map(async (ean) => {
         const [prodRes, histRes] = await Promise.all([
           fetch(`/api/product?ean=${ean}`),
@@ -124,7 +124,16 @@ export default function HistorialPage() {
         };
       }),
     )
-      .then((results) => setCompareProducts(results.filter((r) => r.product)))
+      .then((results) =>
+        setCompareProducts(
+          results
+            .filter(
+              (r): r is PromiseFulfilledResult<{ product: Product; history: PricePoint[] }> =>
+                r.status === "fulfilled" && r.value.product != null,
+            )
+            .map((r) => r.value),
+        ),
+      )
       .catch(() => setCompareProducts([]))
       .finally(() => setLoadingCompare(false));
   }, [compareEans]);
@@ -233,7 +242,7 @@ export default function HistorialPage() {
               key={product.ean}
               product={product}
               isComparing={compareEans.has(product.ean)}
-              canCompare={compareEans.size < 4}
+              canCompare={compareEans.size < MAX_COMPARE_PRODUCTS}
               onToggleCompare={() => toggleCompare(product)}
             />
           ))}
@@ -373,7 +382,7 @@ function ComparePanel({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
           <TrendingUp size={16} className="text-amber-400" />
-          Comparación de productos ({products.length}/4)
+          Comparación de productos ({products.length}/{MAX_COMPARE_PRODUCTS})
         </h3>
         <button
           onClick={onClear}

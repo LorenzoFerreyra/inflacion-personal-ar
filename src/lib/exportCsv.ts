@@ -5,10 +5,15 @@ export function downloadCsv(
   headers: string[],
   rows: string[][],
 ) {
-  const escape = (v: string) =>
-    v.includes(",") || v.includes('"') || v.includes("\n")
-      ? `"${v.replace(/"/g, '""')}"`
-      : v;
+  const sanitize = (v: string) =>
+    /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+
+  const escape = (v: string) => {
+    const safe = sanitize(v);
+    return safe.includes(",") || safe.includes('"') || safe.includes("\n")
+      ? `"${safe.replace(/"/g, '""')}"`
+      : safe;
+  };
 
   const csv =
     "﻿" +

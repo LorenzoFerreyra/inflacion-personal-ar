@@ -44,6 +44,7 @@ export default function Navigation() {
           <div className="flex items-center gap-5">
             <Link
               href="/"
+              aria-label="Ir a inicio"
               className="font-display text-xl font-semibold tracking-tight text-gradient hover:opacity-80"
             >
               Observatorio de inflaci&oacute;n

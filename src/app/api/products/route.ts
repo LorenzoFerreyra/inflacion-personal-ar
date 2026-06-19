@@ -29,15 +29,22 @@ export async function GET(request: NextRequest) {
   const eansParam = params.get("eans");
   const eans = eansParam ? parseEans(eansParam) : undefined;
 
-  const { products, total } = getProducts({
-    search,
-    category,
-    cadena,
-    dias,
-    eans,
-    page,
-    pageSize,
-  });
+  try {
+    const { products, total } = getProducts({
+      search,
+      category,
+      cadena,
+      dias,
+      eans,
+      page,
+      pageSize,
+    });
 
-  return NextResponse.json({ products, total });
+    return NextResponse.json({ products, total });
+  } catch {
+    return NextResponse.json(
+      { error: "Error al obtener productos" },
+      { status: 500 },
+    );
+  }
 }

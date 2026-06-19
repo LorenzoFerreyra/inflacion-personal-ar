@@ -16,15 +16,21 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const product = getProductByEan(ean, dias);
-  if (!product) {
+  try {
+    const product = getProductByEan(ean, dias);
+    if (!product) {
+      return NextResponse.json(
+        { error: "Producto no encontrado" },
+        { status: 404 },
+      );
+    }
+
+    const stats = getPriceStats(ean);
+    return NextResponse.json({ product, stats });
+  } catch {
     return NextResponse.json(
-      { error: "Producto no encontrado" },
-      { status: 404 },
+      { error: "Error al obtener producto" },
+      { status: 500 },
     );
   }
-
-  const stats = getPriceStats(ean);
-
-  return NextResponse.json({ product, stats });
 }

@@ -22,14 +22,21 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const average = getPriceHistory(ean);
-  const rawByChain = getPriceHistoryByChain(ean);
+  try {
+    const average = getPriceHistory(ean);
+    const rawByChain = getPriceHistoryByChain(ean);
 
-  const byChain: Record<string, { fecha: string; precio: number }[]> = {};
-  for (const row of rawByChain) {
-    if (!byChain[row.cadena]) byChain[row.cadena] = [];
-    byChain[row.cadena].push({ fecha: row.fecha, precio: row.precio });
+    const byChain: Record<string, { fecha: string; precio: number }[]> = {};
+    for (const row of rawByChain) {
+      if (!byChain[row.cadena]) byChain[row.cadena] = [];
+      byChain[row.cadena].push({ fecha: row.fecha, precio: row.precio });
+    }
+
+    return NextResponse.json({ average, byChain });
+  } catch {
+    return NextResponse.json(
+      { error: "Error al obtener historial de precios" },
+      { status: 500 },
+    );
   }
-
-  return NextResponse.json({ average, byChain });
 }

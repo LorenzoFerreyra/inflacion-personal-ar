@@ -19,9 +19,19 @@ import type {
 
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
-const DB_PATH = path.resolve(
-  process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "prices.db"),
-);
+import fs from "fs";
+
+const DB_PATH = (() => {
+  const p = path.resolve(
+    process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "prices.db"),
+  );
+  if (!fs.existsSync(p)) {
+    throw new Error(
+      `Database file not found at ${p}. Set DATABASE_PATH env variable to the correct path.`,
+    );
+  }
+  return p;
+})();
 
 /**
  * Singleton: una sola conexión reutilizada entre requests.
@@ -312,8 +322,7 @@ export function getProducts(options: ProductQueryOptions): {
   })[];
 
   const total = rows.length > 0 ? rows[0]._total : 0;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const products = rows.map(({ _total, ...product }) => product) as Product[];
+  const products = rows.map(({ _total: _, ...product }) => product) as Product[];
   return { products, total };
 }
 

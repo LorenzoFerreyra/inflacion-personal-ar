@@ -11,7 +11,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const history = getCategoryPriceHistory(category);
-
-  return NextResponse.json(history);
+  try {
+    const history = getCategoryPriceHistory(category);
+    return NextResponse.json(history);
+  } catch {
+    return NextResponse.json(
+      { error: "Error al obtener historial de categoría" },
+      { status: 500 },
+    );
+  }
 }
