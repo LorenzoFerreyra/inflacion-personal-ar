@@ -41,7 +41,7 @@ export function useProducts(): UseProductsReturn {
 
   // Reset page when period changes.
   useEffect(() => {
-    queueMicrotask(() => setPageRaw(1));
+    setPageRaw(1);
   }, [period]);
 
   // Wrapped setters: changing a filter resets page to 1.

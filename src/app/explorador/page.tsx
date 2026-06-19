@@ -6,6 +6,7 @@ import ProductDetail from "@/components/ProductDetail";
 import { Product } from "@/lib/types";
 import { useProducts } from "@/lib/useProducts";
 import { Search } from "@/components/Icons";
+import { chainLabel } from "@/lib/chainColors";
 
 export default function ExploradorPage() {
   const {
@@ -13,13 +14,17 @@ export default function ExploradorPage() {
     setSearch,
     category,
     setCategory,
+    cadena,
+    setCadena,
     page,
     setPage,
     products,
     totalCount,
     categories,
+    chains,
     loading,
     categoriesError,
+    chainsError,
   } = useProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -36,21 +41,40 @@ export default function ExploradorPage() {
           Explorar productos
         </h2>
 
-        {/* Search bar */}
-        <div className="relative mb-3">
-          <Search
-            size={15}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
-          />
-          <input
-            type="text"
-            placeholder="Buscar por nombre o marca..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg pl-10 pr-4 py-2.5
-                       text-sm text-zinc-200 placeholder-zinc-500
-                       focus:outline-none focus:border-amber-500/40"
-          />
+        {/* Search bar + chain filter */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-3">
+          <div className="relative flex-1">
+            <Search
+              size={15}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500"
+            />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o marca..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg pl-10 pr-4 py-2.5
+                         text-sm text-zinc-200 placeholder-zinc-500
+                         focus:outline-none focus:border-amber-500/40"
+            />
+          </div>
+          <select
+            value={cadena}
+            onChange={(e) => setCadena(e.target.value)}
+            className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
+                       text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
+          >
+            <option value="">
+              {chainsError
+                ? "Error al cargar cadenas"
+                : "Todos los supermercados"}
+            </option>
+            {chains.map((ch) => (
+              <option key={ch} value={ch}>
+                {chainLabel(ch)}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Category chips */}

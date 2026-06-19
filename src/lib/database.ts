@@ -45,13 +45,23 @@ let db = globalForDb.__db;
 
 export function getDb(): Database.Database {
   if (!db) {
-    db = new Database(DB_PATH, { readonly: true });
+    db = new Database(DB_PATH, { readonly: false });
     db.pragma("journal_mode = WAL");
     db.pragma("mmap_size = 268435456"); // 256MB
     globalForDb.__db = db;
     const normalizeFn = (str: unknown): string =>
       str != null ? stripDiacritics(String(str)) : "";
     db.function("normalize", normalizeFn);
+
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS _cache_precio_actual (
+        fecha TEXT NOT NULL,
+        ean TEXT NOT NULL,
+        precio_hoy REAL NOT NULL,
+        cobertura_cadenas INTEGER NOT NULL,
+        PRIMARY KEY (fecha, ean)
+      )
+    `);
   }
   return db;
 }
@@ -201,128 +211,130 @@ function buildProductQueryParts(options: ProductQueryOptions) {
 
 /**
  * Productos con precio actual y variación porcentual respecto a N días atrás.
- *
- * Usa tres CTEs para calcular:
- *   - precio_actual: promedio de precios en la fecha más reciente
- *   - precio_base: promedio de precios en la fecha más antigua dentro del rango
- *   - cobertura: cantidad de cadenas distintas que reportan el producto
- *
  * Soporta filtrado por texto, categoría, cadena y lista de EANs.
  * Paginación con LIMIT/OFFSET.
+ *
+ * Caches the expensive per-date aggregation in _cache_precio_actual so only
+ * the first request per date pays the full scan cost.
  */
+
+function ensurePriceCache(fecha: string): void {
+  const cached = prepare(
+    "SELECT 1 FROM _cache_precio_actual WHERE fecha = ? LIMIT 1",
+  ).get(fecha);
+  if (cached) return;
+
+  prepare("DELETE FROM _cache_precio_actual WHERE fecha != ?").run(fecha);
+  prepare(`
+    INSERT OR IGNORE INTO _cache_precio_actual (fecha, ean, precio_hoy, cobertura_cadenas)
+    SELECT fecha, ean, AVG(precio_lista), COUNT(DISTINCT cadena)
+    FROM price_series
+    WHERE fecha = ? AND precio_lista > 0
+    GROUP BY ean
+  `).run(fecha);
+}
+
+function ensureBasePriceCache(fecha: string): void {
+  const cached = prepare(
+    "SELECT 1 FROM _cache_precio_actual WHERE fecha = ? LIMIT 1",
+  ).get(fecha);
+  if (cached) return;
+
+  prepare(`
+    INSERT OR IGNORE INTO _cache_precio_actual (fecha, ean, precio_hoy, cobertura_cadenas)
+    SELECT fecha, ean, AVG(precio_lista), COUNT(DISTINCT cadena)
+    FROM price_series
+    WHERE fecha = ? AND precio_lista > 0
+    GROUP BY ean
+  `).run(fecha);
+}
+
 export function getProducts(options: ProductQueryOptions): {
   products: Product[];
   total: number;
 } {
   const { dias = 30, page = 1, pageSize = 30, cadena = "" } = options;
 
-  const { params, whereClause } = buildProductQueryParts(options);
+  const { conditions, params } = buildProductQueryParts(options);
 
   const offset = (Math.max(page, 1) - 1) * pageSize;
 
-  // The cadena filter must appear in 5 binding positions across the CTEs.
-  // We build the SQL fragments and parameter array explicitly so the
-  // relationship between each ? placeholder and its position is clear.
   const hasCadena = cadena.trim().length > 0;
 
-  // Subqueries that start a fresh context use WHERE; outer scope uses AND.
-  const cadenaWhere = hasCadena ? "WHERE cadena = ?" : "";
-  const cadenaAnd = hasCadena ? "AND cadena = ?" : "";
-  const cadenaParams: string[] = hasCadena
-    ? [cadena, cadena, cadena, cadena, cadena]
-    : [];
+  const latestDateSql = hasCadena
+    ? "SELECT MAX(fecha) AS f FROM price_series WHERE cadena = ?"
+    : "SELECT MAX(fecha) AS f FROM price_series";
+  const latestDate = (
+    prepare(latestDateSql).get(...(hasCadena ? [cadena] : [])) as {
+      f: string | null;
+    }
+  )?.f;
 
-  // Correspondencia de los 5 bindings:
-  //   0 → MAX(fecha) subquery in precio_actual
-  //   1 → precio_actual outer WHERE
-  //   2 → MIN(fecha) subquery in precio_base
-  //   3 → precio_base outer WHERE
-  //   4 → MAX(fecha) subquery in cobertura
-  const sql = `
-    WITH
-    precio_actual AS (
-      SELECT ean, AVG(precio_lista) AS precio_hoy
-      FROM price_series
-      WHERE fecha = (SELECT MAX(fecha) FROM price_series ${cadenaWhere})
-        AND precio_lista > 0
-        ${cadenaAnd}
-      GROUP BY ean
-    ),
-    precio_base AS (
-      SELECT ean, AVG(precio_lista) AS precio_antes
-      FROM price_series
-      WHERE fecha = (
-        SELECT MIN(fecha)
-        FROM price_series
-        WHERE fecha >= DATE('now', '-' || ? || ' days')
-        ${cadenaAnd}
-      )
-        AND precio_lista > 0
-        ${cadenaAnd}
-      GROUP BY ean
-    ),
-    cobertura AS (
-      SELECT ean, COUNT(DISTINCT cadena) AS cobertura_cadenas
-      FROM price_series
-      WHERE fecha = (SELECT MAX(fecha) FROM price_series ${cadenaWhere})
-        AND precio_lista > 0
-      GROUP BY ean
-    )
-    SELECT
-      cp.ean,
-      cp.product_description,
-      cp.marca,
-      cp.categoria,
-      cp.image_url,
+  if (!latestDate) return { products: [], total: 0 };
+
+  const baseDateSql = hasCadena
+    ? "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days') AND cadena = ?"
+    : "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days')";
+  const baseDate = (
+    prepare(baseDateSql).get(...(hasCadena ? [dias, cadena] : [dias])) as {
+      f: string | null;
+    }
+  )?.f;
+
+  if (!hasCadena) {
+    ensurePriceCache(latestDate);
+    if (baseDate) ensureBasePriceCache(baseDate);
+  }
+
+  // Build WHERE clause: always filter pa.fecha for cache table, plus user filters
+  const allConditions = [...conditions];
+  if (!hasCadena) allConditions.unshift("pa.fecha = ?");
+  const whereClause =
+    allConditions.length > 0 ? `WHERE ${allConditions.join(" AND ")}` : "";
+
+  const precioActualFrom = hasCadena
+    ? `(SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
+        FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pa`
+    : `_cache_precio_actual pa`;
+
+  const precioBaseFrom = hasCadena
+    ? `(SELECT ean, AVG(precio_lista) AS precio_base_val
+        FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pb`
+    : `(SELECT ean, precio_hoy AS precio_base_val FROM _cache_precio_actual WHERE fecha = ?) pb`;
+
+  // Separate count avoids expensive COUNT(*) OVER() window function.
+  const countParams = hasCadena
+    ? [latestDate, cadena, ...params]
+    : [latestDate, ...params];
+
+  const total = (
+    prepare(
+      `SELECT COUNT(*) AS cnt FROM ${precioActualFrom}
+       JOIN canonical_products cp USING (ean) ${whereClause}`,
+    ).get(...countParams) as { cnt: number }
+  ).cnt;
+
+  if (total === 0) return { products: [], total: 0 };
+
+  const dataParams = hasCadena
+    ? [latestDate, cadena, baseDate, cadena, ...params, pageSize, offset]
+    : [baseDate, latestDate, ...params, pageSize, offset];
+
+  const products = prepare(`
+    SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
       ROUND(pa.precio_hoy, 0) AS precio_actual,
-      CASE WHEN pb.precio_antes IS NOT NULL AND pb.precio_antes > 0
-        THEN ROUND(
-          (pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100,
-          1
-        )
-        ELSE NULL
-      END AS variacion_pct,
-      COALESCE(cob.cobertura_cadenas, 1) AS cobertura_cadenas,
-      COUNT(*) OVER() AS _total
-    FROM precio_actual pa
-    LEFT JOIN precio_base pb USING (ean)
+      CASE WHEN pb.precio_base_val IS NOT NULL AND pb.precio_base_val > 0
+        THEN ROUND((pa.precio_hoy - pb.precio_base_val) / pb.precio_base_val * 100, 1)
+        ELSE NULL END AS variacion_pct,
+      pa.cobertura_cadenas
+    FROM ${precioActualFrom}
+    LEFT JOIN ${precioBaseFrom} USING (ean)
     JOIN canonical_products cp USING (ean)
-    LEFT JOIN cobertura cob USING (ean)
     ${whereClause}
-    ORDER BY cobertura_cadenas DESC, cp.product_description
+    ORDER BY pa.cobertura_cadenas DESC, cp.product_description
     LIMIT ? OFFSET ?
-  `;
+  `).all(...dataParams) as Product[];
 
-  // Bind params in the exact order they appear in the SQL:
-  //   #1 cadena in MAX(fecha) subquery (pa)
-  //   #2 cadena in precio_actual outer
-  //   #3 dias in DATE('now', '-N days')
-  //   #4 cadena in MIN(fecha) subquery (pb)
-  //   #5 cadena in precio_base outer
-  //   #6 cadena in MAX(fecha) subquery (cobertura)
-  //   #7..#N WHERE clause params (search, category, eans)
-  //   #N+1 LIMIT
-  //   #N+2 OFFSET
-  const allParams = hasCadena
-    ? [
-        cadenaParams[0],
-        cadenaParams[1],
-        dias,
-        cadenaParams[2],
-        cadenaParams[3],
-        cadenaParams[4],
-        ...params,
-        pageSize,
-        offset,
-      ]
-    : [dias, ...params, pageSize, offset];
-
-  const rows = prepare(sql).all(...allParams) as (Product & {
-    _total: number;
-  })[];
-
-  const total = rows.length > 0 ? rows[0]._total : 0;
-  const products = rows.map(({ _total: _, ...product }) => product) as Product[];
   return { products, total };
 }
 

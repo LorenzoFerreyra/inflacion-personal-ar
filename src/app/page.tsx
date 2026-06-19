@@ -18,6 +18,7 @@ import {
 } from "@/components/Icons";
 import ProductImage from "@/components/ProductImage";
 import VariationBadge from "@/components/VariationBadge";
+import { chainLabel } from "@/lib/chainColors";
 
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
@@ -181,7 +182,7 @@ export default function MiCanastaPage() {
                 </option>
                 {chains.map((ch) => (
                   <option key={ch} value={ch}>
-                    {ch}
+                    {chainLabel(ch)}
                   </option>
                 ))}
               </select>

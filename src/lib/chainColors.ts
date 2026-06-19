@@ -65,7 +65,7 @@ export function chainLabel(id: string): string {
 
   const label = id
     .split(/[\s_]+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map((w) => w.toLowerCase())
     .join(" ");
 
   LABEL_CACHE.set(id, label);

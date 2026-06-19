@@ -6,6 +6,7 @@ import { PERIODS, PAGE_SIZE, MAX_COMPARE_PRODUCTS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
 import { useDebounce } from "@/lib/useDebounce";
 import { Search, TrendingUp, ArrowRight } from "@/components/Icons";
+import { chainLabel } from "@/lib/chainColors";
 import ProductImage from "@/components/ProductImage";
 import Link from "next/link";
 import PriceChart from "@/components/PriceChart";
@@ -24,6 +25,8 @@ export default function HistorialPage() {
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+  const [cadena, setCadena] = useState("");
+  const [chains, setChains] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -46,6 +49,10 @@ export default function HistorialPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => data && setCategories(data))
       .catch(() => {});
+    fetch("/api/chains-list")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setChains(data))
+      .catch(() => {});
   }, []);
 
   const fetchProducts = useCallback(async () => {
@@ -54,6 +61,7 @@ export default function HistorialPage() {
       const params = new URLSearchParams({
         search: debouncedSearch,
         category,
+        cadena,
         dias: String(PERIODS[period].dias),
         page: String(page),
         pageSize: String(PAGE_SIZE),
@@ -69,7 +77,7 @@ export default function HistorialPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, category, period, page]);
+  }, [debouncedSearch, category, cadena, period, page]);
 
   useEffect(() => {
     fetchProducts();
@@ -77,7 +85,7 @@ export default function HistorialPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, category, period]);
+  }, [debouncedSearch, category, cadena, period]);
 
   useEffect(() => {
     if (!category) {
@@ -194,6 +202,19 @@ export default function HistorialPage() {
                        focus:outline-none focus:border-amber-500/40"
           />
         </div>
+        <select
+          value={cadena}
+          onChange={(e) => setCadena(e.target.value)}
+          className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
+                     text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
+        >
+          <option value="">Todos los supermercados</option>
+          {chains.map((ch) => (
+            <option key={ch} value={ch}>
+              {chainLabel(ch)}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Category chips */}
