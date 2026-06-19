@@ -16,7 +16,7 @@ export default function SobreMiPage() {
     <div className="space-y-10">
       {/* Hero profile — centered */}
       <div className="flex flex-col items-center text-center pt-4">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-400/20 to-amber-600/20 border border-amber-400/30 flex items-center justify-center mb-4">
+        <div className="w-20 h-20 rounded-full bg-linear-to-br from-amber-400/20 to-amber-600/20 border border-amber-400/30 flex items-center justify-center mb-4">
           <span className="text-2xl font-bold text-amber-400">LM</span>
         </div>
         <h2 className="text-xl font-semibold text-zinc-100">Lorenzo Máximo</h2>
@@ -53,7 +53,7 @@ export default function SobreMiPage() {
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 flex flex-col justify-between gap-4">
             <div className="space-y-3">
               <h4 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-                <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
+                <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
                 Reddit Data Extraction
               </h4>
               <p className="text-sm text-zinc-400 leading-relaxed">
@@ -78,7 +78,7 @@ export default function SobreMiPage() {
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 flex flex-col justify-between gap-4">
             <div className="space-y-3">
               <h4 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-                <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
+                <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
                 Sociedad de Datos — UFLO
               </h4>
               <p className="text-sm text-zinc-400 leading-relaxed">

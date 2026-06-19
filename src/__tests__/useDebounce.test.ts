@@ -23,7 +23,9 @@ describe("useDebounce", () => {
     );
 
     rerender({ value: "world", delay: 300 });
-    act(() => { vi.advanceTimersByTime(200); });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
     expect(result.current).toBe("hello");
   });
 
@@ -34,7 +36,9 @@ describe("useDebounce", () => {
     );
 
     rerender({ value: "world", delay: 300 });
-    act(() => { vi.advanceTimersByTime(300); });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
     expect(result.current).toBe("world");
   });
 
@@ -45,13 +49,19 @@ describe("useDebounce", () => {
     );
 
     rerender({ value: "b", delay: 300 });
-    act(() => { vi.advanceTimersByTime(200); });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
     rerender({ value: "c", delay: 300 });
-    act(() => { vi.advanceTimersByTime(200); });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
 
     expect(result.current).toBe("a");
 
-    act(() => { vi.advanceTimersByTime(100); });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
     expect(result.current).toBe("c");
   });
 
@@ -62,7 +72,9 @@ describe("useDebounce", () => {
     );
 
     rerender({ value: 42, delay: 100 });
-    act(() => { vi.advanceTimersByTime(100); });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
     expect(result.current).toBe(42);
   });
 });

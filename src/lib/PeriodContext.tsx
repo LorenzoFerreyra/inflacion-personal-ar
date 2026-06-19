@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { PeriodKey, IpcValues } from "./constants";
 
 interface PeriodContextValue {
@@ -14,13 +14,15 @@ const DEFAULT_IPC: IpcValues = { mensual: 0, trimestral: 0, interanual: 0 };
 
 const PeriodContext = createContext<PeriodContextValue | null>(null);
 
-export function PeriodProvider({ children }: { children: ReactNode }) {
+export function PeriodProvider({ children }: { children: React.ReactNode }) {
   const [period, setPeriod] = useState<PeriodKey>("mensual");
   const [ipc, setIpc] = useState<IpcValues>(DEFAULT_IPC);
   const [ipcError, setIpcError] = useState(false);
 
   useEffect(() => {
-    fetch("/api/ipc")
+    const abort = new AbortController();
+
+    fetch("/api/ipc", { signal: abort.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -29,7 +31,11 @@ export function PeriodProvider({ children }: { children: ReactNode }) {
         setIpc(data);
         setIpcError(false);
       })
-      .catch(() => setIpcError(true));
+      .catch((err) => {
+        if (err.name !== "AbortError") setIpcError(true);
+      });
+
+    return () => abort.abort();
   }, []);
 
   return (

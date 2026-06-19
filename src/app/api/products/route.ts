@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getProducts } from "@/lib/database";
+import { parseEans, clampInt } from "@/lib/shared";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -21,16 +22,22 @@ export async function GET(request: NextRequest) {
   const search = params.get("search") ?? "";
   const category = params.get("category") ?? "";
   const cadena = params.get("cadena") ?? "";
-  const dias = Math.min(365, Math.max(1, parseInt(params.get("dias") ?? "30", 10) || 30));
-  const page = Math.max(1, parseInt(params.get("page") ?? "1", 10) || 1);
-  const pageSize = Math.min(200, Math.max(1, parseInt(params.get("pageSize") ?? "30", 10) || 30));
+  const dias = clampInt(params.get("dias"), 1, 365, 30);
+  const page = clampInt(params.get("page"), 1, Infinity, 1);
+  const pageSize = clampInt(params.get("pageSize"), 1, 200, 30);
 
   const eansParam = params.get("eans");
-  const eans = eansParam
-    ? eansParam.split(",").map((e) => e.trim()).filter((e) => /^\d{1,14}$/.test(e)).slice(0, 200)
-    : undefined;
+  const eans = eansParam ? parseEans(eansParam) : undefined;
 
-  const { products, total } = getProducts({ search, category, cadena, dias, eans, page, pageSize });
+  const { products, total } = getProducts({
+    search,
+    category,
+    cadena,
+    dias,
+    eans,
+    page,
+    pageSize,
+  });
 
   return NextResponse.json({ products, total });
 }

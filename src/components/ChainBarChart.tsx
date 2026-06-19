@@ -10,6 +10,7 @@ import {
   Cell,
 } from "recharts";
 import { ChainPrice } from "@/lib/types";
+import EmptyState from "@/components/EmptyState";
 
 interface Props {
   data: ChainPrice[];
@@ -28,11 +29,7 @@ const BAR_COLORS = [
 
 export default function ChainBarChart({ data, height = 250 }: Props) {
   if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-8 text-zinc-500 text-sm">
-        Sin datos de cadenas.
-      </div>
-    );
+    return <EmptyState message="Sin datos de cadenas." />;
   }
 
   return (

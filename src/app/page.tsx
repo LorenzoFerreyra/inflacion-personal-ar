@@ -17,6 +17,7 @@ import {
   ShoppingBasket,
 } from "@/components/Icons";
 import ProductImage from "@/components/ProductImage";
+import VariationBadge from "@/components/VariationBadge";
 
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
@@ -36,6 +37,8 @@ export default function MiCanastaPage() {
     categories,
     chains,
     loading,
+    categoriesError,
+    chainsError,
   } = useProducts();
 
   const [step, setStep] = useState(1);
@@ -82,7 +85,10 @@ export default function MiCanastaPage() {
       if (!productsRes.ok || !chainsRes.ok)
         throw new Error("Error al obtener datos");
 
-      const { products: basketProducts } = await productsRes.json() as { products: Product[]; total: number };
+      const { products: basketProducts } = (await productsRes.json()) as {
+        products: Product[];
+        total: number;
+      };
       const chains: ChainPrice[] = await chainsRes.json();
 
       const validVariations = basketProducts
@@ -151,7 +157,11 @@ export default function MiCanastaPage() {
                 className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
                            text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
               >
-                <option value="">Todas las categor&iacute;as</option>
+                <option value="">
+                  {categoriesError
+                    ? "Error al cargar categorías"
+                    : "Todas las categorías"}
+                </option>
                 {categories.map((cat) => (
                   <option key={cat.categoria} value={cat.categoria}>
                     {cat.categoria}
@@ -164,7 +174,11 @@ export default function MiCanastaPage() {
                 className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
                            text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
               >
-                <option value="">Todos los supermercados</option>
+                <option value="">
+                  {chainsError
+                    ? "Error al cargar cadenas"
+                    : "Todos los supermercados"}
+                </option>
                 {chains.map((ch) => (
                   <option key={ch} value={ch}>
                     {ch}
@@ -309,20 +323,7 @@ export default function MiCanastaPage() {
                       ${p.precio_actual?.toLocaleString("es-AR") ?? "—"}
                     </td>
                     <td className="py-2.5 px-4 text-right">
-                      {p.variacion_pct !== null ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-semibold ${
-                            p.variacion_pct > 0
-                              ? "bg-red-500/10 text-red-400"
-                              : "bg-green-500/10 text-green-400"
-                          }`}
-                        >
-                          {p.variacion_pct > 0 ? "+" : ""}
-                          {p.variacion_pct}%
-                        </span>
-                      ) : (
-                        <span className="text-zinc-600">&mdash;</span>
-                      )}
+                      <VariationBadge value={p.variacion_pct} />
                     </td>
                     <td className="py-2.5 px-4">
                       <button
@@ -388,9 +389,7 @@ export default function MiCanastaPage() {
             </button>
           </div>
           {error && (
-            <p className="text-red-400 text-sm mt-4 text-center">
-              {error}
-            </p>
+            <p className="text-red-400 text-sm mt-4 text-center">{error}</p>
           )}
         </div>
       )}
@@ -454,20 +453,7 @@ export default function MiCanastaPage() {
                           {p.product_description}
                         </td>
                         <td className="py-2 px-3 text-right">
-                          {p.variacion_pct !== null ? (
-                            <span
-                              className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold ${
-                                p.variacion_pct > 0
-                                  ? "bg-red-500/10 text-red-400"
-                                  : "bg-green-500/10 text-green-400"
-                              }`}
-                            >
-                              {p.variacion_pct > 0 ? "+" : ""}
-                              {p.variacion_pct}%
-                            </span>
-                          ) : (
-                            <span className="text-zinc-600">&mdash;</span>
-                          )}
+                          <VariationBadge value={p.variacion_pct} />
                         </td>
                       </tr>
                     ))}

@@ -17,13 +17,16 @@ const tabs = [
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { period, setPeriod, ipc } = usePeriod();
+  const { period, setPeriod, ipc, ipcError } = usePeriod();
   const [periodOpen, setPeriodOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      )
         setPeriodOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
@@ -31,7 +34,10 @@ export default function Navigation() {
   }, []);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur-xl">
+    <nav
+      className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur-xl"
+      aria-label="Navegación principal"
+    >
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-0 py-3 md:py-0 md:h-16">
           {/* Logo + IPC badge + period dropdown */}
@@ -43,21 +49,37 @@ export default function Navigation() {
               Observatorio de inflaci&oacute;n
             </Link>
             <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-700/50 rounded-full px-3.5 py-1.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/80 flex-shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/80 shrink-0" />
               <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                 IPC
               </span>
-              <span className="text-sm font-bold text-amber-400">
-                {ipc[period]}%
+              <span
+                className={`text-sm font-bold ${ipcError ? "text-zinc-500" : "text-amber-400"}`}
+              >
+                {ipcError ? "—" : `${ipc[period]}%`}
               </span>
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setPeriodOpen((v) => !v)}
+                  aria-label="Cambiar período"
+                  aria-haspopup="listbox"
+                  aria-expanded={periodOpen}
                   className="text-[11px] text-zinc-400 font-medium hover:text-zinc-200 flex items-center gap-1"
                 >
                   {PERIODS[period].label.toLowerCase()}
-                  <svg width="8" height="8" viewBox="0 0 8 8" className="opacity-50">
-                    <path d="M1.5 3L4 5.5L6.5 3" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                  <svg
+                    width="8"
+                    height="8"
+                    viewBox="0 0 8 8"
+                    className="opacity-50"
+                  >
+                    <path
+                      d="M1.5 3L4 5.5L6.5 3"
+                      stroke="currentColor"
+                      strokeWidth="1.2"
+                      fill="none"
+                      strokeLinecap="round"
+                    />
                   </svg>
                 </button>
                 {periodOpen && (
@@ -65,7 +87,10 @@ export default function Navigation() {
                     {(Object.keys(PERIODS) as PeriodKey[]).map((key) => (
                       <button
                         key={key}
-                        onClick={() => { setPeriod(key); setPeriodOpen(false); }}
+                        onClick={() => {
+                          setPeriod(key);
+                          setPeriodOpen(false);
+                        }}
                         className={`block w-full text-left px-3 py-1.5 text-[12px] font-medium ${
                           period === key
                             ? "text-amber-300 bg-amber-500/10"

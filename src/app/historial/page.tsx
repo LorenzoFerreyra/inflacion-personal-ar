@@ -49,7 +49,7 @@ export default function HistorialPage() {
   }, []);
 
   const fetchProducts = useCallback(async () => {
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
     try {
       const params = new URLSearchParams({
         search: debouncedSearch,
@@ -72,19 +72,19 @@ export default function HistorialPage() {
   }, [debouncedSearch, category, period, page]);
 
   useEffect(() => {
-    fetchProducts();
+    queueMicrotask(() => fetchProducts());
   }, [fetchProducts]);
 
   useEffect(() => {
-    setPage(1);
+    queueMicrotask(() => setPage(1));
   }, [debouncedSearch, category, period]);
 
   useEffect(() => {
     if (!category) {
-      setCategoryHistory([]);
+      queueMicrotask(() => setCategoryHistory([]));
       return;
     }
-    setLoadingCategoryHistory(true);
+    queueMicrotask(() => setLoadingCategoryHistory(true));
     fetch(`/api/category-history?category=${encodeURIComponent(category)}`)
       .then((res) => (res.ok ? res.json() : []))
       .then(setCategoryHistory)
@@ -106,10 +106,10 @@ export default function HistorialPage() {
 
   useEffect(() => {
     if (compareEans.size === 0) {
-      setCompareProducts([]);
+      queueMicrotask(() => setCompareProducts([]));
       return;
     }
-    setLoadingCompare(true);
+    queueMicrotask(() => setLoadingCompare(true));
     Promise.all(
       Array.from(compareEans).map(async (ean) => {
         const [prodRes, histRes] = await Promise.all([
@@ -122,11 +122,9 @@ export default function HistorialPage() {
           product: prodData?.product as Product,
           history: (histData?.average ?? []) as PricePoint[],
         };
-      })
+      }),
     )
-      .then((results) =>
-        setCompareProducts(results.filter((r) => r.product))
-      )
+      .then((results) => setCompareProducts(results.filter((r) => r.product)))
       .catch(() => setCompareProducts([]))
       .finally(() => setLoadingCompare(false));
   }, [compareEans]);
@@ -394,10 +392,10 @@ function ComparePanel({
             className="flex items-center gap-1.5 text-[11px] text-zinc-400 hover:text-zinc-200 group"
           >
             <span
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              className="w-2.5 h-2.5 rounded-full shrink-0"
               style={{ backgroundColor: COMPARE_COLORS[i] }}
             />
-            <span className="truncate max-w-[180px]">
+            <span className="truncate max-w-45">
               {item.product.product_description}
             </span>
             <span className="text-zinc-600 group-hover:text-red-400">×</span>
@@ -463,11 +461,12 @@ function CompareChart({
               boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             }}
             labelStyle={{ color: "#71717a", fontSize: "11px" }}
-            formatter={(value: number, name: string) => {
+            formatter={(value, name) => {
+              const numValue = Number(value ?? 0);
               const p = products.find((pp) => pp.product.ean === name);
               return [
-                `$${Number(value).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
-                p?.product.product_description ?? name,
+                `$${numValue.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`,
+                p?.product.product_description ?? String(name ?? ""),
               ];
             }}
           />

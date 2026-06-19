@@ -20,7 +20,11 @@ export default function Pagination({
   if (totalPages <= 1) return null;
 
   const nearby: number[] = [];
-  for (let i = Math.max(1, page - 1); i <= Math.min(totalPages, page + 1); i++) {
+  for (
+    let i = Math.max(1, page - 1);
+    i <= Math.min(totalPages, page + 1);
+    i++
+  ) {
     nearby.push(i);
   }
 
@@ -33,6 +37,8 @@ export default function Pagination({
     <button
       key={n}
       onClick={() => onPageChange(n)}
+      aria-label={btnLabel ?? `Ir a página ${n}`}
+      aria-current={n === page ? "page" : undefined}
       className={`h-8 rounded-md text-[13px] font-medium
         ${btnLabel ? "px-3" : "w-8 tabular-nums"}
         ${
@@ -47,7 +53,7 @@ export default function Pagination({
 
   return (
     <div className="flex items-center justify-between mt-5 px-1">
-      <span className="text-[12px] text-zinc-500 tabular-nums font-medium min-w-[120px]">
+      <span className="text-[12px] text-zinc-500 tabular-nums font-medium min-w-30">
         {totalCount.toLocaleString("es-AR")} {label}
       </span>
 
@@ -55,35 +61,41 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
+          aria-label="Página anterior"
           className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-100
                      hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
         >
-          <ChevronLeft size={15} />
+          <ChevronLeft size={15} aria-hidden="true" />
         </button>
 
         {showFirst && pgBtn(1, "Primera")}
         {gapAfterFirst && (
-          <span className="w-6 h-8 flex items-center justify-center text-[12px] text-zinc-600">&hellip;</span>
+          <span className="w-6 h-8 flex items-center justify-center text-[12px] text-zinc-600">
+            &hellip;
+          </span>
         )}
 
         {nearby.map((n) => pgBtn(n))}
 
         {gapBeforeLast && (
-          <span className="w-6 h-8 flex items-center justify-center text-[12px] text-zinc-600">&hellip;</span>
+          <span className="w-6 h-8 flex items-center justify-center text-[12px] text-zinc-600">
+            &hellip;
+          </span>
         )}
         {showLast && pgBtn(totalPages, "Última")}
 
         <button
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
+          aria-label="Página siguiente"
           className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-100
                      hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
         >
-          <ChevronRight size={15} />
+          <ChevronRight size={15} aria-hidden="true" />
         </button>
       </div>
 
-      <span className="text-[12px] text-zinc-500 tabular-nums font-medium min-w-[120px] text-right">
+      <span className="text-[12px] text-zinc-500 tabular-nums font-medium min-w-30 text-right">
         Pág. {page} de {totalPages.toLocaleString("es-AR")}
       </span>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, use } from "react";
-import { Product, PriceHistoryData, ChainPrice, PricePoint } from "@/lib/types";
+import { Product, PriceHistoryData, ChainPrice } from "@/lib/types";
 import PriceChart from "@/components/PriceChart";
 import ProductImage from "@/components/ProductImage";
 import { ArrowLeft, Download } from "@/components/Icons";
@@ -26,7 +26,10 @@ const TIME_RANGES: { key: TimeRange; label: string }[] = [
   { key: "all", label: "Todo" },
 ];
 
-function filterByRange(data: PriceHistoryData, range: TimeRange): PriceHistoryData {
+function filterByRange(
+  data: PriceHistoryData,
+  range: TimeRange,
+): PriceHistoryData {
   if (range === "all") return data;
 
   const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
@@ -36,7 +39,8 @@ function filterByRange(data: PriceHistoryData, range: TimeRange): PriceHistoryDa
 
   const filteredAvg = data.average.filter((p) => p.fecha >= cutoffStr);
 
-  const filteredByChain: Record<string, { fecha: string; precio: number }[]> = {};
+  const filteredByChain: Record<string, { fecha: string; precio: number }[]> =
+    {};
   for (const [chain, points] of Object.entries(data.byChain)) {
     filteredByChain[chain] = points.filter((p) => p.fecha >= cutoffStr);
   }
@@ -60,9 +64,13 @@ export default function HistorialProductPage({
   const [selectedChains, setSelectedChains] = useState<Set<string>>(new Set());
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(null);
+    });
     Promise.all([
       fetch(`/api/product?ean=${ean}`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/history?ean=${ean}`).then((r) => (r.ok ? r.json() : null)),
@@ -76,19 +84,24 @@ export default function HistorialProductPage({
         if (histData) setPriceHistory(histData);
         if (chainsData) setChainPrices(chainsData);
       })
-      .catch((err) => console.error("Failed to load product data:", err))
+      .catch((err) => {
+        console.error("Failed to load product data:", err);
+        setError(
+          "No se pudieron cargar los datos del producto. Reintentá más tarde.",
+        );
+      })
       .finally(() => setLoading(false));
   }, [ean]);
 
   const filteredHistory = useMemo(
     () => filterByRange(priceHistory, timeRange),
-    [priceHistory, timeRange]
+    [priceHistory, timeRange],
   );
 
   const cheapestChain =
     chainPrices.length > 0
       ? chainPrices.reduce((min, c) =>
-          c.total_canasta < min.total_canasta ? c : min
+          c.total_canasta < min.total_canasta ? c : min,
         ).cadena
       : null;
 
@@ -118,7 +131,11 @@ export default function HistorialProductPage({
   }, [stats, product?.precio_actual, cheapestChain]);
 
   const priceTable = useMemo(() => {
-    const rows: { fecha: string; precio: number; cadenas: Record<string, number> }[] = [];
+    const rows: {
+      fecha: string;
+      precio: number;
+      cadenas: Record<string, number>;
+    }[] = [];
     const dateMap = new Map<string, Record<string, number>>();
 
     for (const [chain, points] of Object.entries(priceHistory.byChain)) {
@@ -144,6 +161,20 @@ export default function HistorialProductPage({
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <div className="w-8 h-8 border-2 border-zinc-700 border-t-amber-400 rounded-full animate-spin" />
         <span className="text-sm text-zinc-500">Cargando producto...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-red-400">{error}</p>
+        <Link
+          href="/historial"
+          className="text-amber-400 text-sm mt-2 inline-block hover:underline"
+        >
+          Volver al historial
+        </Link>
       </div>
     );
   }
@@ -176,9 +207,9 @@ export default function HistorialProductPage({
       </Link>
 
       {/* Product header */}
-      <div className="bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/40 rounded-xl p-6">
+      <div className="bg-linear-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/40 rounded-xl p-6">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl overflow-hidden bg-zinc-800/60 flex-shrink-0">
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-zinc-800/60 shrink-0">
             <ProductImage
               src={product.image_url}
               alt={product.product_description}
@@ -375,8 +406,10 @@ export default function HistorialProductPage({
                   priceTable.map((row) => [
                     row.fecha,
                     String(row.precio),
-                    ...chains.map((c) => (row.cadenas[c] != null ? String(row.cadenas[c]) : "")),
-                  ])
+                    ...chains.map((c) =>
+                      row.cadenas[c] != null ? String(row.cadenas[c]) : "",
+                    ),
+                  ]),
                 );
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium
@@ -470,9 +503,7 @@ function StatBox({
       <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
         {label}
       </p>
-      <p className={`text-lg font-bold mt-1 ${colorClasses[color]}`}>
-        {value}
-      </p>
+      <p className={`text-lg font-bold mt-1 ${colorClasses[color]}`}>{value}</p>
       <p className="text-[11px] text-zinc-500 mt-0.5">{sub}</p>
     </div>
   );

@@ -19,6 +19,7 @@ export default function ExploradorPage() {
     totalCount,
     categories,
     loading,
+    categoriesError,
   } = useProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -64,21 +65,27 @@ export default function ExploradorPage() {
           >
             Todas
           </button>
-          {categories.slice(0, 12).map((cat) => (
-            <button
-              key={cat.categoria}
-              onClick={() =>
-                setCategory(category === cat.categoria ? "" : cat.categoria)
-              }
-              className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border ${
-                category === cat.categoria
-                  ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                  : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
-              }`}
-            >
-              {cat.categoria}
-            </button>
-          ))}
+          {categoriesError ? (
+            <span className="text-[12px] text-red-400/80 self-center">
+              Error al cargar categorías
+            </span>
+          ) : (
+            categories.slice(0, 12).map((cat) => (
+              <button
+                key={cat.categoria}
+                onClick={() =>
+                  setCategory(category === cat.categoria ? "" : cat.categoria)
+                }
+                className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border ${
+                  category === cat.categoria
+                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                    : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
+                }`}
+              >
+                {cat.categoria}
+              </button>
+            ))
+          )}
         </div>
 
         <ProductTable
@@ -93,7 +100,7 @@ export default function ExploradorPage() {
       </div>
 
       {/* Right: product detail */}
-      <div className="w-full lg:w-96 flex-shrink-0">
+      <div className="w-full lg:w-96 shrink-0">
         <div className="sticky top-24">
           <h2 className="text-lg font-semibold text-zinc-100 mb-4">
             Detalle del producto

@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getChainPrices } from "@/lib/database";
+import { parseEans } from "@/lib/shared";
 
 export async function GET(request: NextRequest) {
   const eansParam = request.nextUrl.searchParams.get("eans");
@@ -18,11 +19,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const eans = eansParam
-    .split(",")
-    .map((e) => e.trim())
-    .filter((e) => /^\d{1,14}$/.test(e))
-    .slice(0, 200);
+  const eans = parseEans(eansParam);
   const chains = getChainPrices(eans);
 
   return NextResponse.json(chains);

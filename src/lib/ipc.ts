@@ -34,14 +34,8 @@
  * └──────────────────────────────────────────────────────────────────────┘
  */
 
-import { getDb } from "./database";
-import { PERIODS, type PeriodKey, type IpcValues } from "./constants";
-
-const PERIOD_DAYS: Record<PeriodKey, number> = {
-  mensual: PERIODS.mensual.dias,
-  trimestral: PERIODS.trimestral.dias,
-  interanual: PERIODS.interanual.dias,
-};
+import { prepare } from "./database";
+import { PERIODS, type IpcValues } from "./constants";
 
 /**
  * Calcula la variación porcentual mediana de todos los productos
@@ -85,7 +79,7 @@ function computeVariation(dias: number): number {
     ORDER BY variacion
   `;
 
-  const rows = getDb().prepare(sql).all(dias) as { variacion: number }[];
+  const rows = prepare(sql).all(dias) as { variacion: number }[];
 
   if (rows.length === 0) return 0;
 
@@ -102,22 +96,26 @@ function computeVariation(dias: number): number {
  * Devuelve los tres valores de IPC calculados desde la base de datos.
  * Se cachea en memoria porque el cálculo recorre toda la tabla; el cache
  * se invalida cada 6 horas (suficiente dado que los datos se scrapean diariamente).
+ * El cache vive en globalThis para sobrevivir HMR en desarrollo.
  */
-let cached: { values: IpcValues; timestamp: number } | null = null;
+const globalForIpcCache = globalThis as unknown as {
+  __ipcCache: { values: IpcValues; timestamp: number } | undefined;
+};
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 export function getIpc(): IpcValues {
   const now = Date.now();
+  const cached = globalForIpcCache.__ipcCache;
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
     return cached.values;
   }
 
   const values: IpcValues = {
-    mensual: computeVariation(PERIOD_DAYS.mensual),
-    trimestral: computeVariation(PERIOD_DAYS.trimestral),
-    interanual: computeVariation(PERIOD_DAYS.interanual),
+    mensual: computeVariation(PERIODS.mensual.dias),
+    trimestral: computeVariation(PERIODS.trimestral.dias),
+    interanual: computeVariation(PERIODS.interanual.dias),
   };
 
-  cached = { values, timestamp: now };
+  globalForIpcCache.__ipcCache = { values, timestamp: now };
   return values;
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import { djb2Hash } from "@/lib/chainColors";
 
 interface Props {
   src: string | null;
@@ -11,16 +12,15 @@ interface Props {
   size?: "sm" | "md";
 }
 
-const BRAND_COLORS: Record<string, string> = {};
+const brandColorCache: Record<string, string> = {};
+
 function brandColor(marca: string): string {
-  if (BRAND_COLORS[marca]) return BRAND_COLORS[marca];
-  let hash = 0;
-  for (let i = 0; i < marca.length; i++) {
-    hash = marca.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h = ((hash % 360) + 360) % 360;
-  const color = `hsl(${h}, 45%, 35%)`;
-  BRAND_COLORS[marca] = color;
+  const cached = brandColorCache[marca];
+  if (cached) return cached;
+
+  const hue = ((djb2Hash(marca) % 360) + 360) % 360;
+  const color = `hsl(${hue}, 45%, 35%)`;
+  brandColorCache[marca] = color;
   return color;
 }
 
@@ -36,11 +36,10 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  const [prevSrc, setPrevSrc] = useState(src);
-  if (src !== prevSrc) {
-    setPrevSrc(src);
-    setImgError(false);
-  }
+  // Resetea el error de imagen cuando cambia la fuente.
+  useEffect(() => {
+    queueMicrotask(() => setImgError(false));
+  }, [src]);
 
   const px = size === "sm" ? 28 : 36;
   const hasImage = src && !imgError;

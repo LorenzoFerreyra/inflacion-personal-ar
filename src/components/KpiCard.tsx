@@ -36,7 +36,7 @@ export default function KpiCard({
 
   return (
     <div
-      className={`bg-gradient-to-br ${s.bg} border ${s.border} rounded-xl p-5 shadow-lg ${s.glow}`}
+      className={`bg-linear-to-br ${s.bg} border ${s.border} rounded-xl p-5 shadow-lg ${s.glow}`}
     >
       <p className="text-[13px] font-medium text-zinc-400 mb-1.5 tracking-wide">
         {label}

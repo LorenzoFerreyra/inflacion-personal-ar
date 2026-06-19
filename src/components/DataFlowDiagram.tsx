@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { chainLabel } from "@/lib/chainColors";
 
 const STAGES = [
   {
@@ -35,18 +36,17 @@ const STAGES = [
   },
 ] as const;
 
-const CHAINS = [
-  "Coto",
-  "Jumbo",
-  "Carrefour",
-  "Disco",
-  "Vea",
-  "Changomas",
-];
-
 function StoreIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
       <path d="M3 21h18" />
       <path d="M5 21V7l7-4 7 4v14" />
       <path d="M9 21v-6h6v6" />
@@ -57,7 +57,15 @@ function StoreIcon({ className }: { className?: string }) {
 
 function DownloadIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
       <path d="M12 3v12" />
       <path d="M8 11l4 4 4-4" />
       <path d="M8 5H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-4" />
@@ -67,7 +75,15 @@ function DownloadIcon({ className }: { className?: string }) {
 
 function DatabaseIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
       <ellipse cx="12" cy="5" rx="9" ry="3" />
       <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
       <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
@@ -77,7 +93,15 @@ function DatabaseIcon({ className }: { className?: string }) {
 
 function CpuIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
       <rect x="4" y="4" width="16" height="16" rx="2" />
       <rect x="9" y="9" width="6" height="6" rx="1" />
       <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" />
@@ -87,7 +111,15 @@ function CpuIcon({ className }: { className?: string }) {
 
 function ChartIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
       <path d="M3 3v18h18" />
       <path d="M7 16l4-6 4 3 5-7" />
     </svg>
@@ -110,7 +142,11 @@ interface Particle {
   label?: string;
 }
 
-export default function DataFlowDiagram() {
+interface Props {
+  chains?: string[];
+}
+
+export default function DataFlowDiagram({ chains = [] }: Props) {
   const [activeStage, setActiveStage] = useState<number | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const nextId = useRef(0);
@@ -119,7 +155,10 @@ export default function DataFlowDiagram() {
   useEffect(() => {
     const interval = setInterval(() => {
       const stageIdx = Math.floor(Math.random() * (STAGES.length - 1));
-      const label = stageIdx === 0 ? CHAINS[Math.floor(Math.random() * CHAINS.length)] : undefined;
+      const label =
+        stageIdx === 0 && chains.length > 0
+          ? chainLabel(chains[Math.floor(Math.random() * chains.length)])
+          : undefined;
       setParticles((prev) => [
         ...prev.filter((p) => p.progress < 1),
         {
@@ -133,14 +172,14 @@ export default function DataFlowDiagram() {
     }, 400);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [chains]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setParticles((prev) =>
         prev
           .map((p) => ({ ...p, progress: p.progress + p.speed }))
-          .filter((p) => p.progress < 1.2)
+          .filter((p) => p.progress < 1.2),
       );
     }, 50);
     return () => clearInterval(interval);
@@ -155,8 +194,7 @@ export default function DataFlowDiagram() {
       "Los datos se almacenan en una base SQLite con series históricas de precios y un catálogo canónico de productos con marca y categoría.",
     processing:
       "Se calculan variaciones porcentuales por período (30, 90 o 365 días) y se comparan contra el IPC del INDEC para contextualizar.",
-    app:
-      "El observatorio presenta los datos con tablas interactivas, gráficos de evolución y comparaciones por cadena de supermercado.",
+    app: "El observatorio presenta los datos con tablas interactivas, gráficos de evolución y comparaciones por cadena de supermercado.",
   };
 
   return (
@@ -165,7 +203,7 @@ export default function DataFlowDiagram() {
       className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 md:p-8 space-y-6"
     >
       <div className="flex items-center gap-2.5 mb-2">
-        <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
+        <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
         <h3 className="text-[15px] font-semibold text-zinc-200">
           Flujo de datos
         </h3>
@@ -199,7 +237,9 @@ export default function DataFlowDiagram() {
                 >
                   <Icon
                     className={`w-6 h-6 md:w-7 md:h-7 transition-colors duration-300 ${
-                      isActive ? "text-amber-400" : "text-zinc-400 group-hover:text-zinc-300"
+                      isActive
+                        ? "text-amber-400"
+                        : "text-zinc-400 group-hover:text-zinc-300"
                     }`}
                   />
                   {/* Pulse ring */}
@@ -255,7 +295,12 @@ export default function DataFlowDiagram() {
             const fromPct = (p.fromStage / (STAGES.length - 1)) * 100 + 6;
             const toPct = ((p.fromStage + 1) / (STAGES.length - 1)) * 100 - 6;
             const cx = fromPct + (toPct - fromPct) * p.progress;
-            const opacity = p.progress < 0.1 ? p.progress * 10 : p.progress > 0.9 ? (1 - p.progress) * 10 : 1;
+            const opacity =
+              p.progress < 0.1
+                ? p.progress * 10
+                : p.progress > 0.9
+                  ? (1 - p.progress) * 10
+                  : 1;
             return (
               <circle
                 key={p.id}

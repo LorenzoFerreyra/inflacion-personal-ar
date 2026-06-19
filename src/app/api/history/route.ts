@@ -7,14 +7,18 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getPriceHistory, getPriceHistoryByChain } from "@/lib/database";
+import { isValidEan } from "@/lib/shared";
 
 export async function GET(request: NextRequest) {
   const ean = request.nextUrl.searchParams.get("ean");
 
-  if (!ean || !/^\d{1,14}$/.test(ean)) {
+  if (!ean || !isValidEan(ean)) {
     return NextResponse.json(
-      { error: "El parámetro 'ean' es requerido y debe ser numérico (1-14 dígitos)" },
-      { status: 400 }
+      {
+        error:
+          "El parámetro 'ean' es requerido y debe ser numérico (1-14 dígitos)",
+      },
+      { status: 400 },
     );
   }
 

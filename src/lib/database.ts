@@ -9,7 +9,13 @@
 
 import Database from "better-sqlite3";
 import path from "path";
-import type { Product, PricePoint, ChainPrice, Category, Branch } from "./types";
+import type {
+  Product,
+  PricePoint,
+  ChainPrice,
+  Category,
+  Branch,
+} from "./types";
 
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
@@ -33,16 +39,24 @@ export function getDb(): Database.Database {
     db.pragma("journal_mode = WAL");
     db.pragma("mmap_size = 268435456"); // 256MB
     globalForDb.__db = db;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    db.function("normalize", (str: unknown) =>
-      str != null ? String(str).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() : "",
-    );
+    const normalizeFn = (str: unknown): string =>
+      str != null ? stripDiacritics(String(str)) : "";
+    db.function("normalize", normalizeFn);
   }
   return db;
 }
 
+/** Normaliza un string: elimina acentos y pasa a minúsculas. */
 function stripDiacritics(str: string): string {
-  return str.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036F]/g, "")
+    .toLowerCase();
+}
+
+/** Escapa los metacaracteres de LIKE (%, _, \) para evitar búsquedas maliciosas. */
+function escapeLike(str: string): string {
+  return str.replace(/[%_\\]/g, "\\$&");
 }
 
 function buildSearchConditions(
@@ -53,16 +67,17 @@ function buildSearchConditions(
   const tokens = search.trim().split(/\s+/).filter(Boolean);
   for (const token of tokens) {
     if (/^\d+$/.test(token)) {
+      const escaped = escapeLike(token);
       conditions.push(
-        "(cp.ean LIKE ? OR normalize(cp.product_description) LIKE ? OR normalize(cp.marca) LIKE ?)",
+        "(cp.ean LIKE ? ESCAPE '\\' OR normalize(cp.product_description) LIKE ? ESCAPE '\\' OR normalize(cp.marca) LIKE ? ESCAPE '\\')",
       );
-      const pattern = `%${token}%`;
+      const pattern = `%${escaped}%`;
       params.push(pattern, pattern, pattern);
     } else {
       conditions.push(
-        "(normalize(cp.product_description) LIKE ? OR normalize(cp.marca) LIKE ?)",
+        "(normalize(cp.product_description) LIKE ? ESCAPE '\\' OR normalize(cp.marca) LIKE ? ESCAPE '\\')",
       );
-      const pattern = `%${stripDiacritics(token)}%`;
+      const pattern = `%${escapeLike(stripDiacritics(token))}%`;
       params.push(pattern, pattern);
     }
   }
@@ -86,10 +101,11 @@ function getStmtCache(): Map<string, Database.Statement> {
   return globalForStmtCache.__stmtCache;
 }
 
-function prepare(sql: string): Database.Statement {
+export function prepare(sql: string): Database.Statement {
   const cache = getStmtCache();
   let stmt = cache.get(sql);
   if (stmt) {
+    // LRU bump: move to end of insertion order
     cache.delete(sql);
     cache.set(sql, stmt);
     return stmt;
@@ -109,8 +125,9 @@ function prepare(sql: string): Database.Statement {
  * Devuelve la fecha más reciente con datos de precios.
  */
 export function getLatestDate(): string | null {
-  const row = prepare("SELECT MAX(fecha) AS fecha FROM price_series")
-    .get() as { fecha: string | null } | undefined;
+  const row = prepare("SELECT MAX(fecha) AS fecha FROM price_series").get() as
+    | { fecha: string | null }
+    | undefined;
   return row?.fecha ?? null;
 }
 
@@ -124,19 +141,11 @@ export function getCategories(): Category[] {
      WHERE categoria IS NOT NULL AND categoria != ''
      GROUP BY categoria
      ORDER BY n DESC`,
-  )
-    .all() as Category[];
+  ).all() as Category[];
 }
 
 /**
- * Productos con precio actual y variación porcentual respecto a N días atrás.
- *
- * Usa dos CTEs:
- *   - precio_actual: promedio de precios en la fecha más reciente
- *   - precio_base: promedio de precios en la fecha más antigua dentro del rango
- *
- * Soporta filtrado por texto, categoría, y lista de EANs.
- * Paginación con LIMIT/OFFSET.
+ * Lista de cadenas con datos de precios.
  */
 export function getChainList(): string[] {
   const rows = prepare(
@@ -156,7 +165,7 @@ interface ProductQueryOptions {
 }
 
 function buildProductQueryParts(options: ProductQueryOptions) {
-  const { search = "", category = "", eans, cadena = "" } = options;
+  const { search = "", category = "", eans } = options;
 
   const conditions: string[] = [];
   const params: (string | number)[] = [];
@@ -176,32 +185,57 @@ function buildProductQueryParts(options: ProductQueryOptions) {
 
   const whereClause =
     conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const cadenaFilter = cadena.trim() ? "AND cadena = ?" : "";
-  const cadenaParams = cadena.trim() ? [cadena] : [];
 
-  return { conditions, params, whereClause, cadenaFilter, cadenaParams };
+  return { conditions, params, whereClause };
 }
 
-export function getProducts(options: ProductQueryOptions): { products: Product[]; total: number } {
-  const {
-    dias = 30,
-    page = 1,
-    pageSize = 30,
-  } = options;
+/**
+ * Productos con precio actual y variación porcentual respecto a N días atrás.
+ *
+ * Usa tres CTEs para calcular:
+ *   - precio_actual: promedio de precios en la fecha más reciente
+ *   - precio_base: promedio de precios en la fecha más antigua dentro del rango
+ *   - cobertura: cantidad de cadenas distintas que reportan el producto
+ *
+ * Soporta filtrado por texto, categoría, cadena y lista de EANs.
+ * Paginación con LIMIT/OFFSET.
+ */
+export function getProducts(options: ProductQueryOptions): {
+  products: Product[];
+  total: number;
+} {
+  const { dias = 30, page = 1, pageSize = 30, cadena = "" } = options;
 
-  const { params, whereClause, cadenaFilter, cadenaParams } =
-    buildProductQueryParts(options);
+  const { params, whereClause } = buildProductQueryParts(options);
 
   const offset = (Math.max(page, 1) - 1) * pageSize;
 
+  // The cadena filter must appear in 5 binding positions across the CTEs.
+  // We build the SQL fragments and parameter array explicitly so the
+  // relationship between each ? placeholder and its position is clear.
+  const hasCadena = cadena.trim().length > 0;
+
+  // Subqueries that start a fresh context use WHERE; outer scope uses AND.
+  const cadenaWhere = hasCadena ? "WHERE cadena = ?" : "";
+  const cadenaAnd = hasCadena ? "AND cadena = ?" : "";
+  const cadenaParams: string[] = hasCadena
+    ? [cadena, cadena, cadena, cadena, cadena]
+    : [];
+
+  // Correspondencia de los 5 bindings:
+  //   0 → MAX(fecha) subquery in precio_actual
+  //   1 → precio_actual outer WHERE
+  //   2 → MIN(fecha) subquery in precio_base
+  //   3 → precio_base outer WHERE
+  //   4 → MAX(fecha) subquery in cobertura
   const sql = `
     WITH
     precio_actual AS (
       SELECT ean, AVG(precio_lista) AS precio_hoy
       FROM price_series
-      WHERE fecha = (SELECT MAX(fecha) FROM price_series)
+      WHERE fecha = (SELECT MAX(fecha) FROM price_series ${cadenaWhere})
         AND precio_lista > 0
-        ${cadenaFilter}
+        ${cadenaAnd}
       GROUP BY ean
     ),
     precio_base AS (
@@ -211,15 +245,16 @@ export function getProducts(options: ProductQueryOptions): { products: Product[]
         SELECT MIN(fecha)
         FROM price_series
         WHERE fecha >= DATE('now', '-' || ? || ' days')
+        ${cadenaAnd}
       )
         AND precio_lista > 0
-        ${cadenaFilter}
+        ${cadenaAnd}
       GROUP BY ean
     ),
     cobertura AS (
       SELECT ean, COUNT(DISTINCT cadena) AS cobertura_cadenas
       FROM price_series
-      WHERE fecha = (SELECT MAX(fecha) FROM price_series)
+      WHERE fecha = (SELECT MAX(fecha) FROM price_series ${cadenaWhere})
         AND precio_lista > 0
       GROUP BY ean
     )
@@ -230,14 +265,17 @@ export function getProducts(options: ProductQueryOptions): { products: Product[]
       cp.categoria,
       cp.image_url,
       ROUND(pa.precio_hoy, 0) AS precio_actual,
-      ROUND(
-        (pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100,
-        1
-      ) AS variacion_pct,
+      CASE WHEN pb.precio_antes IS NOT NULL AND pb.precio_antes > 0
+        THEN ROUND(
+          (pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100,
+          1
+        )
+        ELSE NULL
+      END AS variacion_pct,
       COALESCE(cob.cobertura_cadenas, 1) AS cobertura_cadenas,
       COUNT(*) OVER() AS _total
     FROM precio_actual pa
-    JOIN precio_base pb USING (ean)
+    LEFT JOIN precio_base pb USING (ean)
     JOIN canonical_products cp USING (ean)
     LEFT JOIN cobertura cob USING (ean)
     ${whereClause}
@@ -245,8 +283,36 @@ export function getProducts(options: ProductQueryOptions): { products: Product[]
     LIMIT ? OFFSET ?
   `;
 
-  const rows = prepare(sql).all(dias, ...cadenaParams, ...cadenaParams, ...params, pageSize, offset) as (Product & { _total: number })[];
+  // Bind params in the exact order they appear in the SQL:
+  //   #1 cadena in MAX(fecha) subquery (pa)
+  //   #2 cadena in precio_actual outer
+  //   #3 dias in DATE('now', '-N days')
+  //   #4 cadena in MIN(fecha) subquery (pb)
+  //   #5 cadena in precio_base outer
+  //   #6 cadena in MAX(fecha) subquery (cobertura)
+  //   #7..#N WHERE clause params (search, category, eans)
+  //   #N+1 LIMIT
+  //   #N+2 OFFSET
+  const allParams = hasCadena
+    ? [
+        cadenaParams[0],
+        cadenaParams[1],
+        dias,
+        cadenaParams[2],
+        cadenaParams[3],
+        cadenaParams[4],
+        ...params,
+        pageSize,
+        offset,
+      ]
+    : [dias, ...params, pageSize, offset];
+
+  const rows = prepare(sql).all(...allParams) as (Product & {
+    _total: number;
+  })[];
+
   const total = rows.length > 0 ? rows[0]._total : 0;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const products = rows.map(({ _total, ...product }) => product) as Product[];
   return { products, total };
 }
@@ -272,14 +338,7 @@ export function getPriceHistory(ean: string): PricePoint[] {
     SELECT
       fecha,
       EXP(AVG(LN(precio_lista))) AS precio_promedio
-    FROM price_series, mediana
-    WHERE ean = ?
-      AND precio_lista > 0
-      AND precio_lista <= med * 5
-    GROUP BY fecha
-    ORDER BY fecha
-  `;
-  return prepare(sql).all(ean, ean, ean) as PricePoint[];
+    FROM price_series, mediana -- cross join: mediana returns 1 row, used to filter outliers per row
 }
 
 export function getPriceHistoryByChain(
@@ -406,8 +465,7 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
     ORDER BY total_canasta
   `;
 
-  return prepare(sql)
-    .all(...eans) as ChainPrice[];
+  return prepare(sql).all(...eans) as ChainPrice[];
 }
 
 export function getBranches(): Branch[] {

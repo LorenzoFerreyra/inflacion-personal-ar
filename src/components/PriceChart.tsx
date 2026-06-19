@@ -11,31 +11,8 @@ import {
   Line,
 } from "recharts";
 import { PriceHistoryData } from "@/lib/types";
-
-const CHAIN_COLORS: Record<string, string> = {
-  carrefour: "#6ee7b7",
-  dia: "#7dd3fc",
-  disco: "#c4b5fd",
-  coto: "#fca5a5",
-  chango_mas: "#fcd34d",
-  hiper_libertad: "#f0abfc",
-  jumbo: "#a5f3fc",
-  vea: "#fda4af",
-};
-const FALLBACK_COLORS = [
-  "#6ee7b7",
-  "#7dd3fc",
-  "#c4b5fd",
-  "#fca5a5",
-  "#fcd34d",
-  "#f0abfc",
-  "#a5f3fc",
-  "#fda4af",
-];
-
-function chainColor(name: string, index: number): string {
-  return CHAIN_COLORS[name] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length];
-}
+import { chainColor } from "@/lib/chainColors";
+import EmptyState from "@/components/EmptyState";
 
 interface Props {
   data: PriceHistoryData;
@@ -51,7 +28,7 @@ export default function PriceChart({
   const chains = useMemo(() => Object.keys(data.byChain), [data.byChain]);
   const visibleChains = useMemo(
     () => chains.filter((c) => selectedChains.has(c)),
-    [chains, selectedChains]
+    [chains, selectedChains],
   );
 
   const mergedData = useMemo(() => {
@@ -78,8 +55,8 @@ export default function PriceChart({
 
   if (data.average.length < 2) {
     return (
-      <div className="flex items-center justify-center py-8 text-zinc-500 text-sm rounded-xl border border-zinc-800/40 bg-zinc-900/30">
-        No hay suficientes datos para graficar.
+      <div className="rounded-xl border border-zinc-800/40 bg-zinc-900/30">
+        <EmptyState message="No hay suficientes datos para graficar." />
       </div>
     );
   }
@@ -95,7 +72,9 @@ export default function PriceChart({
             >
               <span
                 className="inline-block w-2 h-2 rounded-full"
-                style={{ backgroundColor: chainColor(chain, chains.indexOf(chain)) }}
+                style={{
+                  backgroundColor: chainColor(chain),
+                }}
               />
               {chain}
             </span>
@@ -167,13 +146,13 @@ export default function PriceChart({
               key={chain}
               type="monotone"
               dataKey={chain}
-              stroke={chainColor(chain, chains.indexOf(chain))}
+              stroke={chainColor(chain)}
               strokeWidth={1.5}
               dot={false}
               connectNulls
               activeDot={{
                 r: 3,
-                fill: chainColor(chain, chains.indexOf(chain)),
+                fill: chainColor(chain),
                 stroke: "#18181b",
                 strokeWidth: 2,
               }}

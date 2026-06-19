@@ -50,7 +50,7 @@ export default function Stepper({ currentStep, steps }: Props) {
               <div
                 className={`w-24 h-px mx-3 mb-6 ${
                   stepNum < currentStep
-                    ? "bg-gradient-to-r from-green-500/50 to-green-500/20"
+                    ? "bg-linear-to-r from-green-500/50 to-green-500/20"
                     : "bg-zinc-800"
                 }`}
               />

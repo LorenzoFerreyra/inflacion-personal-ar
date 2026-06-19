@@ -9,12 +9,15 @@ import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
 import { Download } from "@/components/Icons";
 import { downloadCsv } from "@/lib/exportCsv";
+import VariationBadge from "@/components/VariationBadge";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function InsightsPage() {
   const { period, ipc: ipcValues } = usePeriod();
   const [products, setProducts] = useState<Product[]>([]);
   const [chains, setChains] = useState<ChainPrice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -46,6 +49,7 @@ export default function InsightsPage() {
         if (!cancelled) {
           setProducts([]);
           setChains([]);
+          setError(true);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -87,10 +91,15 @@ export default function InsightsPage() {
     .slice(0, 15);
 
   if (loading) {
+    return <LoadingSpinner message="Cargando insights..." />;
+  }
+
+  if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <div className="w-8 h-8 border-2 border-zinc-700 border-t-amber-400 rounded-full animate-spin" />
-        <span className="text-sm text-zinc-500">Cargando insights...</span>
+        <p className="text-sm text-red-400">
+          Error al cargar datos. Reintentá más tarde.
+        </p>
       </div>
     );
   }
@@ -109,13 +118,13 @@ export default function InsightsPage() {
           label="Mayor suba"
           value={maxUp ? `+${maxUp.variacion_pct}%` : "—"}
           subtitle={maxUp?.product_description}
-          color="green"
+          color="red"
         />
         <KpiCard
           label="Mayor baja"
           value={maxDown ? `${maxDown.variacion_pct}%` : "—"}
           subtitle={maxDown?.product_description}
-          color="red"
+          color="green"
         />
       </div>
 
@@ -124,7 +133,7 @@ export default function InsightsPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-              <span className="w-0.5 h-4 rounded-full bg-red-400/70 flex-shrink-0" />
+              <span className="w-0.5 h-4 rounded-full bg-red-400/70 shrink-0" />
               Alertas de precio
             </h3>
             <button
@@ -132,7 +141,10 @@ export default function InsightsPage() {
                 downloadCsv(
                   "alertas-precio.csv",
                   ["Producto", "Variación %"],
-                  alerts.map((p) => [p.product_description, String(p.variacion_pct ?? "")])
+                  alerts.map((p) => [
+                    p.product_description,
+                    String(p.variacion_pct ?? ""),
+                  ]),
                 )
               }
               className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium
@@ -140,7 +152,7 @@ export default function InsightsPage() {
                          transition-all"
             >
               <Download size={11} />
-              Excel
+              CSV
             </button>
           </div>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
@@ -180,17 +192,7 @@ export default function InsightsPage() {
                         {p.product_description}
                       </td>
                       <td className="py-2 px-3 text-right">
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold ${
-                            v > 20
-                              ? "bg-red-500/10 text-red-400"
-                              : v > 10
-                                ? "bg-amber-500/10 text-amber-400"
-                                : "bg-green-500/10 text-green-400"
-                          }`}
-                        >
-                          {v > 0 ? "+" : ""}{p.variacion_pct}%
-                        </span>
+                        <VariationBadge value={p.variacion_pct} />
                       </td>
                     </tr>
                   );
@@ -204,7 +206,7 @@ export default function InsightsPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-              <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
+              <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
               vs. IPC ({ipcValue}%)
             </h3>
             <button
@@ -216,7 +218,7 @@ export default function InsightsPage() {
                     p.product_description,
                     String(p.variacion_pct ?? ""),
                     String(p.delta_pp),
-                  ])
+                  ]),
                 )
               }
               className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium
@@ -224,7 +226,7 @@ export default function InsightsPage() {
                          transition-all"
             >
               <Download size={11} />
-              Excel
+              CSV
             </button>
           </div>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
@@ -261,8 +263,8 @@ export default function InsightsPage() {
                       <span
                         className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold tabular-nums ${
                           p.delta_pp > 0
-                            ? "bg-green-500/10 text-green-400"
-                            : "bg-red-500/10 text-red-400"
+                            ? "bg-red-500/10 text-red-400"
+                            : "bg-green-500/10 text-green-400"
                         }`}
                       >
                         {p.delta_pp > 0 ? "+" : ""}
@@ -279,7 +281,7 @@ export default function InsightsPage() {
         {/* Chain ranking */}
         <div>
           <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-zinc-500/80 flex-shrink-0" />
+            <span className="w-0.5 h-4 rounded-full bg-zinc-500/80 shrink-0" />
             Ranking de cadenas
           </h3>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">

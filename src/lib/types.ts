@@ -19,12 +19,6 @@ export interface PricePoint {
   precio_promedio: number;
 }
 
-export interface ChainPricePoint {
-  fecha: string;
-  cadena: string;
-  precio: number;
-}
-
 export interface PriceHistoryData {
   average: PricePoint[];
   byChain: Record<string, { fecha: string; precio: number }[]>;

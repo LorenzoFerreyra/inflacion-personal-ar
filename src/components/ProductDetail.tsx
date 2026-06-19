@@ -6,6 +6,8 @@ import PriceChart from "@/components/PriceChart";
 import ProductImage from "@/components/ProductImage";
 import { Product, PriceHistoryData, ChainPrice } from "@/lib/types";
 import { ArrowRight, X } from "@/components/Icons";
+import VariationBadge from "@/components/VariationBadge";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface Props {
   product: Product;
@@ -23,8 +25,12 @@ export default function ProductDetail({ product, onClose }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    setSelectedChains(new Set());
-    setLoading(true);
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setSelectedChains(new Set());
+        setLoading(true);
+      }
+    });
 
     async function load() {
       try {
@@ -69,18 +75,13 @@ export default function ProductDetail({ product, onClose }: Props) {
       : null;
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <div className="w-8 h-8 border-2 border-zinc-700 border-t-amber-400 rounded-full animate-spin" />
-        <span className="text-sm text-zinc-500">Cargando detalle...</span>
-      </div>
-    );
+    return <LoadingSpinner message="Cargando detalle..." />;
   }
 
   return (
     <div className="space-y-4">
       {/* Info card */}
-      <div className="bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/40 rounded-xl p-5">
+      <div className="bg-linear-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/40 rounded-xl p-5">
         <div className="flex items-start gap-3">
           <ProductImage
             src={product.image_url}
@@ -110,18 +111,7 @@ export default function ProductDetail({ product, onClose }: Props) {
           <span className="text-2xl font-bold text-zinc-50">
             ${product.precio_actual?.toLocaleString("es-AR")}
           </span>
-          {product.variacion_pct !== null && (
-            <span
-              className={`text-sm font-semibold px-2 py-0.5 rounded-md ${
-                product.variacion_pct > 0
-                  ? "bg-red-500/10 text-red-400"
-                  : "bg-green-500/10 text-green-400"
-              }`}
-            >
-              {product.variacion_pct > 0 ? "+" : ""}
-              {product.variacion_pct}%
-            </span>
-          )}
+          <VariationBadge value={product.variacion_pct} />
         </div>
       </div>
 

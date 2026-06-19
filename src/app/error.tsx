@@ -1,11 +1,17 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error("Page error:", error);
+  }, [error]);
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
       <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
@@ -25,9 +31,7 @@ export default function Error({
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       </div>
-      <h2 className="text-lg font-semibold text-zinc-200">
-        Algo salió mal
-      </h2>
+      <h2 className="text-lg font-semibold text-zinc-200">Algo salió mal</h2>
       <p className="text-sm text-zinc-400 max-w-md">
         Ocurrió un error inesperado. Por favor intentá de nuevo.
       </p>

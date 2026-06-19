@@ -1,4 +1,10 @@
-export function downloadCsv(filename: string, headers: string[], rows: string[][]) {
+"use client";
+
+export function downloadCsv(
+  filename: string,
+  headers: string[],
+  rows: string[][],
+) {
   const escape = (v: string) =>
     v.includes(",") || v.includes('"') || v.includes("\n")
       ? `"${v.replace(/"/g, '""')}"`

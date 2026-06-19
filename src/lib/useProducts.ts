@@ -20,97 +20,139 @@ interface UseProductsReturn {
   categories: Category[];
   chains: string[];
   loading: boolean;
+  categoriesError: boolean;
+  chainsError: boolean;
 }
 
 export function useProducts(): UseProductsReturn {
   const { period } = usePeriod();
 
-  const [search, _setSearch] = useState("");
-  const [category, _setCategory] = useState("");
-  const [cadena, _setCadena] = useState("");
-  const [page, _setPage] = useState(1);
+  const [search, setSearchRaw] = useState("");
+  const [category, setCategoryRaw] = useState("");
+  const [cadena, setCadenaRaw] = useState("");
+  const [page, setPageRaw] = useState(1);
   const [products, setProducts] = useState<Product[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [chains, setChains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(false);
+  const [chainsError, setChainsError] = useState(false);
 
-  const [prevPeriod, setPrevPeriod] = useState(period);
-  if (period !== prevPeriod) {
-    setPrevPeriod(period);
-    setLoading(true);
-    _setPage(1);
-  }
+  // Reset page when period changes.
+  useEffect(() => {
+    queueMicrotask(() => setPageRaw(1));
+  }, [period]);
 
+  // Wrapped setters: changing a filter resets page to 1.
   const setSearch = useCallback((val: React.SetStateAction<string>) => {
-    setLoading(true);
-    _setSearch(val);
-    _setPage(1);
+    setSearchRaw(val);
+    setPageRaw(1);
   }, []);
 
   const setCategory = useCallback((val: React.SetStateAction<string>) => {
-    setLoading(true);
-    _setCategory(val);
-    _setPage(1);
+    setCategoryRaw(val);
+    setPageRaw(1);
   }, []);
 
   const setCadena = useCallback((val: React.SetStateAction<string>) => {
-    setLoading(true);
-    _setCadena(val);
-    _setPage(1);
+    setCadenaRaw(val);
+    setPageRaw(1);
   }, []);
 
   const setPage = useCallback((val: React.SetStateAction<number>) => {
-    setLoading(true);
-    _setPage(val);
+    setPageRaw(val);
   }, []);
 
   const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => setCategories(data))
-      .catch((err) => console.error("Failed to load categories:", err));
+    const abort = new AbortController();
 
-    fetch("/api/chains-list")
+    fetch("/api/categories", { signal: abort.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
-      .then((data) => setChains(data))
-      .catch((err) => console.error("Failed to load chains:", err));
+      .then((data) => {
+        setCategories(data);
+        setCategoriesError(false);
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          console.error("Failed to load categories:", err);
+          setCategoriesError(true);
+        }
+      });
+
+    fetch("/api/chains-list", { signal: abort.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        setChains(data);
+        setChainsError(false);
+      })
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          console.error("Failed to load chains:", err);
+          setChainsError(true);
+        }
+      });
+
+    return () => abort.abort();
   }, []);
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({
-        search: debouncedSearch,
-        category,
-        cadena,
-        dias: String(PERIODS[period].dias),
-        page: String(page),
-        pageSize: String(PAGE_SIZE),
-      });
-      const res = await fetch(`/api/products?${params}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setProducts(data.products);
-      setTotalCount(data.total);
-    } catch {
-      setProducts([]);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    const abort = new AbortController();
+
+    (async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          search: debouncedSearch,
+          category,
+          cadena,
+          dias: String(PERIODS[period].dias),
+          page: String(page),
+          pageSize: String(PAGE_SIZE),
+        });
+        const res = await fetch(`/api/products?${params}`, {
+          signal: abort.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setProducts(data.products);
+        setTotalCount(data.total);
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          setProducts([]);
+          setTotalCount(0);
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    return () => abort.abort();
   }, [debouncedSearch, category, cadena, period, page]);
 
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  return { search, setSearch, category, setCategory, cadena, setCadena, page, setPage, products, totalCount, categories, chains, loading };
+  return {
+    search,
+    setSearch,
+    category,
+    setCategory,
+    cadena,
+    setCadena,
+    page,
+    setPage,
+    products,
+    totalCount,
+    categories,
+    chains,
+    loading,
+    categoriesError,
+    chainsError,
+  };
 }

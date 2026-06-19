@@ -1,28 +1,22 @@
 import type { Metadata } from "next";
-import { getBranches } from "@/lib/database";
+import { getBranches, getChainList } from "@/lib/database";
+import { chainColor, chainLabel } from "@/lib/chainColors";
 import BranchMapLoader from "@/components/BranchMapLoader";
 
 export const metadata: Metadata = {
   title: "Cobertura del observatorio de inflación",
   description: "Cadenas de supermercados relevadas",
 };
-// to do: avoid hardcoded values for supermarkets and pull from database
-// this entails modifying the original schema
-const CHAINS = [
-  { id: "carrefour", name: "Carrefour", color: "#1a56db" },
-  { id: "coto", name: "Coto", color: "#dc2626" },
-  { id: "jumbo", name: "Jumbo", color: "#059669" },
-  { id: "disco", name: "Disco", color: "#7c3aed" },
-  { id: "vea", name: "Vea", color: "#d97706" },
-  { id: "dia", name: "Día", color: "#e11d48" },
-  { id: "chango_mas", name: "Chango Más", color: "#0891b2" },
-  { id: "hiper_libertad", name: "Híper Libertad", color: "#4f46e5" },
-  { id: "alvear", name: "Alvear", color: "#65a30d" },
-  { id: "kilbel", name: "Kilbel", color: "#ca8a04" },
-];
 
 export default function CoberturaPage() {
   const branches = getBranches();
+  const chainIds = getChainList();
+
+  const chains = chainIds.map((id) => ({
+    id,
+    name: chainLabel(id),
+    color: chainColor(id),
+  }));
 
   const countByChain: Record<string, number> = {};
   for (const b of branches) {
@@ -37,7 +31,7 @@ export default function CoberturaPage() {
           Cobertura
         </h1>
         <p className="text-[14px] text-zinc-400 mt-2 max-w-2xl leading-relaxed">
-          Relevamos precios diarios de {CHAINS.length} cadenas de supermercados
+          Relevamos precios diarios de {chains.length} cadenas de supermercados
           en Argentina. Cada punto en el mapa representa una sucursal cuyo
           catálogo es monitoreado por nuestro sistema.
         </p>
@@ -45,8 +39,8 @@ export default function CoberturaPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* Map */}
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden min-h-[560px]">
-          <BranchMapLoader branches={branches} chains={CHAINS} />
+        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden min-h-140">
+          <BranchMapLoader branches={branches} chains={chains} />
         </div>
 
         {/* Chain list sidebar */}
@@ -56,14 +50,14 @@ export default function CoberturaPage() {
           </h3>
 
           <ul className="space-y-2">
-            {CHAINS.map((chain) => (
+            {chains.map((chain) => (
               <li
                 key={chain.id}
                 className="flex items-center gap-3 bg-zinc-900/50 border border-zinc-800/50 rounded-lg px-4 py-3
                            hover:border-zinc-700/60"
               >
                 <span
-                  className="w-2.5 h-2.5 flex-shrink-0"
+                  className="w-2.5 h-2.5 shrink-0"
                   style={{
                     backgroundColor: chain.color,
                     borderRadius: "2px",

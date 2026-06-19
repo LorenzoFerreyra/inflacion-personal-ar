@@ -6,7 +6,7 @@ import type { Branch } from "@/lib/types";
 const BranchMap = dynamic(() => import("./BranchMap"), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center min-h-[560px]">
+    <div className="flex items-center justify-center min-h-140">
       <p className="text-sm text-zinc-500">Cargando mapa…</p>
     </div>
   ),

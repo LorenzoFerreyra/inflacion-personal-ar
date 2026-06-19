@@ -3,13 +3,27 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { Branch } from "@/lib/types";
 import type { Map } from "leaflet";
+import { chainLabel } from "@/lib/chainColors";
+
+/** Escapa HTML para prevenir XSS en contenido generado dinámicamente. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/** Verifica que el color sea un valor CSS hex válido (con #) para prevenir inyección. */
+function sanitizeColor(color: string): string {
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#888";
+}
 
 interface Props {
   branches: Branch[];
   chains: { id: string; name: string; color: string }[];
 }
-
-const CHAIN_COLORS: Record<string, string> = {};
 
 export default function BranchMap({ branches, chains }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -51,7 +65,7 @@ export default function BranchMap({ branches, chains }: Props) {
       ).addTo(map);
 
       for (const b of branches) {
-        const color = chainColors[b.cadena] ?? "#888";
+        const color = sanitizeColor(chainColors[b.cadena] ?? "#888");
         const icon = L.divIcon({
           className: "",
           html: `<div style="
@@ -66,15 +80,17 @@ export default function BranchMap({ branches, chains }: Props) {
           iconAnchor: [5, 5],
         });
 
-        L.marker([b.latitud, b.longitud], { icon }).addTo(map).bindPopup(
-          `<div style="font-family:system-ui;font-size:12px;line-height:1.4">
-            <strong style="font-size:13px">${chainLabel(b.cadena)}</strong>
-            <span style="opacity:0.6;margin-left:4px;font-size:11px">${b.formato}</span>
-            <br/>${b.direccion}
-            <br/><span style="opacity:0.7">${b.localidad}, ${b.provincia}</span>
+        L.marker([b.latitud, b.longitud], { icon })
+          .addTo(map)
+          .bindPopup(
+            `<div style="font-family:system-ui;font-size:12px;line-height:1.4">
+            <strong style="font-size:13px">${escapeHtml(chainLabel(b.cadena))}</strong>
+            <span style="opacity:0.6;margin-left:4px;font-size:11px">${escapeHtml(b.formato)}</span>
+            <br/>${escapeHtml(b.direccion)}
+            <br/><span style="opacity:0.7">${escapeHtml(b.localidad)}, ${escapeHtml(b.provincia)}</span>
           </div>`,
-          { closeButton: false, className: "branch-popup" },
-        );
+            { closeButton: false, className: "branch-popup" },
+          );
       }
 
       if (branches.length > 0) {
@@ -107,11 +123,4 @@ export default function BranchMap({ branches, chains }: Props) {
       )}
     </div>
   );
-}
-
-function chainLabel(id: string): string {
-  return id
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
 }

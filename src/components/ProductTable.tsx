@@ -5,6 +5,9 @@ import { PAGE_SIZE } from "@/lib/constants";
 import { Package } from "@/components/Icons";
 import ProductImage from "@/components/ProductImage";
 import Pagination from "@/components/Pagination";
+import VariationBadge from "@/components/VariationBadge";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import EmptyState from "@/components/EmptyState";
 
 interface Props {
   products: Product[];
@@ -29,20 +32,15 @@ export default function ProductTable({
 }: Props) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-zinc-500 gap-3">
-        <div className="w-8 h-8 border-2 border-zinc-700 border-t-amber-400 rounded-full animate-spin" />
-        <span className="text-sm">Cargando productos...</span>
-      </div>
-    );
+    return <LoadingSpinner message="Cargando productos..." />;
   }
 
   if (products.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-zinc-500 gap-3">
-        <Package size={32} strokeWidth={1.2} className="text-zinc-600" />
-        <span className="text-sm">No se encontraron productos.</span>
-      </div>
+      <EmptyState
+        message="No se encontraron productos."
+        icon={<Package size={32} strokeWidth={1.2} />}
+      />
     );
   }
 
@@ -94,7 +92,9 @@ export default function ProductTable({
                         alt={product.product_description}
                         marca={product.marca}
                       />
-                      <span className="truncate">{product.product_description}</span>
+                      <span className="truncate">
+                        {product.product_description}
+                      </span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3 text-zinc-500 text-[13px]">
@@ -118,34 +118,13 @@ export default function ProductTable({
         </table>
       </div>
 
-      <Pagination page={page} totalPages={totalPages} totalCount={totalCount} onPageChange={onPageChange} label="productos" />
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        onPageChange={onPageChange}
+        label="productos"
+      />
     </div>
-  );
-}
-
-
-function VariationBadge({ value }: { value: number | null }) {
-  if (value === null || value === undefined) {
-    return <span className="text-zinc-600">—</span>;
-  }
-
-  const isPositive = value > 0;
-  const isZero = value === 0;
-
-  const classes = isZero
-    ? "bg-zinc-800/50 text-zinc-400"
-    : isPositive
-      ? "bg-red-500/10 text-red-400"
-      : "bg-green-500/10 text-green-400";
-
-  const sign = isPositive ? "+" : "";
-
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-md text-[12px] font-semibold tabular-nums ${classes}`}
-    >
-      {sign}
-      {value.toFixed(1)}%
-    </span>
   );
 }

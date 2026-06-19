@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getChainList } from "@/lib/database";
 import DataFlowDiagram from "@/components/DataFlowDiagram";
 
 export const metadata: Metadata = {
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function MetodologiaPage() {
+  const chainIds = getChainList();
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-lg font-semibold text-zinc-100">Metodología</h2>
@@ -15,7 +17,7 @@ export default function MetodologiaPage() {
         {/* Fuente de datos */}
         <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 space-y-3">
           <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
+            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
             Fuente de datos
           </h3>
           <p className="text-sm text-zinc-400 leading-relaxed">
@@ -29,7 +31,7 @@ export default function MetodologiaPage() {
         {/* Cálculo de variación */}
         <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 space-y-3">
           <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
+            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
             Cálculo de variación
           </h3>
           <p className="text-sm text-zinc-400 leading-relaxed">
@@ -42,7 +44,7 @@ export default function MetodologiaPage() {
         {/* IPC de referencia */}
         <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 space-y-3">
           <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 flex-shrink-0" />
+            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
             IPC de referencia
           </h3>
           <p className="text-sm text-zinc-400 leading-relaxed">
@@ -56,7 +58,7 @@ export default function MetodologiaPage() {
         {/* Limitaciones */}
         <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 space-y-3">
           <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-zinc-500/80 flex-shrink-0" />
+            <span className="w-0.5 h-4 rounded-full bg-zinc-500/80 shrink-0" />
             Limitaciones
           </h3>
           <p className="text-sm text-zinc-400 leading-relaxed">
@@ -68,7 +70,7 @@ export default function MetodologiaPage() {
         </div>
       </div>
 
-      <DataFlowDiagram />
+      <DataFlowDiagram chains={chainIds} />
     </div>
   );
 }

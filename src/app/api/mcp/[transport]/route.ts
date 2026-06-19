@@ -1,5 +1,6 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
+import { NextRequest, NextResponse } from "next/server";
 import {
   getProducts,
   getCategories,
@@ -19,14 +20,39 @@ const handler = createMcpHandler(
       {
         title: "Buscar productos",
         description:
-          "Busca productos en supermercados argentinos por texto, categoría o EAN. " +
-          "Devuelve precio actual, variación porcentual y cobertura de cadenas.",
+          "Busca productos en supermercados argentinos por texto, categoria o EAN. " +
+          "Devuelve precio actual, variacion porcentual y cobertura de cadenas.",
         inputSchema: {
-          search: z.string().optional().describe("Texto libre para buscar en nombre o marca"),
-          category: z.string().optional().describe("Categoría exacta (usar get_categories para ver opciones)"),
-          dias: z.number().int().min(1).max(365).optional().describe("Período de comparación en días (default: 30)"),
-          page: z.number().int().min(1).optional().describe("Página (default: 1)"),
-          pageSize: z.number().int().min(1).max(50).optional().describe("Resultados por página (default: 20, max: 50)"),
+          search: z
+            .string()
+            .optional()
+            .describe("Texto libre para buscar en nombre o marca"),
+          category: z
+            .string()
+            .optional()
+            .describe(
+              "Categoria exacta (usar get_categories para ver opciones)",
+            ),
+          dias: z
+            .number()
+            .int()
+            .min(1)
+            .max(365)
+            .optional()
+            .describe("Periodo de comparacion en dias (default: 30)"),
+          page: z
+            .number()
+            .int()
+            .min(1)
+            .optional()
+            .describe("Pagina (default: 1)"),
+          pageSize: z
+            .number()
+            .int()
+            .min(1)
+            .max(50)
+            .optional()
+            .describe("Resultados por pagina (default: 20, max: 50)"),
         },
       },
       async ({ search, category, dias, page, pageSize }) => {
@@ -42,7 +68,11 @@ const handler = createMcpHandler(
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify({ products, total, page: opts.page, pageSize: opts.pageSize }, null, 2),
+              text: JSON.stringify(
+                { products, total, page: opts.page, pageSize: opts.pageSize },
+                null,
+                2,
+              ),
             },
           ],
         };
@@ -52,14 +82,20 @@ const handler = createMcpHandler(
     server.registerTool(
       "get_categories",
       {
-        title: "Listar categorías",
-        description: "Lista todas las categorías de productos disponibles con la cantidad de productos en cada una.",
+        title: "Listar categorias",
+        description:
+          "Lista todas las categorias de productos disponibles con la cantidad de productos en cada una.",
         inputSchema: {},
       },
       async () => {
         const categories = getCategories();
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(categories, null, 2) }],
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(categories, null, 2),
+            },
+          ],
         };
       },
     );
@@ -68,19 +104,29 @@ const handler = createMcpHandler(
       "get_product_detail",
       {
         title: "Detalle de producto",
-        description: "Obtiene información detallada de un producto por su código EAN, incluyendo precio actual y variación.",
+        description:
+          "Obtiene informacion detallada de un producto por su codigo EAN, incluyendo precio actual y variacion.",
         inputSchema: {
-          ean: z.string().describe("Código EAN del producto"),
+          ean: z.string().describe("Codigo EAN del producto"),
         },
       },
       async ({ ean }) => {
         const product = getProductByEan(ean);
         if (!product) {
-          return { content: [{ type: "text" as const, text: "Producto no encontrado." }] };
+          return {
+            content: [
+              { type: "text" as const, text: "Producto no encontrado." },
+            ],
+          };
         }
         const stats = getPriceStats(ean);
         return {
-          content: [{ type: "text" as const, text: JSON.stringify({ product, stats }, null, 2) }],
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ product, stats }, null, 2),
+            },
+          ],
         };
       },
     );
@@ -90,17 +136,22 @@ const handler = createMcpHandler(
       {
         title: "Historial de precios",
         description:
-          "Devuelve la serie histórica de precios de un producto (promedio y por cadena). " +
-          "Útil para analizar tendencias de inflación de un producto específico.",
+          "Devuelve la serie historica de precios de un producto (promedio y por cadena). " +
+          "Util para analizar tendencias de inflacion de un producto especifico.",
         inputSchema: {
-          ean: z.string().describe("Código EAN del producto"),
+          ean: z.string().describe("Codigo EAN del producto"),
         },
       },
       async ({ ean }) => {
         const average = getPriceHistory(ean);
         const byChain = getPriceHistoryByChain(ean);
         return {
-          content: [{ type: "text" as const, text: JSON.stringify({ average, byChain }, null, 2) }],
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ average, byChain }, null, 2),
+            },
+          ],
         };
       },
     );
@@ -108,18 +159,24 @@ const handler = createMcpHandler(
     server.registerTool(
       "get_category_price_history",
       {
-        title: "Historial de precios por categoría",
+        title: "Historial de precios por categoria",
         description:
-          "Devuelve la serie histórica de precios promedio de una categoría completa. " +
-          "Útil para analizar inflación por rubro (lácteos, bebidas, etc.).",
+          "Devuelve la serie historica de precios promedio de una categoria completa. " +
+          "Util para analizar inflacion por rubro (lacteos, bebidas, etc.).",
         inputSchema: {
-          category: z.string().describe("Nombre de la categoría (usar get_categories para ver opciones)"),
+          category: z
+            .string()
+            .describe(
+              "Nombre de la categoria (usar get_categories para ver opciones)",
+            ),
         },
       },
       async ({ category }) => {
         const history = getCategoryPriceHistory(category);
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(history, null, 2) }],
+          content: [
+            { type: "text" as const, text: JSON.stringify(history, null, 2) },
+          ],
         };
       },
     );
@@ -130,19 +187,21 @@ const handler = createMcpHandler(
         title: "Comparar precios por cadena",
         description:
           "Compara el costo total de una canasta de productos entre cadenas de supermercados. " +
-          "Recibe una lista de EANs y devuelve el total por cadena, ordenado del más barato al más caro.",
+          "Recibe una lista de EANs y devuelve el total por cadena, ordenado del mas barato al mas caro.",
         inputSchema: {
           eans: z
             .array(z.string())
             .min(1)
             .max(200)
-            .describe("Lista de códigos EAN de los productos a comparar"),
+            .describe("Lista de codigos EAN de los productos a comparar"),
         },
       },
       async ({ eans }) => {
         const prices = getChainPrices(eans);
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(prices, null, 2) }],
+          content: [
+            { type: "text" as const, text: JSON.stringify(prices, null, 2) },
+          ],
         };
       },
     );
@@ -150,8 +209,9 @@ const handler = createMcpHandler(
     server.registerTool(
       "get_latest_date",
       {
-        title: "Última fecha con datos",
-        description: "Devuelve la fecha más reciente con datos de precios en la base de datos.",
+        title: "Ultima fecha con datos",
+        description:
+          "Devuelve la fecha mas reciente con datos de precios en la base de datos.",
         inputSchema: {},
       },
       async () => {
@@ -169,4 +229,59 @@ const handler = createMcpHandler(
   },
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+/**
+ * Optional API key authentication for the MCP endpoint.
+ *
+ * If MCP_API_KEY is set in the environment, requests must include
+ * it via the Authorization header (Bearer <key>) or the
+ * x-api-key header. If not set, the endpoint is open (useful for
+ * local development or personal deployments behind a firewall).
+ */
+function checkAuth(request: NextRequest): boolean {
+  const requiredKey = process.env.MCP_API_KEY;
+  if (!requiredKey) return true; // Auth not configured — open access
+
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice(7) === requiredKey;
+  }
+
+  const apiKeyHeader = request.headers.get("x-api-key");
+  if (apiKeyHeader) {
+    return apiKeyHeader === requiredKey;
+  }
+
+  return false;
+}
+
+function createAuthHandler(
+  innerHandler: (
+    req: NextRequest,
+    ctx: { params: Promise<{ transport: string }> },
+  ) => Promise<Response>,
+) {
+  return async function (
+    req: NextRequest,
+    ctx: { params: Promise<{ transport: string }> },
+  ): Promise<Response> {
+    if (!checkAuth(req)) {
+      return NextResponse.json(
+        {
+          error:
+            "No autorizado. Inclui MCP_API_KEY en el header Authorization o x-api-key.",
+        },
+        { status: 401 },
+      );
+    }
+    return innerHandler(req, ctx);
+  };
+}
+
+const authHandler = createAuthHandler(
+  handler as unknown as (
+    req: NextRequest,
+    ctx: { params: Promise<{ transport: string }> },
+  ) => Promise<Response>,
+);
+
+export { authHandler as GET, authHandler as POST, authHandler as DELETE };
