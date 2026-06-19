@@ -105,7 +105,7 @@ export function getCategories(): Category[] {
      FROM canonical_products
      WHERE categoria IS NOT NULL AND categoria != ''
      GROUP BY categoria
-     ORDER BY categoria`,
+     ORDER BY n DESC`,
   )
     .all() as Category[];
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import KpiCard from "@/components/KpiCard";
 import ChainBarChart from "@/components/ChainBarChart";
+import ProductDetail from "@/components/ProductDetail";
 import { Product, ChainPrice } from "@/lib/types";
 import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
@@ -14,6 +15,7 @@ export default function InsightsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [chains, setChains] = useState<ChainPrice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,7 +168,8 @@ export default function InsightsPage() {
                   return (
                     <tr
                       key={p.ean}
-                      className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
+                      onClick={() => setSelectedProduct(p)}
+                      className="border-b border-zinc-800/30 hover:bg-zinc-800/20 cursor-pointer"
                     >
                       <td className="py-2 px-3">
                         <span
@@ -243,7 +246,8 @@ export default function InsightsPage() {
                 {ipcComparison.map((p) => (
                   <tr
                     key={p.ean}
-                    className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
+                    onClick={() => setSelectedProduct(p)}
+                    className="border-b border-zinc-800/30 hover:bg-zinc-800/20 cursor-pointer"
                   >
                     <td className="py-2 px-3 text-zinc-200 truncate max-w-36 text-[13px]">
                       {p.product_description}
@@ -283,6 +287,26 @@ export default function InsightsPage() {
           </div>
         </div>
       </div>
+
+      {/* Product detail drawer */}
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 z-50 flex justify-end"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md bg-zinc-950 border-l border-zinc-800/60 overflow-y-auto p-6 animate-slide-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ProductDetail
+              key={selectedProduct.ean}
+              product={selectedProduct}
+              onClose={() => setSelectedProduct(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
