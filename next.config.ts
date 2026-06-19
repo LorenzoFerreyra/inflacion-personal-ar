@@ -1,17 +1,11 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      // Supermarket domains
-      { protocol: "https", hostname: "**.jumbo.com.ar" },
-      { protocol: "https", hostname: "**.disco.com.ar" },
-      { protocol: "https", hostname: "**.vea.com.ar" },
-      { protocol: "https", hostname: "**.cotodigital3.com.ar" },
-      { protocol: "https", hostname: "**.carrefour.com.ar" },
-      { protocol: "https", hostname: "**.dia.com.ar" },
-      { protocol: "https", hostname: "**.changomas.com.ar" },
-      // CDNs used by Argentine supermarkets
+      { protocol: "https", hostname: "**.com.ar" },
       { protocol: "https", hostname: "**.vteximg.com.br" },
       { protocol: "https", hostname: "**.vtexassets.com" },
       { protocol: "https", hostname: "**.cloudfront.net" },
@@ -46,11 +40,7 @@ const nextConfig: NextConfig = {
           key: "Content-Security-Policy",
           value:
             "default-src 'self'; " +
-            // 'unsafe-inline' is needed by Next.js for inline <script> tags
-            // (e.g. chunk loading, next/font CSS). Using strict-dynamic
-            // tells modern browsers to ignore 'unsafe-inline' and trust
-            // only scripts loaded by already-allowed scripts.
-            "script-src 'self' 'unsafe-inline' 'strict-dynamic'; " +
+            `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}; ` +
             "style-src 'self' 'unsafe-inline'; " +
             "img-src 'self' https: data: blob:; " +
             "connect-src 'self' https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; " +
