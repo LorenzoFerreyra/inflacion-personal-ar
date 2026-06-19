@@ -15,7 +15,6 @@ import {
   ArrowLeft,
   RotateCcw,
   ShoppingBasket,
-  Sparkles,
 } from "@/components/Icons";
 import ProductImage from "@/components/ProductImage";
 
@@ -125,7 +124,7 @@ export default function MiCanastaPage() {
 
       {/* ── STEP 1 ── */}
       {step === 1 && (
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-semibold text-zinc-100 mb-4">
               Buscar productos
@@ -170,7 +169,7 @@ export default function MiCanastaPage() {
           </div>
 
           {/* Basket sidebar */}
-          <div className="w-80 shrink-0">
+          <div className="w-full lg:w-80 shrink-0">
             <div className="sticky top-24">
               <h2 className="text-lg font-semibold text-zinc-100 mb-4">
                 Tu canasta
@@ -368,10 +367,7 @@ export default function MiCanastaPage() {
                   Calculando...
                 </>
               ) : (
-                <>
-                  <Sparkles size={16} />
-                  Calcular mi inflaci&oacute;n
-                </>
+                "Calcular mi inflación"
               )}
             </button>
           </div>
@@ -386,7 +382,7 @@ export default function MiCanastaPage() {
       {/* ── STEP 3 ── */}
       {step === 3 && result && (
         <div className="space-y-6 animate-fade-in">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <KpiCard
               label="Tu inflaci&oacute;n personal"
               value={`${result.personal}%`}
@@ -408,7 +404,7 @@ export default function MiCanastaPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Ranked products */}
             <div>
               <h3 className="text-[15px] font-semibold text-zinc-200 mb-3">

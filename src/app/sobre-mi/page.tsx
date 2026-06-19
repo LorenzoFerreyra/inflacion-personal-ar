@@ -13,7 +13,7 @@ const GithubIcon = () => (
 
 export default function SobreMiPage() {
   return (
-    <div className="space-y-10 animate-fade-in">
+    <div className="space-y-10">
       {/* Hero profile — centered */}
       <div className="flex flex-col items-center text-center pt-4">
         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-400/20 to-amber-600/20 border border-amber-400/30 flex items-center justify-center mb-4">

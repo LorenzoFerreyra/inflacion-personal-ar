@@ -63,7 +63,7 @@ export default function ExploradorPage() {
       : null;
 
   return (
-    <div className="flex gap-6">
+    <div className="flex flex-col lg:flex-row gap-6">
       {/* Left: product list */}
       <div className="flex-1 min-w-0">
         <h2 className="text-lg font-semibold text-zinc-100 mb-4">
@@ -130,7 +130,7 @@ export default function ExploradorPage() {
       </div>
 
       {/* Right: product detail */}
-      <div className="w-96 flex-shrink-0">
+      <div className="w-full lg:w-96 flex-shrink-0">
         <div className="sticky top-24">
           <h2 className="text-lg font-semibold text-zinc-100 mb-4">
             Detalle del producto

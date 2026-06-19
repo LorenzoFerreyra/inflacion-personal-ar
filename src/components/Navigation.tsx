@@ -31,9 +31,9 @@ export default function Navigation() {
   }, []);
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/80 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-0 py-3 md:py-0 md:h-16">
           {/* Logo + IPC badge + period dropdown */}
           <div className="flex items-center gap-5">
             <Link
@@ -82,7 +82,7 @@ export default function Navigation() {
           </div>
 
           {/* Tabs */}
-          <div className="flex bg-zinc-900/50 rounded-lg p-1">
+          <div className="flex bg-zinc-900/50 rounded-lg p-1 overflow-x-auto">
             {tabs.map(({ href, label }) => {
               const isActive =
                 href === "/" ? pathname === "/" : pathname.startsWith(href);

@@ -6,6 +6,8 @@ import ChainBarChart from "@/components/ChainBarChart";
 import { Product, ChainPrice } from "@/lib/types";
 import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
+import { Download } from "@/components/Icons";
+import { downloadCsv } from "@/lib/exportCsv";
 
 export default function InsightsPage() {
   const { period, ipc: ipcValues } = usePeriod();
@@ -92,11 +94,11 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       <h2 className="text-lg font-semibold text-zinc-100">Panorama general</h2>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard
           label="Productos monitoreados"
           value={String(products.length)}
@@ -115,7 +117,7 @@ export default function InsightsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Alerts */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -184,7 +186,7 @@ export default function InsightsPage() {
                                 : "bg-green-500/10 text-green-400"
                           }`}
                         >
-                          +{p.variacion_pct}%
+                          {v > 0 ? "+" : ""}{p.variacion_pct}%
                         </span>
                       </td>
                     </tr>

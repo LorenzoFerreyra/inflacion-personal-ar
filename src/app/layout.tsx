@@ -23,6 +23,13 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: "Observatorio de inflación",
   description: "Seguimiento personalizado de inflación en Argentina",
+  icons: { icon: "/favicon.svg" },
+  openGraph: {
+    title: "Observatorio de inflación",
+    description: "Seguimiento personalizado de inflación en Argentina",
+    type: "website",
+    locale: "es_AR",
+  },
 };
 
 export default function RootLayout({
