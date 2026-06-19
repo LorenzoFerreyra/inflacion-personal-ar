@@ -1,12 +1,12 @@
 /**
  * middleware.ts — Rate limiting para todas las rutas de API.
  *
- * Se ejecuta antes de cada request. Aplica limites diferentes segun la ruta:
- *   - /api/ipc: 10 req/min (calculo mas costoso)
+ * Se ejecuta antes de cada request. Aplica límites diferentes según la ruta:
+ *   - /api/ipc: 10 req/min (cálculo más costoso)
  *   - /api/mcp: 30 req/min (endpoint MCP externo)
  *   - resto de /api/*: 120 req/min
  *
- * Deteccion de IP: solo confia en headers que son establecidos por
+ * Detección de IP: solo confía en headers que son establecidos por
  * infraestructura confiable (Vercel, Cloudflare) y no por el cliente.
  */
 
@@ -28,9 +28,9 @@ const LIMITS: Record<string, { max: number; window: number }> = {
  *   - cf-connecting-ip: Cloudflare (no spoofeable)
  *   - x-real-ip: reverse proxies como nginx o Vercel (configurable)
  *
- * No se confia en x-forwarded-for porque el cliente puede enviarlo.
+ * No se confía en x-forwarded-for porque el cliente puede enviarlo.
  * Si no se encuentra ninguna IP confiable, se devuelve undefined y se
- * rechaza el request para evitar que todos los requests anonimos
+ * rechaza el request para evitar que todos los requests anónimos
  * compartan el mismo bucket de rate limit.
  */
 function getClientIp(request: NextRequest): string | undefined {
@@ -64,7 +64,7 @@ export function middleware(request: NextRequest) {
     );
   }
 
-  // Buscar el limite mas especifico
+  // Buscar el límite más específico
   const limitKey = Object.keys(LIMITS).find((prefix) =>
     pathname.startsWith(prefix),
   );

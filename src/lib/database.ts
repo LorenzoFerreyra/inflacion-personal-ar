@@ -338,7 +338,14 @@ export function getPriceHistory(ean: string): PricePoint[] {
     SELECT
       fecha,
       EXP(AVG(LN(precio_lista))) AS precio_promedio
-    FROM price_series, mediana -- cross join: mediana returns 1 row, used to filter outliers per row
+    FROM price_series, mediana -- cross join: mediana returns 1 row, used to per-row outlier filtering
+    WHERE ean = ?
+      AND precio_lista > 0
+      AND precio_lista <= med * 5
+    GROUP BY fecha
+    ORDER BY fecha
+  `;
+  return prepare(sql).all(ean, ean, ean) as PricePoint[];
 }
 
 export function getPriceHistoryByChain(

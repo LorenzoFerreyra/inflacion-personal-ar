@@ -35,23 +35,25 @@
  */
 
 import { prepare } from "./database";
-import { PERIODS, type IpcValues } from "./constants";
+import { type IpcValues } from "./constants";
 
 /**
- * Calcula la variación porcentual mediana de todos los productos
- * entre fecha_base (la más antigua dentro del rango) y fecha_actual
- * (la más reciente con datos).
+ * Calcula las tres variaciones (mensual, trimestral, interanual) en una sola
+ * pasada por la base de datos. Antes eran 3 queries separadas que cada una
+ * re-escaneaba MAX(fecha) y recomputaba precio_actual desde cero.
+ *
+ * La query devuelve todas las variaciones individuales con sus 3 columnas.
+ * Después en JS se calcula la mediana de cada columna por separado.
  */
-function computeVariation(dias: number): number {
+function computeAllVariations(): {
+  mensual: number;
+  trimestral: number;
+  interanual: number;
+} {
   const sql = `
     WITH
     fecha_actual AS (
       SELECT MAX(fecha) AS fecha FROM price_series
-    ),
-    fecha_base AS (
-      SELECT MIN(fecha) AS fecha
-      FROM price_series
-      WHERE fecha >= DATE((SELECT fecha FROM fecha_actual), '-' || ? || ' days')
     ),
     precio_actual AS (
       SELECT ean, AVG(precio_lista) AS precio
@@ -60,36 +62,68 @@ function computeVariation(dias: number): number {
         AND precio_lista > 0
       GROUP BY ean
     ),
-    precio_base AS (
+    precio_30 AS (
       SELECT ean, AVG(precio_lista) AS precio
       FROM price_series
-      WHERE fecha = (SELECT fecha FROM fecha_base)
+      WHERE fecha = (
+        SELECT MIN(fecha) FROM price_series
+        WHERE fecha >= DATE((SELECT fecha FROM fecha_actual), '-30 days')
+      )
         AND precio_lista > 0
       GROUP BY ean
     ),
-    variaciones AS (
-      SELECT
-        (pa.precio - pb.precio) / pb.precio * 100 AS variacion
-      FROM precio_actual pa
-      JOIN precio_base pb USING (ean)
-      WHERE pb.precio > 0
+    precio_90 AS (
+      SELECT ean, AVG(precio_lista) AS precio
+      FROM price_series
+      WHERE fecha = (
+        SELECT MIN(fecha) FROM price_series
+        WHERE fecha >= DATE((SELECT fecha FROM fecha_actual), '-90 days')
+      )
+        AND precio_lista > 0
+      GROUP BY ean
+    ),
+    precio_365 AS (
+      SELECT ean, AVG(precio_lista) AS precio
+      FROM price_series
+      WHERE fecha = (
+        SELECT MIN(fecha) FROM price_series
+        WHERE fecha >= DATE((SELECT fecha FROM fecha_actual), '-365 days')
+      )
+        AND precio_lista > 0
+      GROUP BY ean
     )
-    SELECT variacion
-    FROM variaciones
-    ORDER BY variacion
+    SELECT
+      (pa.precio - p30.precio) / p30.precio * 100 AS var_30,
+      (pa.precio - p90.precio) / p90.precio * 100 AS var_90,
+      (pa.precio - p365.precio) / p365.precio * 100 AS var_365
+    FROM precio_actual pa
+    JOIN precio_30 p30 USING (ean)
+    JOIN precio_90 p90 USING (ean)
+    JOIN precio_365 p365 USING (ean)
+    WHERE p30.precio > 0 AND p90.precio > 0 AND p365.precio > 0
   `;
 
-  const rows = prepare(sql).all(dias) as { variacion: number }[];
+  type Row = { var_30: number; var_90: number; var_365: number };
+  const rows = prepare(sql).all() as Row[];
 
-  if (rows.length === 0) return 0;
+  function median(values: number[]): number {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const val =
+      sorted.length % 2 === 1
+        ? sorted[mid]
+        : (sorted[mid - 1] + sorted[mid]) / 2;
+    return Math.round(val * 10) / 10;
+  }
 
-  const mid = Math.floor(rows.length / 2);
-  const median =
-    rows.length % 2 === 1
-      ? rows[mid].variacion
-      : (rows[mid - 1].variacion + rows[mid].variacion) / 2;
+  if (rows.length === 0) return { mensual: 0, trimestral: 0, interanual: 0 };
 
-  return Math.round(median * 10) / 10;
+  return {
+    mensual: median(rows.map((r) => r.var_30)),
+    trimestral: median(rows.map((r) => r.var_90)),
+    interanual: median(rows.map((r) => r.var_365)),
+  };
 }
 
 /**
@@ -110,11 +144,7 @@ export function getIpc(): IpcValues {
     return cached.values;
   }
 
-  const values: IpcValues = {
-    mensual: computeVariation(PERIODS.mensual.dias),
-    trimestral: computeVariation(PERIODS.trimestral.dias),
-    interanual: computeVariation(PERIODS.interanual.dias),
-  };
+  const values = computeAllVariations();
 
   globalForIpcCache.__ipcCache = { values, timestamp: now };
   return values;

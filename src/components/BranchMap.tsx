@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type { Branch } from "@/lib/types";
-import type { Map } from "leaflet";
+import type { Map, LayerGroup } from "leaflet";
 import { chainLabel } from "@/lib/chainColors";
 
 /** Escapa HTML para prevenir XSS en contenido generado dinámicamente. */
@@ -28,6 +28,7 @@ interface Props {
 export default function BranchMap({ branches, chains }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<Map | null>(null);
+  const markersLayer = useRef<LayerGroup | null>(null);
   const [ready, setReady] = useState(false);
 
   const chainColors = React.useMemo(() => {
@@ -36,6 +37,7 @@ export default function BranchMap({ branches, chains }: Props) {
     return map;
   }, [chains]);
 
+  // ── Map initialization (runs once) ──────────────────────────────────────
   useEffect(() => {
     if (!mapRef.current || leafletMap.current) return;
 
@@ -64,6 +66,38 @@ export default function BranchMap({ branches, chains }: Props) {
         },
       ).addTo(map);
 
+      // LayerGroup to hold markers — cleared & repopulated on data changes.
+      const layer = L.layerGroup().addTo(map);
+      markersLayer.current = layer;
+      leafletMap.current = map;
+      setReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (leafletMap.current) {
+        leafletMap.current.remove();
+        leafletMap.current = null;
+        markersLayer.current = null;
+      }
+    };
+  }, []);
+
+  // ── Marker updates (runs when data changes) ─────────────────────────────
+  useEffect(() => {
+    const map = leafletMap.current;
+    const layer = markersLayer.current;
+    if (!map || !layer || !ready) return;
+
+    // Import L to create markers (already cached by dynamic import).
+    let cancelled = false;
+
+    (async () => {
+      const L = (await import("leaflet")).default;
+      if (cancelled) return;
+
+      layer.clearLayers();
+
       for (const b of branches) {
         const color = sanitizeColor(chainColors[b.cadena] ?? "#888");
         const icon = L.divIcon({
@@ -81,7 +115,7 @@ export default function BranchMap({ branches, chains }: Props) {
         });
 
         L.marker([b.latitud, b.longitud], { icon })
-          .addTo(map)
+          .addTo(layer)
           .bindPopup(
             `<div style="font-family:system-ui;font-size:12px;line-height:1.4">
             <strong style="font-size:13px">${escapeHtml(chainLabel(b.cadena))}</strong>
@@ -99,19 +133,12 @@ export default function BranchMap({ branches, chains }: Props) {
         );
         map.fitBounds(bounds, { padding: [30, 30] });
       }
-
-      leafletMap.current = map;
-      setReady(true);
     })();
 
     return () => {
       cancelled = true;
-      if (leafletMap.current) {
-        leafletMap.current.remove();
-        leafletMap.current = null;
-      }
     };
-  }, [branches]);
+  }, [branches, chainColors, ready]);
 
   return (
     <div className="relative w-full h-full min-h-140">

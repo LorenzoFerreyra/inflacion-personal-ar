@@ -268,7 +268,7 @@ function createAuthHandler(
       return NextResponse.json(
         {
           error:
-            "No autorizado. Inclui MCP_API_KEY en el header Authorization o x-api-key.",
+            "No autorizado. Incluí MCP_API_KEY en el header Authorization o x-api-key.",
         },
         { status: 401 },
       );

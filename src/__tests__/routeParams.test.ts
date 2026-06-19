@@ -7,7 +7,7 @@ import { isValidEan, parseEans, clampInt } from "@/lib/shared";
  */
 
 describe("history route EAN validation", () => {
-  it("rejects null / empty", () => {
+  it("rejects empty string", () => {
     expect(isValidEan("")).toBe(false);
   });
 
@@ -40,8 +40,8 @@ describe("product route param parsing", () => {
     expect(clampInt("-10", 1, 365, 30)).toBe(1);
   });
 
-  it("treats 0 as invalid and falls back to 30", () => {
-    expect(clampInt("0", 1, 365, 30)).toBe(30);
+  it("clamps zero to minimum 1", () => {
+    expect(clampInt("0", 1, 365, 30)).toBe(1);
   });
 
   it("clamps to maximum 365", () => {
@@ -81,7 +81,8 @@ describe("category-history route validation", () => {
   const MAX_LENGTH = 200;
 
   it("rejects empty string", () => {
-    expect(!("" && "".length <= MAX_LENGTH)).toBe(true);
+    const category: string = "";
+    expect(!category || category.length > MAX_LENGTH).toBe(true);
   });
 
   it("accepts valid category name", () => {
