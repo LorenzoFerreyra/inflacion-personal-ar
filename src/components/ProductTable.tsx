@@ -18,6 +18,7 @@ interface Props {
   onSelect?: (product: Product) => void;
   selectedEans?: Set<string>;
   loading?: boolean;
+  chainFiltered?: boolean;
 }
 
 export default function ProductTable({
@@ -29,6 +30,7 @@ export default function ProductTable({
   onSelect,
   selectedEans,
   loading = false,
+  chainFiltered = false,
 }: Props) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   if (loading) {
@@ -67,7 +69,7 @@ export default function ProductTable({
                 Categor&iacute;a
               </th>
               <th className="py-3 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Precio
+                {chainFiltered ? "Precio" : "Precio prom."}
               </th>
               <th className="py-3 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                 Variaci&oacute;n
@@ -113,7 +115,12 @@ export default function ProductTable({
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-right text-zinc-200 font-mono text-[13px]">
-                    ${product.precio_actual?.toLocaleString("es-AR") ?? "—"}
+                    <span>${product.precio_actual?.toLocaleString("es-AR") ?? "—"}</span>
+                    {!chainFiltered && product.cobertura_cadenas > 0 && (
+                      <span className="ml-1 text-[9px] font-sans text-zinc-600 font-normal">
+                        {product.cobertura_cadenas}c
+                      </span>
+                    )}
                   </td>
                   <td className="py-2.5 px-3 text-right">
                     <VariationBadge value={product.variacion_pct} />

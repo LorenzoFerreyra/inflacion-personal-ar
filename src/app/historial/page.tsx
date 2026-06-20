@@ -227,7 +227,7 @@ export default function HistorialPage() {
               : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
           }`}
         >
-          Todas
+          todas
         </button>
         {categories.slice(0, 12).map((cat) => (
           <button

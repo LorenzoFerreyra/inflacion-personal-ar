@@ -87,7 +87,7 @@ export default function ExploradorPage() {
                 : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
             }`}
           >
-            Todas
+            todas
           </button>
           {categoriesError ? (
             <span className="text-[12px] text-red-400/80 self-center">
@@ -120,6 +120,7 @@ export default function ExploradorPage() {
           onSelect={setSelectedProduct}
           selectedEans={selectedEans}
           loading={loading}
+          chainFiltered={cadena.trim().length > 0}
         />
       </div>
 
