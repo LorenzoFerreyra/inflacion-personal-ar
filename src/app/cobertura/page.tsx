@@ -9,7 +9,10 @@ export const metadata: Metadata = {
 };
 
 export default function CoberturaPage() {
-  const branches = getBranches();
+  const allBranches = getBranches();
+  const mappableBranches = allBranches.filter(
+    (b) => b.latitud != null && b.longitud != null,
+  ) as (typeof allBranches[number] & { latitud: number; longitud: number })[];
   const chainIds = getChainList();
 
   const chains = chainIds.map((id) => ({
@@ -19,7 +22,7 @@ export default function CoberturaPage() {
   }));
 
   const countByChain: Record<string, number> = {};
-  for (const b of branches) {
+  for (const b of allBranches) {
     countByChain[b.cadena] = (countByChain[b.cadena] ?? 0) + 1;
   }
 
@@ -40,7 +43,7 @@ export default function CoberturaPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* Map */}
         <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden min-h-140">
-          <BranchMapLoader branches={branches} chains={chains} />
+          <BranchMapLoader branches={mappableBranches} chains={chains} />
         </div>
 
         {/* Chain list sidebar */}
@@ -83,7 +86,7 @@ export default function CoberturaPage() {
                 Total sucursales
               </span>
               <span className="text-[11px] text-zinc-400 tabular font-semibold">
-                {branches.length}
+                {allBranches.length}
               </span>
             </div>
             <p className="text-[11px] text-zinc-500 leading-relaxed">

@@ -46,7 +46,7 @@ export default function ProductTable({
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-xl border border-zinc-800/60 bg-zinc-900/40">
+      <div className="overflow-x-auto rounded-xl border border-zinc-800/40 bg-zinc-900/30">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800/80">

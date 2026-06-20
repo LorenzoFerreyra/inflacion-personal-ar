@@ -524,7 +524,6 @@ export function getBranches(): Branch[] {
   const sql = `
     SELECT cadena, formato, direccion, latitud, longitud, provincia, localidad
     FROM sucursales
-    WHERE latitud IS NOT NULL AND longitud IS NOT NULL
     ORDER BY cadena, localidad
   `;
   return prepare(sql).all() as Branch[];

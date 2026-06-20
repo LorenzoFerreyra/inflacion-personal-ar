@@ -13,22 +13,19 @@ export default function KpiCard({
 }: Props) {
   const styles = {
     red: {
-      bg: "from-red-500/8 to-red-500/3",
-      border: "border-red-500/20",
+      bg: "from-red-500/6 to-transparent",
+      border: "border-red-500/15",
       value: "text-red-400",
-      glow: "shadow-red-500/5",
     },
     green: {
-      bg: "from-green-500/8 to-green-500/3",
-      border: "border-green-500/20",
+      bg: "from-green-500/6 to-transparent",
+      border: "border-green-500/15",
       value: "text-green-400",
-      glow: "shadow-green-500/5",
     },
     neutral: {
-      bg: "from-zinc-800/60 to-zinc-800/30",
-      border: "border-zinc-700/40",
+      bg: "from-zinc-800/40 to-transparent",
+      border: "border-zinc-800/50",
       value: "text-zinc-50",
-      glow: "",
     },
   };
 
@@ -36,14 +33,14 @@ export default function KpiCard({
 
   return (
     <div
-      className={`bg-linear-to-br ${s.bg} border ${s.border} rounded-xl p-5 shadow-lg ${s.glow}`}
+      className={`bg-linear-to-br ${s.bg} border ${s.border} rounded-xl p-6`}
     >
-      <p className="text-[13px] font-medium text-zinc-400 mb-1.5 tracking-wide">
+      <p className="text-xs font-medium text-zinc-400 mb-2 tracking-wide uppercase">
         {label}
       </p>
-      <p className={`font-display text-4xl font-semibold tracking-tight ${s.value}`}>{value}</p>
+      <p className={`font-display text-3xl font-semibold tracking-tight ${s.value}`}>{value}</p>
       {subtitle && (
-        <p className="text-xs text-zinc-400 mt-1.5">{subtitle}</p>
+        <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{subtitle}</p>
       )}
     </div>
   );

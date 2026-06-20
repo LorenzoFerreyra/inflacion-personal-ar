@@ -81,7 +81,7 @@ export default function ProductDetail({ product, onClose }: Props) {
   return (
     <div className="space-y-4">
       {/* Info card */}
-      <div className="bg-linear-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/40 rounded-xl p-5">
+      <div className="bg-linear-to-br from-zinc-800/30 to-transparent border border-zinc-800/40 rounded-xl p-5">
         <div className="flex items-start gap-3">
           <ProductImage
             src={product.image_url}

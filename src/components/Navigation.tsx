@@ -35,11 +35,11 @@ export default function Navigation() {
 
   return (
     <nav
-      className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur-xl"
+      className="sticky top-0 z-50 border-b border-zinc-800/40 bg-zinc-950/80 backdrop-blur-xl"
       aria-label="Navegación principal"
     >
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-0 py-3 md:py-0 md:h-16">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-0 py-3 md:py-0 md:h-14">
           {/* Logo + IPC badge + period dropdown */}
           <div className="flex items-center gap-5">
             <Link
@@ -49,13 +49,13 @@ export default function Navigation() {
             >
               Observatorio de inflaci&oacute;n
             </Link>
-            <div className="flex items-center gap-2.5 bg-zinc-900/80 border border-zinc-700/50 rounded-full px-3.5 py-1.5 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/80 shrink-0" />
-              <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+            <div className="flex items-center gap-2.5 bg-zinc-900/50 border border-zinc-800/40 rounded-full px-3.5 py-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/70 shrink-0" />
+              <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
                 IPC
               </span>
               <span
-                className={`text-sm font-bold ${ipcError ? "text-zinc-500" : "text-amber-400"}`}
+                className={`text-sm font-semibold ${ipcError ? "text-zinc-500" : "text-amber-400/90"}`}
               >
                 {ipcError ? "—" : `${ipc[period]}%`}
               </span>
@@ -109,7 +109,7 @@ export default function Navigation() {
           </div>
 
           {/* Tabs */}
-          <div className="flex bg-zinc-900/50 rounded-lg p-1 overflow-x-auto scroll-fade">
+          <div className="flex bg-zinc-900/30 rounded-lg p-1 overflow-x-auto scroll-fade">
             {tabs.map(({ href, label }) => {
               const isActive =
                 href === "/" ? pathname === "/" : pathname.startsWith(href);

@@ -9,7 +9,7 @@ interface Props {
 
 export default function Stepper({ currentStep, steps }: Props) {
   return (
-    <div className="flex items-center justify-center mb-10">
+    <div className="flex items-center justify-center mb-12">
       {steps.map((label, i) => {
         const stepNum = i + 1;
         const isDone = stepNum < currentStep;
@@ -20,25 +20,24 @@ export default function Stepper({ currentStep, steps }: Props) {
             <div className="flex flex-col items-center">
               <div
                 className={`
-                  w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold
-                  shadow-lg
+                  w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium
                   ${
                     isDone
-                      ? "bg-green-500/20 text-green-400 border-2 border-green-500/60 shadow-green-500/10"
+                      ? "bg-green-500/15 text-green-400 border border-green-500/40"
                       : isActive
-                        ? "bg-amber-500/15 text-amber-300 border-2 border-amber-400/50 shadow-amber-500/10"
-                        : "bg-zinc-800/60 text-zinc-500 border-2 border-zinc-700/50"
+                        ? "bg-amber-500/10 text-amber-300 border border-amber-400/40"
+                        : "bg-zinc-800/40 text-zinc-500 border border-zinc-700/40"
                   }
                 `}
               >
-                {isDone ? <Check size={16} strokeWidth={2.5} /> : stepNum}
+                {isDone ? <Check size={15} strokeWidth={2} /> : stepNum}
               </div>
               <span
-                className={`text-[11px] font-medium mt-2 tracking-wide ${
+                className={`text-[11px] font-medium mt-2.5 tracking-wide ${
                   isDone
-                    ? "text-green-400/80"
+                    ? "text-green-400/70"
                     : isActive
-                      ? "text-amber-300/80"
+                      ? "text-amber-300/70"
                       : "text-zinc-500"
                 }`}
               >
@@ -48,10 +47,10 @@ export default function Stepper({ currentStep, steps }: Props) {
 
             {i < steps.length - 1 && (
               <div
-                className={`w-24 h-px mx-3 mb-6 ${
+                className={`w-20 h-px mx-4 mb-7 ${
                   stepNum < currentStep
-                    ? "bg-linear-to-r from-green-500/50 to-green-500/20"
-                    : "bg-zinc-800"
+                    ? "bg-green-500/30"
+                    : "bg-zinc-800/60"
                 }`}
               />
             )}

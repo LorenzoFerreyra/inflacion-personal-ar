@@ -128,12 +128,12 @@ export default function InsightsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {/* Alerts */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-              <span className="w-0.5 h-4 rounded-full bg-red-400/70 shrink-0" />
+            <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2.5">
+              <span className="w-1 h-1 rounded-full bg-red-400/70 shrink-0" />
               Alertas de precio
             </h3>
             <button
@@ -205,8 +205,8 @@ export default function InsightsPage() {
         {/* IPC comparison */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-              <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
+            <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2.5">
+              <span className="w-1 h-1 rounded-full bg-amber-400/60 shrink-0" />
               vs. IPC ({ipcValue}%)
             </h3>
             <button
@@ -280,8 +280,8 @@ export default function InsightsPage() {
 
         {/* Chain ranking */}
         <div>
-          <h3 className="text-[15px] font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-zinc-500/80 shrink-0" />
+          <h3 className="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
+            <span className="w-1 h-1 rounded-full bg-zinc-500/80 shrink-0" />
             Ranking de cadenas
           </h3>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">
@@ -296,7 +296,7 @@ export default function InsightsPage() {
           className="fixed inset-0 z-50 flex justify-end"
           onClick={() => setSelectedProduct(null)}
         >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
             className="relative w-full max-w-md bg-zinc-950 border-l border-zinc-800/60 overflow-y-auto p-6 animate-slide-in"
             onClick={(e) => e.stopPropagation()}

@@ -38,8 +38,8 @@ export interface Branch {
   cadena: string;
   formato: string;
   direccion: string;
-  latitud: number;
-  longitud: number;
+  latitud: number | null;
+  longitud: number | null;
   provincia: string;
   localidad: string;
 }

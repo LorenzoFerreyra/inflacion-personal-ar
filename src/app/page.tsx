@@ -207,11 +207,11 @@ export default function MiCanastaPage() {
               </h2>
 
               {basket.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-zinc-800/60 p-8 text-center">
+                <div className="rounded-xl border border-dashed border-zinc-800/40 p-10 text-center">
                   <ShoppingBasket
-                    size={36}
+                    size={32}
                     strokeWidth={1.2}
-                    className="mx-auto text-zinc-700 mb-3"
+                    className="mx-auto text-zinc-600 mb-4"
                   />
                   <p className="text-sm text-zinc-500">
                     Hac&eacute; click en productos de la tabla para agregarlos.
@@ -343,7 +343,7 @@ export default function MiCanastaPage() {
           </div>
 
           {/* Summary */}
-          <div className="bg-linear-to-br from-zinc-800/40 to-zinc-800/20 border border-zinc-700/40 rounded-xl p-6 mb-6">
+          <div className="bg-linear-to-br from-zinc-800/30 to-transparent border border-zinc-800/40 rounded-xl p-6 mb-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[13px] text-zinc-400 font-medium">
@@ -377,9 +377,9 @@ export default function MiCanastaPage() {
             <button
               onClick={calculate}
               disabled={calculating || basket.length === 0}
-              className="flex-1 flex items-center justify-center gap-2 bg-amber-500/15 hover:bg-amber-500/25
-                         text-amber-300 font-semibold py-3 rounded-xl text-sm border border-amber-500/20
-                         hover:border-amber-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 bg-amber-500/10 hover:bg-amber-500/18
+                         text-amber-300 font-medium py-3 rounded-xl text-sm border border-amber-500/15
+                         hover:border-amber-500/30 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {calculating ? (
                 <>

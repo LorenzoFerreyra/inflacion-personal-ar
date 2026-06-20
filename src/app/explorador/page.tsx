@@ -131,11 +131,11 @@ export default function ExploradorPage() {
           </h2>
 
           {!selectedProduct ? (
-            <div className="rounded-xl border-2 border-dashed border-zinc-800/60 p-10 text-center">
+            <div className="rounded-xl border border-dashed border-zinc-800/40 p-12 text-center">
               <Search
-                size={36}
+                size={32}
                 strokeWidth={1.2}
-                className="mx-auto text-zinc-700 mb-3"
+                className="mx-auto text-zinc-600 mb-4"
               />
               <p className="text-sm text-zinc-500">
                 Seleccioná un producto para ver su detalle.
