@@ -9,7 +9,7 @@ interface Props {
 
 export default function Stepper({ currentStep, steps }: Props) {
   return (
-    <div className="flex items-center justify-center mb-12">
+    <nav aria-label="Progreso" className="flex items-center justify-center mb-12">
       {steps.map((label, i) => {
         const stepNum = i + 1;
         const isDone = stepNum < currentStep;
@@ -57,6 +57,6 @@ export default function Stepper({ currentStep, steps }: Props) {
           </div>
         );
       })}
-    </div>
+    </nav>
   );
 }

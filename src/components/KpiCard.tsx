@@ -35,12 +35,12 @@ export default function KpiCard({
     <div
       className={`bg-linear-to-br ${s.bg} border ${s.border} rounded-xl p-6`}
     >
-      <p className="text-xs font-medium text-zinc-400 mb-2 tracking-wide uppercase">
+      <p className="text-xs font-medium text-zinc-400 mb-2 uppercase">
         {label}
       </p>
-      <p className={`font-display text-3xl font-semibold tracking-tight ${s.value}`}>{value}</p>
+      <p className={`font-display text-3xl font-semibold ${s.value}`}>{value}</p>
       {subtitle && (
-        <p className="text-xs text-zinc-500 mt-2 leading-relaxed">{subtitle}</p>
+        <p className="text-xs text-zinc-500 mt-2 leading-relaxed truncate" title={subtitle}>{subtitle}</p>
       )}
     </div>
   );

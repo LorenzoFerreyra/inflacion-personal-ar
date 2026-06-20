@@ -133,61 +133,120 @@ export default function ProductDetail({ product, onClose }: Props) {
       </div>
 
       {/* Chain grid */}
-      {chainPrices.length > 0 && (
-        <div>
-          <h4 className="text-[13px] font-semibold text-zinc-400 mb-2 uppercase tracking-wider">
-            Precio por cadena
-          </h4>
-          <div className="grid grid-cols-2 gap-2">
-            {chainPrices.map((c) => {
-              const isCheapest = c.cadena === cheapestChain;
-              const isSelected = selectedChains.has(c.cadena);
-              return (
-                <div
-                  key={c.cadena}
-                  onClick={() => {
-                    setSelectedChains((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(c.cadena)) {
-                        next.delete(c.cadena);
-                      } else {
-                        next.add(c.cadena);
-                      }
-                      return next;
-                    });
-                  }}
-                  className={`rounded-xl p-3.5 text-center cursor-pointer transition-all ${
-                    isSelected
-                      ? "ring-2 ring-amber-500/60 bg-amber-500/8 border border-amber-500/30"
-                      : isCheapest
-                        ? "bg-green-500/8 border-2 border-green-500/30"
-                        : "bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/60"
-                  }`}
+      {chainPrices.length > 0 && (() => {
+        const selected = chainPrices.filter((c) => selectedChains.has(c.cadena));
+        const selectedPrices = selected.map((c) => c.total_canasta);
+        const priceDiff = selectedPrices.length >= 2
+          ? Math.max(...selectedPrices) - Math.min(...selectedPrices)
+          : null;
+        const cheapestSelected = selected.length >= 2
+          ? selected.reduce((min, c) => c.total_canasta < min.total_canasta ? c : min).cadena
+          : null;
+
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-[13px] font-semibold text-zinc-400 uppercase tracking-wider">
+                Precio por cadena
+              </h4>
+              {selectedChains.size > 0 && (
+                <button
+                  onClick={() => setSelectedChains(new Set())}
+                  className="text-[11px] text-zinc-500 hover:text-zinc-300"
                 >
-                  <p className="text-[11px] text-zinc-400 truncate font-medium uppercase tracking-wide">
-                    {c.cadena}
-                  </p>
-                  <p
-                    className={`text-xl font-bold mt-1.5 ${
-                      isCheapest ? "text-green-400" : "text-zinc-200"
+                  Limpiar ({selectedChains.size})
+                </button>
+              )}
+            </div>
+
+            {selectedChains.size === 0 && (
+              <p className="text-[11px] text-zinc-500 mb-2">
+                Seleccioná cadenas para compararlas en el gráfico
+              </p>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              {chainPrices.map((c) => {
+                const isCheapest = c.cadena === cheapestChain;
+                const isSelected = selectedChains.has(c.cadena);
+                return (
+                  <button
+                    key={c.cadena}
+                    onClick={() => {
+                      setSelectedChains((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(c.cadena)) {
+                          next.delete(c.cadena);
+                        } else {
+                          next.add(c.cadena);
+                        }
+                        return next;
+                      });
+                    }}
+                    className={`rounded-xl p-3.5 text-center cursor-pointer transition-all ${
+                      isSelected
+                        ? "ring-2 ring-amber-500/60 bg-amber-500/8 border border-amber-500/30"
+                        : isCheapest
+                          ? "bg-green-500/8 border border-green-500/30"
+                          : "bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/60"
                     }`}
                   >
-                    $
-                    {c.total_canasta.toLocaleString("es-AR", {
-                      maximumFractionDigits: 0,
-                    })}
-                  </p>
-                  {isCheapest && (
-                    <span className="text-[10px] text-green-400/80 font-bold uppercase tracking-widest">
-                      Más barato
-                    </span>
+                    <p className="text-[11px] text-zinc-400 truncate font-medium uppercase tracking-wide">
+                      {c.cadena}
+                    </p>
+                    <p
+                      className={`text-xl font-bold mt-1.5 tabular-nums ${
+                        isCheapest ? "text-green-400" : "text-zinc-200"
+                      }`}
+                    >
+                      $
+                      {c.total_canasta.toLocaleString("es-AR", {
+                        maximumFractionDigits: 0,
+                      })}
+                    </p>
+                    {isCheapest && !isSelected && (
+                      <span className="text-[10px] text-green-400/80 font-bold uppercase tracking-widest">
+                        Más barato
+                      </span>
+                    )}
+                    {isSelected && (
+                      <span className="text-[10px] text-amber-400/80 font-medium uppercase tracking-wide">
+                        Comparando
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Comparison summary */}
+            {priceDiff !== null && selected.length >= 2 && (
+              <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] text-zinc-400 font-medium uppercase tracking-wide">
+                      Diferencia entre seleccionadas
+                    </p>
+                    <p className="text-lg font-bold text-amber-300 mt-0.5 tabular-nums">
+                      ${priceDiff.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                  {cheapestSelected && (
+                    <div className="text-right">
+                      <p className="text-[11px] text-zinc-400 font-medium uppercase tracking-wide">
+                        Más barata
+                      </p>
+                      <p className="text-sm font-semibold text-green-400 mt-0.5">
+                        {cheapestSelected}
+                      </p>
+                    </div>
                   )}
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

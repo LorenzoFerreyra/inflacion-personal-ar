@@ -7,13 +7,22 @@
   --color-amber-450: #e0a535;
 }
 
+html {
+  font-kerning: normal;
+  font-optical-sizing: auto;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 .font-display {
   font-family: var(--font-fraunces);
+  letter-spacing: -0.01em;
 }
 
 .tabular {
   font-family: var(--font-dm-mono);
   font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
 
 /* Custom scrollbar */
@@ -180,11 +189,43 @@ button:active:not(:disabled) {
   border-left: none;
 }
 
+/* Dark mode typography compensation: slightly looser leading */
+body {
+  line-height: 1.6;
+  letter-spacing: 0.005em;
+}
+
+/* Uppercase labels need tracking */
+.uppercase {
+  letter-spacing: 0.06em;
+}
+
+/* Readable prose width */
+.prose-width {
+  max-width: 65ch;
+}
+
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hide scrollbar but keep scrollable */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Coarse pointer: bigger touch targets */
+@media (pointer: coarse) {
+  button, a, select, input {
+    min-height: 44px;
   }
 }

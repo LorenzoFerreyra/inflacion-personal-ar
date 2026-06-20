@@ -315,13 +315,13 @@ export default function MiCanastaPage() {
                     key={p.ean}
                     className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
                   >
-                    <td className="py-2.5 px-4 text-zinc-200 font-medium text-[13px]">
+                    <td className="py-2.5 px-4 text-zinc-200 font-medium text-[13px] truncate max-w-48" title={p.product_description}>
                       {p.product_description}
                     </td>
                     <td className="py-2.5 px-4 text-zinc-500 text-[13px]">
                       {p.marca}
                     </td>
-                    <td className="py-2.5 px-4 text-right text-zinc-200 font-mono text-[13px]">
+                    <td className="py-2.5 px-4 text-right text-zinc-200 font-mono text-[13px] tabular-nums">
                       ${p.precio_actual?.toLocaleString("es-AR") ?? "—"}
                     </td>
                     <td className="py-2.5 px-4 text-right">
@@ -349,7 +349,7 @@ export default function MiCanastaPage() {
                 <p className="text-[13px] text-zinc-400 font-medium">
                   Productos en canasta
                 </p>
-                <p className="text-3xl font-bold text-zinc-100 mt-1">
+                <p className="font-display text-3xl font-bold text-zinc-100 mt-1 tabular-nums">
                   {basket.length}
                 </p>
               </div>
@@ -392,7 +392,15 @@ export default function MiCanastaPage() {
             </button>
           </div>
           {error && (
-            <p className="text-red-400 text-sm mt-4 text-center">{error}</p>
+            <div className="mt-4 text-center rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+              <p className="text-red-400 text-sm">{error}</p>
+              <button
+                onClick={calculate}
+                className="mt-2 text-xs text-zinc-400 hover:text-zinc-200 underline underline-offset-2"
+              >
+                Reintentar
+              </button>
+            </div>
           )}
         </div>
       )}

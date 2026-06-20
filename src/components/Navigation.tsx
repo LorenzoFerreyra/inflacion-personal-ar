@@ -45,7 +45,7 @@ export default function Navigation() {
             <Link
               href="/"
               aria-label="Ir a inicio"
-              className="font-display text-xl font-semibold tracking-tight text-amber-300 hover:opacity-80"
+              className="font-display text-xl font-semibold text-amber-300 hover:opacity-80 whitespace-nowrap"
             >
               Observatorio de inflaci&oacute;n
             </Link>
@@ -109,7 +109,7 @@ export default function Navigation() {
           </div>
 
           {/* Tabs */}
-          <div className="flex min-w-0 bg-zinc-900/30 rounded-lg p-1 overflow-x-auto">
+          <div className="flex min-w-0 flex-1 bg-zinc-900/30 rounded-lg p-1 overflow-x-auto scrollbar-hide">
             {tabs.map(({ href, label }) => {
               const isActive =
                 href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -118,7 +118,7 @@ export default function Navigation() {
                   key={href}
                   href={href}
                   className={`
-                    px-3 py-2 rounded-md text-[13px] font-medium whitespace-nowrap
+                    px-2.5 py-2 rounded-md text-xs font-medium whitespace-nowrap
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50
                     ${
                       isActive

@@ -96,10 +96,16 @@ export default function InsightsPage() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3">
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
         <p className="text-sm text-red-400">
-          Error al cargar datos. Reintentá más tarde.
+          Error al cargar datos.
         </p>
+        <button
+          onClick={() => { setError(false); setLoading(true); }}
+          className="text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-800/60 rounded-lg px-4 py-2"
+        >
+          Reintentar
+        </button>
       </div>
     );
   }
@@ -156,14 +162,14 @@ export default function InsightsPage() {
             </button>
           </div>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
               <thead>
                 <tr className="border-b border-zinc-800/80">
-                  <th className="py-2.5 px-3 w-6"></th>
+                  <th className="py-2.5 px-3 w-8"></th>
                   <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                     Producto
                   </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider w-[22%]">
                     Var %
                   </th>
                 </tr>
@@ -188,7 +194,7 @@ export default function InsightsPage() {
                           className={`inline-block w-2 h-2 rounded-full ${dotColor}`}
                         />
                       </td>
-                      <td className="py-2 px-3 text-zinc-200 truncate max-w-36 text-[13px]">
+                      <td className="py-2 px-3 text-zinc-200 truncate text-[13px]" title={p.product_description}>
                         {p.product_description}
                       </td>
                       <td className="py-2 px-3 text-right">
@@ -230,16 +236,16 @@ export default function InsightsPage() {
             </button>
           </div>
           <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
               <thead>
                 <tr className="border-b border-zinc-800/80">
-                  <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider w-[55%]">
                     Producto
                   </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider w-[22%]">
                     Var %
                   </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider w-[23%]">
                     &Delta; %
                   </th>
                 </tr>
@@ -251,7 +257,7 @@ export default function InsightsPage() {
                     onClick={() => setSelectedProduct(p)}
                     className="border-b border-zinc-800/30 hover:bg-zinc-800/20 cursor-pointer"
                   >
-                    <td className="py-2 px-3 text-zinc-200 truncate max-w-36 text-[13px]">
+                    <td className="py-2 px-3 text-zinc-200 truncate text-[13px]" title={p.product_description}>
                       {p.product_description}
                     </td>
                     <td className="py-2 px-3 text-right text-zinc-500 text-[13px] tabular-nums">
@@ -294,7 +300,11 @@ export default function InsightsPage() {
       {selectedProduct && (
         <div
           className="fixed inset-0 z-50 flex justify-end"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Detalle del producto"
           onClick={() => setSelectedProduct(null)}
+          onKeyDown={(e) => { if (e.key === "Escape") setSelectedProduct(null); }}
         >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div

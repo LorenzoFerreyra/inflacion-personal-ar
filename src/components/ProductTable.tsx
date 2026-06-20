@@ -93,13 +93,13 @@ export default function ProductTable({
                   `}
                 >
                   <td className="py-2.5 px-3 text-zinc-200 font-medium">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <ProductImage
                         src={product.image_url}
                         alt={product.product_description}
                         marca={product.marca}
                       />
-                      <span className="truncate">
+                      <span className="truncate min-w-0" title={product.product_description}>
                         {product.product_description}
                       </span>
                     </div>
