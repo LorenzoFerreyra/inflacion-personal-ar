@@ -141,23 +141,23 @@ export default function MiCanastaPage() {
             </h2>
 
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <div className="flex-1 relative">
+              <div className="flex-[2] min-w-0 relative">
                 <input
                   type="text"
                   placeholder="Buscar por nombre, marca o EAN..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-4 py-2.5
-                             text-sm text-zinc-200 placeholder-zinc-500
+                             text-sm text-zinc-200 placeholder-zinc-400
                              focus:outline-none focus:border-amber-500/40"
                 />
               </div>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
+                className="sm:w-52 bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
                            text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
-              >
+>
                 <option value="">
                   {categoriesError
                     ? "Error al cargar categorías"
@@ -172,7 +172,7 @@ export default function MiCanastaPage() {
               <select
                 value={cadena}
                 onChange={(e) => setCadena(e.target.value)}
-                className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
+                className="sm:w-52 bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
                            text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
               >
                 <option value="">

@@ -47,7 +47,14 @@ export default function ProductTable({
   return (
     <div>
       <div className="overflow-x-auto rounded-xl border border-zinc-800/40 bg-zinc-900/30">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
+          <colgroup>
+            <col className="w-[40%]" />
+            <col className="w-[15%]" />
+            <col className="w-[18%]" />
+            <col className="w-[14%]" />
+            <col className="w-[13%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-zinc-800/80">
               <th className="py-3 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">

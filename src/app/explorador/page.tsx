@@ -54,7 +54,7 @@ export default function ExploradorPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg pl-10 pr-4 py-2.5
-                         text-sm text-zinc-200 placeholder-zinc-500
+                         text-sm text-zinc-200 placeholder-zinc-400
                          focus:outline-none focus:border-amber-500/40"
             />
           </div>
