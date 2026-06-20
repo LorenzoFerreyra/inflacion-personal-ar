@@ -97,7 +97,7 @@ export default function ProductTable({
                       </span>
                     </div>
                   </td>
-                  <td className="py-2.5 px-3 text-zinc-500 text-[13px]">
+                  <td className="py-2.5 px-3 text-zinc-400 text-[13px]">
                     {product.marca}
                   </td>
                   <td className="py-2.5 px-3">

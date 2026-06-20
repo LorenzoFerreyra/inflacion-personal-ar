@@ -64,12 +64,14 @@ a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]) {
   animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Gradient text helper */
-.text-gradient {
-  background: linear-gradient(135deg, #f5e6c8, #d9a64e);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* Scroll fade for horizontally scrollable containers */
+.scroll-fade {
+  mask-image: linear-gradient(to right, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+}
+.scroll-fade-end {
+  mask-image: none;
+  -webkit-mask-image: none;
 }
 
 /* Glass card */

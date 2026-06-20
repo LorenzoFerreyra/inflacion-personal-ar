@@ -252,8 +252,9 @@ export default function MiCanastaPage() {
                           </span>
                         </div>
                         <button
-                          onClick={() => removeFromBasket(p.ean)}
-                          className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 shrink-0"
+                          onClick={(e) => { e.stopPropagation(); removeFromBasket(p.ean); }}
+                          aria-label={`Quitar ${p.product_description}`}
+                          className="text-zinc-500 hover:text-red-400 shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
                         >
                           <X size={14} />
                         </button>
@@ -329,9 +330,10 @@ export default function MiCanastaPage() {
                     <td className="py-2.5 px-4">
                       <button
                         onClick={() => removeFromBasket(p.ean)}
-                        className="text-zinc-600 hover:text-red-400"
+                        aria-label={`Quitar ${p.product_description}`}
+                        className="text-zinc-500 hover:text-red-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
                       >
-                        <span className="text-[10px]">✕</span>
+                        <X size={14} />
                       </button>
                     </td>
                   </tr>

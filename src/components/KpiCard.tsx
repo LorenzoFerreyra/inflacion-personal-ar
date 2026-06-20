@@ -43,7 +43,7 @@ export default function KpiCard({
       </p>
       <p className={`font-display text-4xl font-semibold tracking-tight ${s.value}`}>{value}</p>
       {subtitle && (
-        <p className="text-xs text-zinc-500 mt-1.5">{subtitle}</p>
+        <p className="text-xs text-zinc-400 mt-1.5">{subtitle}</p>
       )}
     </div>
   );

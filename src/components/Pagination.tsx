@@ -39,8 +39,8 @@ export default function Pagination({
       onClick={() => onPageChange(n)}
       aria-label={btnLabel ?? `Ir a página ${n}`}
       aria-current={n === page ? "page" : undefined}
-      className={`h-8 rounded-md text-[13px] font-medium
-        ${btnLabel ? "px-3" : "w-8 tabular-nums"}
+      className={`min-h-[44px] rounded-md text-[13px] font-medium
+        ${btnLabel ? "px-3" : "min-w-[44px] tabular-nums"}
         ${
           n === page
             ? "bg-amber-500/15 text-amber-300 border border-amber-500/25"
@@ -53,7 +53,7 @@ export default function Pagination({
 
   return (
     <div className="flex items-center justify-between mt-5 px-1">
-      <span className="text-[12px] text-zinc-500 tabular-nums font-medium min-w-30">
+      <span className="text-[12px] text-zinc-400 tabular-nums font-medium min-w-30">
         {totalCount.toLocaleString("es-AR")} {label}
       </span>
 
@@ -62,7 +62,7 @@ export default function Pagination({
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
           aria-label="Página anterior"
-          className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-100
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-zinc-400 hover:text-zinc-100
                      hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
         >
           <ChevronLeft size={15} aria-hidden="true" />
@@ -88,14 +88,14 @@ export default function Pagination({
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
           aria-label="Página siguiente"
-          className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-100
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-zinc-400 hover:text-zinc-100
                      hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
         >
           <ChevronRight size={15} aria-hidden="true" />
         </button>
       </div>
 
-      <span className="text-[12px] text-zinc-500 tabular-nums font-medium min-w-30 text-right">
+      <span className="text-[12px] text-zinc-400 tabular-nums font-medium min-w-30 text-right">
         Pág. {page} de {totalPages.toLocaleString("es-AR")}
       </span>
     </div>

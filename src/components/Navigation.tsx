@@ -45,7 +45,7 @@ export default function Navigation() {
             <Link
               href="/"
               aria-label="Ir a inicio"
-              className="font-display text-xl font-semibold tracking-tight text-gradient hover:opacity-80"
+              className="font-display text-xl font-semibold tracking-tight text-amber-300 hover:opacity-80"
             >
               Observatorio de inflaci&oacute;n
             </Link>
@@ -65,7 +65,8 @@ export default function Navigation() {
                   aria-label="Cambiar período"
                   aria-haspopup="listbox"
                   aria-expanded={periodOpen}
-                  className="text-[11px] text-zinc-400 font-medium hover:text-zinc-200 flex items-center gap-1"
+                  className="text-[11px] text-zinc-400 font-medium hover:text-zinc-200 flex items-center gap-1
+                             min-h-[44px] min-w-[44px] justify-center"
                 >
                   {PERIODS[period].label.toLowerCase()}
                   <svg
@@ -108,7 +109,7 @@ export default function Navigation() {
           </div>
 
           {/* Tabs */}
-          <div className="flex bg-zinc-900/50 rounded-lg p-1 overflow-x-auto">
+          <div className="flex bg-zinc-900/50 rounded-lg p-1 overflow-x-auto scroll-fade">
             {tabs.map(({ href, label }) => {
               const isActive =
                 href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -117,7 +118,8 @@ export default function Navigation() {
                   key={href}
                   href={href}
                   className={`
-                    px-3.5 py-1.5 rounded-md text-[13px] font-medium
+                    px-3.5 py-2 rounded-md text-[13px] font-medium whitespace-nowrap
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50
                     ${
                       isActive
                         ? "bg-zinc-800 text-zinc-50 shadow-sm"
