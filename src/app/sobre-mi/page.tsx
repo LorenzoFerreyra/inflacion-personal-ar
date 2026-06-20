@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Acerca de — Observatorio de inflación",
+  title: "Acerca del observatorio de inflación",
   description: "Creador del proyecto",
 };
 

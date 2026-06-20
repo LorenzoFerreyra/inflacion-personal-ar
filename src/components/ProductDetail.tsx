@@ -68,7 +68,7 @@ export default function ProductDetail({ product, onClose }: Props) {
   }, [product.ean]);
 
   const cheapestChain =
-    chainPrices.length > 0
+    chainPrices.length > 1
       ? chainPrices.reduce((min, c) =>
           c.total_canasta < min.total_canasta ? c : min,
         ).cadena
