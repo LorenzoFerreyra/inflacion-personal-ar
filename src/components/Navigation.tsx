@@ -12,7 +12,7 @@ const tabs = [
   { href: "/insights", label: "Insights" },
   { href: "/cobertura", label: "Cobertura" },
   { href: "/metodologia", label: "Metodología" },
-  { href: "/sobre-mi", label: "Acerca de" },
+  { href: "/sobre-mi", label: "Acerca" },
 ];
 
 export default function Navigation() {
@@ -39,9 +39,9 @@ export default function Navigation() {
       aria-label="Navegación principal"
     >
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-0 py-3 md:py-0 md:h-14">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-0 py-3 md:py-0 md:h-14">
           {/* Logo + IPC badge + period dropdown */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-5 shrink-0">
             <Link
               href="/"
               aria-label="Ir a inicio"
@@ -109,7 +109,7 @@ export default function Navigation() {
           </div>
 
           {/* Tabs */}
-          <div className="flex bg-zinc-900/30 rounded-lg p-1 overflow-x-auto scroll-fade">
+          <div className="flex bg-zinc-900/30 rounded-lg p-1 overflow-x-auto scroll-fade md:mx-auto">
             {tabs.map(({ href, label }) => {
               const isActive =
                 href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -118,7 +118,7 @@ export default function Navigation() {
                   key={href}
                   href={href}
                   className={`
-                    px-3.5 py-2 rounded-md text-[13px] font-medium whitespace-nowrap
+                    px-3 py-2 rounded-md text-[13px] font-medium whitespace-nowrap
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50
                     ${
                       isActive
