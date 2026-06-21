@@ -5,7 +5,7 @@ import { Product, Category, PricePoint } from "@/lib/types";
 import { PERIODS, PAGE_SIZE, MAX_COMPARE_PRODUCTS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
 import { useDebounce } from "@/lib/useDebounce";
-import { Search, TrendingUp, ArrowRight } from "@/components/Icons";
+import { Search, ArrowRight } from "@/components/Icons";
 import { chainLabel } from "@/lib/chainColors";
 import ProductImage from "@/components/ProductImage";
 import Link from "next/link";
@@ -402,7 +402,7 @@ function ComparePanel({
     <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
-          <TrendingUp size={16} className="text-amber-400" />
+          
           Comparación de productos ({products.length}/{MAX_COMPARE_PRODUCTS})
         </h3>
         <button

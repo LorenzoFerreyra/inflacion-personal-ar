@@ -4,22 +4,22 @@
 
 /**
  * Parsea un string de EANs separados por coma y devuelve un array limpio.
- * Cada EAN se valida como numérico de 1 a 14 dígitos.
  */
 export function parseEans(raw: string | null, maxItems = 200): string[] {
   if (!raw) return [];
   return raw
     .split(",")
     .map((e) => e.trim())
-    .filter((e) => /^\d{1,14}$/.test(e))
+    .filter(isValidEan)
     .slice(0, maxItems);
 }
 
 /**
- * Valida que un string sea un EAN válido (1-14 dígitos numéricos).
+ * Valida que un string sea un identificador de producto válido:
+ * numérico (EAN estándar) o con prefijo INDEC- (canasta básica).
  */
 export function isValidEan(ean: string): boolean {
-  return /^\d{1,14}$/.test(ean);
+  return /^\d{1,14}$/.test(ean) || /^INDEC-[a-z0-9_]+$/.test(ean);
 }
 
 /**
