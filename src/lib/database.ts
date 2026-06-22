@@ -87,11 +87,11 @@ function getProductsSnapshot(dias: number): CachedProduct[] {
     WITH
     precio_actual AS (
       SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
-      FROM price_series WHERE fecha = ? AND precio_lista > 0 GROUP BY ean
+      FROM price_series WHERE fecha = ? AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean
     ),
     precio_base AS (
       SELECT ean, AVG(precio_lista) AS precio_antes
-      FROM price_series WHERE fecha = ? AND precio_lista > 0 GROUP BY ean
+      FROM price_series WHERE fecha = ? AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean
     )
     SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
       ROUND(pa.precio_hoy, 0) AS precio_actual,
@@ -286,18 +286,18 @@ function getProductsFromDb(options: ProductQueryOptions): {
   const offset = (Math.max(page, 1) - 1) * pageSize;
 
   const latestDate = (
-    prepare("SELECT MAX(fecha) AS f FROM price_series WHERE cadena = ?").get(cadena) as { f: string | null }
+    prepare("SELECT MAX(fecha) AS f FROM price_series WHERE cadena = ? AND is_outlier = 0").get(cadena) as { f: string | null }
   )?.f;
   if (!latestDate) return { products: [], total: 0 };
 
   const baseDate = (
-    prepare("SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days') AND cadena = ?").get(dias, cadena) as { f: string | null }
+    prepare("SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days') AND cadena = ? AND is_outlier = 0").get(dias, cadena) as { f: string | null }
   )?.f;
 
   const total = (
     prepare(
       `SELECT COUNT(*) AS cnt FROM
-       (SELECT ean FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pa
+       (SELECT ean FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pa
        JOIN canonical_products cp USING (ean) ${whereClause}`,
     ).get(latestDate, cadena, ...params) as { cnt: number }
   ).cnt;
@@ -312,9 +312,9 @@ function getProductsFromDb(options: ProductQueryOptions): {
         ELSE NULL END AS variacion_pct,
       pa.cobertura_cadenas
     FROM (SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
-          FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pa
+          FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pa
     LEFT JOIN (SELECT ean, AVG(precio_lista) AS precio_antes
-               FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? GROUP BY ean) pb USING (ean)
+               FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pb USING (ean)
     JOIN canonical_products cp USING (ean)
     ${whereClause}
     ORDER BY pa.cobertura_cadenas DESC, cp.product_description
@@ -365,56 +365,34 @@ function getProductsCached(options: ProductQueryOptions): {
 /**
  * Serie histórica de precios para un EAN.
  * Usa media geométrica (EXP(AVG(LN(x)))) para agregar precios de distintas cadenas.
- * Filtra outliers: excluye precios > 5x la mediana del EAN para evitar que
- * errores de datos (ej: disco reportando $549K en vez de $6.6K) distorsionen el promedio.
  */
 export function getPriceHistory(ean: string): PricePoint[] {
   const sql = `
-    WITH mediana AS (
-      SELECT precio_lista AS med
-      FROM price_series
-      WHERE ean = ? AND precio_lista > 0
-      ORDER BY precio_lista
-      LIMIT 1 OFFSET (
-        SELECT COUNT(*) / 2 FROM price_series
-        WHERE ean = ? AND precio_lista > 0
-      )
-    )
     SELECT
       fecha,
       EXP(AVG(LN(precio_lista))) AS precio_promedio
-    FROM price_series, mediana -- cross join: mediana returns 1 row, used to per-row outlier filtering
+    FROM price_series
     WHERE ean = ?
       AND precio_lista > 0
-      AND precio_lista <= med * 5
+      AND is_outlier = 0
     GROUP BY fecha
     ORDER BY fecha
   `;
-  return prepare(sql).all(ean, ean, ean) as PricePoint[];
+  return prepare(sql).all(ean) as PricePoint[];
 }
 
 export function getPriceHistoryByChain(
   ean: string,
 ): { fecha: string; cadena: string; precio: number }[] {
   const sql = `
-    WITH mediana AS (
-      SELECT precio_lista AS med
-      FROM price_series
-      WHERE ean = ? AND precio_lista > 0
-      ORDER BY precio_lista
-      LIMIT 1 OFFSET (
-        SELECT COUNT(*) / 2 FROM price_series
-        WHERE ean = ? AND precio_lista > 0
-      )
-    )
     SELECT fecha, cadena, precio_lista AS precio
-    FROM price_series, mediana
+    FROM price_series
     WHERE ean = ?
       AND precio_lista > 0
-      AND precio_lista <= med * 5
+      AND is_outlier = 0
     ORDER BY fecha, cadena
   `;
-  return prepare(sql).all(ean, ean, ean) as {
+  return prepare(sql).all(ean) as {
     fecha: string;
     cadena: string;
     precio: number;
@@ -446,19 +424,19 @@ export function getPriceStats(ean: string): {
         MAX(precio_lista) AS max_historico,
         COUNT(DISTINCT fecha) AS dias_datos
       FROM price_series
-      WHERE ean = ? AND precio_lista > 0
+      WHERE ean = ? AND precio_lista > 0 AND is_outlier = 0
     ),
     min_row AS (
       SELECT cadena AS min_chain, fecha AS min_fecha
       FROM price_series
-      WHERE ean = ? AND precio_lista > 0
+      WHERE ean = ? AND precio_lista > 0 AND is_outlier = 0
       ORDER BY precio_lista ASC
       LIMIT 1
     ),
     max_row AS (
       SELECT cadena AS max_chain, fecha AS max_fecha
       FROM price_series
-      WHERE ean = ? AND precio_lista > 0
+      WHERE ean = ? AND precio_lista > 0 AND is_outlier = 0
       ORDER BY precio_lista DESC
       LIMIT 1
     )
@@ -494,6 +472,7 @@ export function getCategoryPriceHistory(category: string): PricePoint[] {
     JOIN canonical_products cp ON cp.ean = ps.ean
     WHERE cp.categoria = ?
       AND ps.precio_lista > 0
+      AND ps.is_outlier = 0
     GROUP BY ps.fecha
     ORDER BY ps.fecha
   `;
@@ -513,6 +492,7 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
     WHERE ean IN (${placeholders})
       AND fecha = (SELECT MAX(fecha) FROM price_series)
       AND precio_lista > 0
+      AND is_outlier = 0
     GROUP BY cadena
     ORDER BY total_canasta
   `;
