@@ -6,12 +6,15 @@ A new column `is_outlier` was added to the `price_series` table. The ETL pipelin
 
 ## Column: `is_outlier`
 
-| Value | Meaning | Example |
-|-------|---------|---------|
+| Value | Layer | Example |
+|-------|-------|---------|
 | `0` | Clean price | Normal product price |
 | `1` | Cross-chain outlier | Supertop lists tuna at $1,399 while Disco/Jumbo/Vea all say $21 |
 | `2` | Temporal outlier | A product jumps from $500 to $50,000 overnight across all chains |
-| `3` | Category outlier | An electric shaver listed at $58 when the "electrodomésticos" category median is $30,000+ |
+| `3` | Category outlier | A product priced orders of magnitude away from its category peers (requires granular subcategories to be effective) |
+| `4` | Zero/invalid price | `precio_promo` is $0 or negative — always a data error |
+
+**Note:** NULL `precio_promo` is NOT flagged — it means there's no promotional price and `precio_lista` should be used instead.
 
 ## Migration
 
@@ -72,7 +75,7 @@ WHERE ean = ? AND is_outlier = 0
 GROUP BY fecha
 ```
 
-**Cheapest chain ("más barato"):**
+**Cheapest chain ("mas barato"):**
 ```sql
 -- BEFORE
 SELECT cadena, MIN(precio_promo)
@@ -87,24 +90,15 @@ WHERE ean = ? AND fecha = ? AND is_outlier = 0
 
 **Percentage change calculation:**
 ```sql
--- BEFORE
-SELECT ... price change logic ...
-FROM price_series
-WHERE ean = ?
-
--- AFTER (apply to BOTH the current and previous date subqueries)
+-- Apply is_outlier = 0 to BOTH the current and previous date subqueries
 ... AND is_outlier = 0
 ```
 
 ### Optional: expose outlier info in an admin/debug endpoint
 
-If you want visibility into what's being filtered:
-
 ```sql
 -- Count outliers by type for a date
-SELECT
-    is_outlier,
-    COUNT(*) as count
+SELECT is_outlier, COUNT(*) as count
 FROM price_series
 WHERE fecha = ? AND is_outlier > 0
 GROUP BY is_outlier
