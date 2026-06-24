@@ -43,3 +43,31 @@ export interface Branch {
   provincia: string;
   localidad: string;
 }
+
+export interface IndecAggregate {
+  fecha: string;
+  mediana: number;
+  min: number;
+  max: number;
+}
+
+export interface IndecBrandGroup {
+  marca: string;
+  count: number;
+  min_price: number;
+  max_price: number;
+}
+
+export interface IndecLinksData {
+  indec_ean: string;
+  linked_count: number;
+  aggregates: IndecAggregate[];
+  byBrand: IndecBrandGroup[];
+}
+
+export interface IndecReferenceData {
+  indec_ean: string | null;
+  indec_price?: number | null;
+  indec_description?: string | null;
+  indec_history?: PricePoint[];
+}

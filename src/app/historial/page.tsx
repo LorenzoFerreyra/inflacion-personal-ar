@@ -326,9 +326,9 @@ function ProductCard({
             <span
               className={`text-[12px] font-semibold px-1.5 py-0.5 rounded ${
                 product.variacion_pct > 0
-                  ? "bg-red-500/10 text-red-400"
+                  ? "bg-green-500/10 text-green-400"
                   : product.variacion_pct < 0
-                    ? "bg-green-500/10 text-green-400"
+                    ? "bg-red-500/10 text-red-400"
                     : "bg-zinc-800/50 text-zinc-400"
               }`}
             >

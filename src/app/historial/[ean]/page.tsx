@@ -230,9 +230,9 @@ export default function HistorialProductPage({
                 <span
                   className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${
                     product.variacion_pct > 0
-                      ? "bg-red-500/10 text-red-400"
+                      ? "bg-green-500/10 text-green-400"
                       : product.variacion_pct < 0
-                        ? "bg-green-500/10 text-green-400"
+                        ? "bg-red-500/10 text-red-400"
                         : "bg-zinc-800/50 text-zinc-400"
                   }`}
                 >
@@ -249,8 +249,8 @@ export default function HistorialProductPage({
           <div
             className={`mt-4 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${
               priceBadge.type === "low"
-                ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                : "bg-red-500/10 text-red-400 border border-red-500/20"
+                ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                : "bg-green-500/10 text-green-400 border border-green-500/20"
             }`}
           >
             {priceBadge.text}

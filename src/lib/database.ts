@@ -508,3 +508,91 @@ export function getBranches(): Branch[] {
   `;
   return prepare(sql).all() as Branch[];
 }
+
+// ─── INDEC Product Links ────────────────────────────────────────────────────
+
+export function getLinkedEansForIndec(indecEan: string): string[] {
+  const rows = prepare(
+    `SELECT canon_ean FROM indec_product_links WHERE indec_ean = ? AND status = 'confirmed'`,
+  ).all(indecEan) as { canon_ean: string }[];
+  return rows.map((r) => r.canon_ean);
+}
+
+export function getIndecEanForProduct(canonEan: string): string | null {
+  const row = prepare(
+    `SELECT indec_ean FROM indec_product_links WHERE canon_ean = ? AND status = 'confirmed' LIMIT 1`,
+  ).get(canonEan) as { indec_ean: string } | undefined;
+  return row?.indec_ean ?? null;
+}
+
+export function getIndecLinkedAggregates(
+  indecEan: string,
+): { fecha: string; mediana: number; min: number; max: number }[] {
+  const linkedEans = getLinkedEansForIndec(indecEan);
+  if (linkedEans.length === 0) return [];
+
+  const placeholders = linkedEans.map(() => "?").join(", ");
+  const sql = `
+    WITH daily AS (
+      SELECT fecha, ean, AVG(precio_lista) AS precio_avg
+      FROM price_series
+      WHERE ean IN (${placeholders})
+        AND precio_lista > 0
+        AND is_outlier = 0
+      GROUP BY fecha, ean
+    ),
+    ranked AS (
+      SELECT fecha, precio_avg,
+        ROW_NUMBER() OVER (PARTITION BY fecha ORDER BY precio_avg) AS rn,
+        COUNT(*) OVER (PARTITION BY fecha) AS cnt
+      FROM daily
+    )
+    SELECT
+      fecha,
+      AVG(CASE WHEN rn IN (cnt/2, cnt/2+1) THEN precio_avg END) AS mediana,
+      MIN(precio_avg) AS min,
+      MAX(precio_avg) AS max
+    FROM ranked
+    GROUP BY fecha
+    ORDER BY fecha
+  `;
+  return prepare(sql).all(...linkedEans) as {
+    fecha: string;
+    mediana: number;
+    min: number;
+    max: number;
+  }[];
+}
+
+export function getIndecLinkedByBrand(
+  indecEan: string,
+): { marca: string; count: number; min_price: number; max_price: number }[] {
+  const linkedEans = getLinkedEansForIndec(indecEan);
+  if (linkedEans.length === 0) return [];
+
+  const placeholders = linkedEans.map(() => "?").join(", ");
+  const latestDate = getLatestDate();
+  if (!latestDate) return [];
+
+  const sql = `
+    SELECT
+      cp.marca,
+      COUNT(DISTINCT cp.ean) AS count,
+      MIN(ps.precio_lista) AS min_price,
+      MAX(ps.precio_lista) AS max_price
+    FROM canonical_products cp
+    JOIN price_series ps ON ps.ean = cp.ean
+    WHERE cp.ean IN (${placeholders})
+      AND ps.fecha = ?
+      AND ps.precio_lista > 0
+      AND ps.is_outlier = 0
+    GROUP BY cp.marca
+    ORDER BY count DESC
+  `;
+  return prepare(sql).all(...linkedEans, latestDate) as {
+    marca: string;
+    count: number;
+    min_price: number;
+    max_price: number;
+  }[];
+}

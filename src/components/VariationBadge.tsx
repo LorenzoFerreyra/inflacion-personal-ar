@@ -20,10 +20,10 @@ export default function VariationBadge({ value, variant = "default" }: Props) {
     } else if (variant === "alert" && value > 10) {
       classes = "bg-amber-500/10 text-amber-400";
     } else {
-      classes = "bg-red-500/10 text-red-400";
+      classes = "bg-green-500/10 text-green-400";
     }
   } else {
-    classes = "bg-green-500/10 text-green-400";
+    classes = "bg-red-500/10 text-red-400";
   }
 
   const sign = isPositive ? "+" : "";

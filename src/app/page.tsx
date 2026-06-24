@@ -241,8 +241,8 @@ export default function MiCanastaPage() {
                               <span
                                 className={`ml-2 font-medium ${
                                   p.variacion_pct > 0
-                                    ? "text-red-400/80"
-                                    : "text-green-400/80"
+                                    ? "text-green-400/80"
+                                    : "text-red-400/80"
                                 }`}
                               >
                                 {p.variacion_pct > 0 ? "+" : ""}
