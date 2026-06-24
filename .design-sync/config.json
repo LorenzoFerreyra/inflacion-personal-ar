@@ -7,6 +7,12 @@
   "tsconfig": ".design-sync/tsconfig.sync.json",
   "cssEntry": ".design-sync/css/styles.css",
   "runtimeFontPrefixes": ["DM Sans", "DM Mono", "Fraunces"],
+  "overrides": {
+    "ChainBarChart": { "cardMode": "column" },
+    "Pagination": { "cardMode": "column" },
+    "PriceChart": { "cardMode": "column" },
+    "Stepper": { "cardMode": "column" }
+  },
   "componentSrcMap": {
     "Navigation": null,
     "ProductDetail": null,
