@@ -52,7 +52,7 @@ export default function Pagination({
   );
 
   return (
-    <div className="flex items-center justify-between mt-5 px-1">
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:justify-between mt-5 px-1">
       <span className="text-[12px] text-zinc-400 tabular-nums font-medium min-w-30">
         {totalCount.toLocaleString("es-AR")} {label}
       </span>

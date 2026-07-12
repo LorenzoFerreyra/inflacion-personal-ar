@@ -11,6 +11,7 @@ const tabs = [
   { href: "/historial", label: "Historial" },
   { href: "/insights", label: "Insights" },
   { href: "/cobertura", label: "Cobertura" },
+  { href: "/chat", label: "Asistente" },
   { href: "/metodologia", label: "Metodología" },
   { href: "/sobre-mi", label: "Acerca de" },
 ];
@@ -41,11 +42,11 @@ export default function Navigation() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 py-3 md:py-0 md:h-14">
           {/* Logo + IPC badge + period dropdown */}
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex w-full md:w-auto flex-wrap items-center gap-x-4 gap-y-1 md:shrink-0">
             <Link
               href="/"
               aria-label="Ir a inicio"
-              className="font-display text-xl font-semibold text-amber-300 hover:opacity-80 whitespace-nowrap"
+              className="font-display text-lg md:text-xl font-semibold text-amber-300 hover:opacity-80 whitespace-nowrap"
             >
               Observatorio de inflaci&oacute;n
             </Link>
@@ -109,7 +110,7 @@ export default function Navigation() {
           </div>
 
           {/* Tabs */}
-          <div className="flex min-w-0 flex-1 bg-zinc-900/30 rounded-lg p-1 overflow-x-auto scrollbar-hide">
+          <div className="flex w-full md:w-auto min-w-0 flex-1 bg-zinc-900/30 rounded-lg p-1 overflow-x-auto scrollbar-hide">
             {tabs.map(({ href, label }) => {
               const isActive =
                 href === "/" ? pathname === "/" : pathname.startsWith(href);

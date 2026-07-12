@@ -500,6 +500,33 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
   return prepare(sql).all(...eans) as ChainPrice[];
 }
 
+/**
+ * Precio de cada EAN en cada cadena, a la última fecha con datos.
+ * Devuelve una fila por (ean, cadena) — la matriz que usa el
+ * algoritmo de recomendación del chat de compras.
+ */
+export function getLatestChainPricesByEan(
+  eans: string[],
+): { ean: string; cadena: string; precio: number }[] {
+  if (eans.length === 0) return [];
+
+  const placeholders = eans.map(() => "?").join(", ");
+  const sql = `
+    SELECT ean, cadena, ROUND(AVG(precio_lista), 0) AS precio
+    FROM price_series
+    WHERE ean IN (${placeholders})
+      AND fecha = (SELECT MAX(fecha) FROM price_series)
+      AND precio_lista > 0
+      AND is_outlier = 0
+    GROUP BY ean, cadena
+  `;
+  return prepare(sql).all(...eans) as {
+    ean: string;
+    cadena: string;
+    precio: number;
+  }[];
+}
+
 export function getBranches(): Branch[] {
   const sql = `
     SELECT cadena, formato, direccion, latitud, longitud, provincia, localidad
