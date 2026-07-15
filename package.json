@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "eval:chat": "vitest run --config vitest.evals.config.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
