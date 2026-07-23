@@ -71,9 +71,9 @@ interface ProductsSnapshot {
 let productsSnapshot: ProductsSnapshot | null = null;
 
 function getProductsSnapshot(dias: number): CachedProduct[] {
-  const latestDate = (
-    prepare("SELECT MAX(fecha) AS f FROM price_series").get() as { f: string | null }
-  )?.f;
+  const latestDate = query<{ f: string | null }>(
+    "SELECT MAX(fecha) AS f FROM price_series",
+  ).get()?.f;
   if (!latestDate) return [];
 
   if (productsSnapshot && productsSnapshot.latestDate === latestDate && productsSnapshot.dias === dias) {
@@ -81,9 +81,9 @@ function getProductsSnapshot(dias: number): CachedProduct[] {
   }
 
   const baseDateSql = "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days')";
-  const baseDate = (prepare(baseDateSql).get(dias) as { f: string | null })?.f ?? null;
+  const baseDate = query<{ f: string | null }>(baseDateSql).get(dias)?.f ?? null;
 
-  const products = prepare(`
+  const products = query<Product>(`
     WITH
     precio_actual AS (
       SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
@@ -103,7 +103,7 @@ function getProductsSnapshot(dias: number): CachedProduct[] {
     LEFT JOIN precio_base pb USING (ean)
     JOIN canonical_products cp USING (ean)
     ORDER BY pa.cobertura_cadenas DESC, cp.product_description
-  `).all(latestDate, baseDate) as Product[];
+  `).all(latestDate, baseDate);
 
   const cached: CachedProduct[] = products.map((p) => ({
     ...p,
@@ -170,7 +170,7 @@ function getStmtCache(): Map<string, Database.Statement> {
   return globalForStmtCache.__stmtCache;
 }
 
-export function prepare(sql: string): Database.Statement {
+function prepare(sql: string): Database.Statement {
   const cache = getStmtCache();
   let stmt = cache.get(sql);
   if (stmt) {
@@ -188,15 +188,30 @@ export function prepare(sql: string): Database.Statement {
   return stmt;
 }
 
+type SqlParam = string | number | bigint | Buffer | null;
+
+/**
+ * Statement tipado: el tipo de fila se declara una sola vez, junto al SQL.
+ * Es el único lugar donde se castea el resultado de better-sqlite3, así los
+ * call sites quedan tipados sin `as` dispersos.
+ */
+export function query<Row>(sql: string) {
+  return {
+    all: (...params: SqlParam[]): Row[] => prepare(sql).all(...params) as Row[],
+    get: (...params: SqlParam[]): Row | undefined =>
+      prepare(sql).get(...params) as Row | undefined,
+  };
+}
+
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
 /**
  * Devuelve la fecha más reciente con datos de precios.
  */
 export function getLatestDate(): string | null {
-  const row = prepare("SELECT MAX(fecha) AS fecha FROM price_series").get() as
-    | { fecha: string | null }
-    | undefined;
+  const row = query<{ fecha: string | null }>(
+    "SELECT MAX(fecha) AS fecha FROM price_series",
+  ).get();
   return row?.fecha ?? null;
 }
 
@@ -204,22 +219,22 @@ export function getLatestDate(): string | null {
  * Lista de categorías con cantidad de productos en cada una.
  */
 export function getCategories(): Category[] {
-  return prepare(
+  return query<Category>(
     `SELECT categoria, COUNT(*) AS n
      FROM canonical_products
      WHERE categoria IS NOT NULL AND categoria != ''
      GROUP BY categoria
      ORDER BY n DESC`,
-  ).all() as Category[];
+  ).all();
 }
 
 /**
  * Lista de cadenas con datos de precios.
  */
 export function getChainList(): string[] {
-  const rows = prepare(
+  const rows = query<{ cadena: string }>(
     `SELECT DISTINCT cadena FROM price_series WHERE cadena IS NOT NULL AND cadena != '' ORDER BY cadena`,
-  ).all() as { cadena: string }[];
+  ).all();
   return rows.map((r) => r.cadena);
 }
 
@@ -270,7 +285,7 @@ export function getProducts(options: ProductQueryOptions): {
   products: Product[];
   total: number;
 } {
-  const { dias = 30, page = 1, pageSize = 30, cadena = "" } = options;
+  const { cadena = "" } = options;
   const hasCadena = cadena.trim().length > 0;
 
   if (hasCadena) return getProductsFromDb(options);
@@ -285,26 +300,25 @@ function getProductsFromDb(options: ProductQueryOptions): {
   const { params, whereClause } = buildProductQueryParts(options);
   const offset = (Math.max(page, 1) - 1) * pageSize;
 
-  const latestDate = (
-    prepare("SELECT MAX(fecha) AS f FROM price_series WHERE cadena = ? AND is_outlier = 0").get(cadena) as { f: string | null }
-  )?.f;
+  const latestDate = query<{ f: string | null }>(
+    "SELECT MAX(fecha) AS f FROM price_series WHERE cadena = ? AND is_outlier = 0",
+  ).get(cadena)?.f;
   if (!latestDate) return { products: [], total: 0 };
 
-  const baseDate = (
-    prepare("SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days') AND cadena = ? AND is_outlier = 0").get(dias, cadena) as { f: string | null }
-  )?.f;
+  const baseDate = query<{ f: string | null }>(
+    "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days') AND cadena = ? AND is_outlier = 0",
+  ).get(dias, cadena)?.f ?? null;
 
-  const total = (
-    prepare(
+  const total =
+    query<{ cnt: number }>(
       `SELECT COUNT(*) AS cnt FROM
        (SELECT ean FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pa
        JOIN canonical_products cp USING (ean) ${whereClause}`,
-    ).get(latestDate, cadena, ...params) as { cnt: number }
-  ).cnt;
+    ).get(latestDate, cadena, ...params)?.cnt ?? 0;
 
   if (total === 0) return { products: [], total: 0 };
 
-  const products = prepare(`
+  const products = query<Product>(`
     SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
       ROUND(pa.precio_hoy, 0) AS precio_actual,
       CASE WHEN pb.precio_antes IS NOT NULL AND pb.precio_antes > 0
@@ -319,7 +333,7 @@ function getProductsFromDb(options: ProductQueryOptions): {
     ${whereClause}
     ORDER BY pa.cobertura_cadenas DESC, cp.product_description
     LIMIT ? OFFSET ?
-  `).all(latestDate, cadena, baseDate, cadena, ...params, pageSize, offset) as Product[];
+  `).all(latestDate, cadena, baseDate, cadena, ...params, pageSize, offset);
 
   return { products, total };
 }
@@ -378,7 +392,7 @@ export function getPriceHistory(ean: string): PricePoint[] {
     GROUP BY fecha
     ORDER BY fecha
   `;
-  return prepare(sql).all(ean) as PricePoint[];
+  return query<PricePoint>(sql).all(ean);
 }
 
 export function getPriceHistoryByChain(
@@ -392,11 +406,7 @@ export function getPriceHistoryByChain(
       AND is_outlier = 0
     ORDER BY fecha, cadena
   `;
-  return prepare(sql).all(ean) as {
-    fecha: string;
-    cadena: string;
-    precio: number;
-  }[];
+  return query<{ fecha: string; cadena: string; precio: number }>(sql).all(ean);
 }
 
 /**
@@ -448,17 +458,15 @@ export function getPriceStats(ean: string): {
     LEFT JOIN min_row mn ON 1=1
     LEFT JOIN max_row mx ON 1=1
   `;
-  const row = prepare(sql).get(ean, ean, ean) as
-    | {
-        min_historico: number;
-        max_historico: number;
-        min_chain: string | null;
-        max_chain: string | null;
-        min_fecha: string;
-        max_fecha: string;
-        dias_datos: number;
-      }
-    | undefined;
+  const row = query<{
+    min_historico: number;
+    max_historico: number;
+    min_chain: string | null;
+    max_chain: string | null;
+    min_fecha: string;
+    max_fecha: string;
+    dias_datos: number;
+  }>(sql).get(ean, ean, ean);
   if (!row || row.min_historico == null) return null;
   return row;
 }
@@ -476,7 +484,7 @@ export function getCategoryPriceHistory(category: string): PricePoint[] {
     GROUP BY ps.fecha
     ORDER BY ps.fecha
   `;
-  return prepare(sql).all(category) as PricePoint[];
+  return query<PricePoint>(sql).all(category);
 }
 
 export function getChainPrices(eans: string[]): ChainPrice[] {
@@ -497,7 +505,7 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
     ORDER BY total_canasta
   `;
 
-  return prepare(sql).all(...eans) as ChainPrice[];
+  return query<ChainPrice>(sql).all(...eans);
 }
 
 /**
@@ -520,11 +528,9 @@ export function getLatestChainPricesByEan(
       AND is_outlier = 0
     GROUP BY ean, cadena
   `;
-  return prepare(sql).all(...eans) as {
-    ean: string;
-    cadena: string;
-    precio: number;
-  }[];
+  return query<{ ean: string; cadena: string; precio: number }>(sql).all(
+    ...eans,
+  );
 }
 
 export function getBranches(): Branch[] {
@@ -533,22 +539,22 @@ export function getBranches(): Branch[] {
     FROM sucursales
     ORDER BY cadena, localidad
   `;
-  return prepare(sql).all() as Branch[];
+  return query<Branch>(sql).all();
 }
 
 // ─── INDEC Product Links ────────────────────────────────────────────────────
 
 export function getLinkedEansForIndec(indecEan: string): string[] {
-  const rows = prepare(
+  const rows = query<{ canon_ean: string }>(
     `SELECT canon_ean FROM indec_product_links WHERE indec_ean = ? AND status = 'confirmed'`,
-  ).all(indecEan) as { canon_ean: string }[];
+  ).all(indecEan);
   return rows.map((r) => r.canon_ean);
 }
 
 export function getIndecEanForProduct(canonEan: string): string | null {
-  const row = prepare(
+  const row = query<{ indec_ean: string }>(
     `SELECT indec_ean FROM indec_product_links WHERE canon_ean = ? AND status = 'confirmed' LIMIT 1`,
-  ).get(canonEan) as { indec_ean: string } | undefined;
+  ).get(canonEan);
   return row?.indec_ean ?? null;
 }
 
@@ -583,12 +589,9 @@ export function getIndecLinkedAggregates(
     GROUP BY fecha
     ORDER BY fecha
   `;
-  return prepare(sql).all(...linkedEans) as {
-    fecha: string;
-    mediana: number;
-    min: number;
-    max: number;
-  }[];
+  return query<{ fecha: string; mediana: number; min: number; max: number }>(
+    sql,
+  ).all(...linkedEans);
 }
 
 export function getIndecLinkedByBrand(
@@ -616,10 +619,10 @@ export function getIndecLinkedByBrand(
     GROUP BY cp.marca
     ORDER BY count DESC
   `;
-  return prepare(sql).all(...linkedEans, latestDate) as {
+  return query<{
     marca: string;
     count: number;
     min_price: number;
     max_price: number;
-  }[];
+  }>(sql).all(...linkedEans, latestDate);
 }

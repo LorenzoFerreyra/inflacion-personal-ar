@@ -34,15 +34,20 @@ export default function ExploradorPage() {
   );
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
+    <div className="flex flex-col lg:flex-row gap-10">
       {/* Left: product list */}
       <div className="flex-1 min-w-0">
-        <h2 className="text-lg font-semibold text-zinc-100 mb-4">
-          Explorar productos
-        </h2>
+        <header className="mb-6">
+          <h1 className="font-display text-[26px] font-semibold text-zinc-50">
+            Explorador de precios
+          </h1>
+          <p className="text-sm text-zinc-400 mt-1">
+            Todo el relevamiento, producto por producto.
+          </p>
+        </header>
 
         {/* Search bar + chain filter */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-3">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
             <Search
               size={15}
@@ -53,16 +58,15 @@ export default function ExploradorPage() {
               placeholder="Buscar por nombre o marca..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg pl-10 pr-4 py-2.5
-                         text-sm text-zinc-200 placeholder-zinc-400
-                         focus:outline-none focus:border-amber-500/40"
+              className="w-full bg-panel border border-hairline rounded-sm pl-10 pr-4 py-2.5
+                         text-sm text-zinc-200 focus:outline-none"
             />
           </div>
           <select
             value={cadena}
             onChange={(e) => setCadena(e.target.value)}
-            className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
-                       text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
+            className="bg-panel border border-hairline rounded-sm px-3 py-2.5
+                       text-sm text-zinc-300 focus:outline-none"
           >
             <option value="">
               {chainsError
@@ -77,20 +81,20 @@ export default function ExploradorPage() {
           </select>
         </div>
 
-        {/* Category chips */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
+        {/* Category filters: editorial underline tags */}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mb-5 border-b border-hairline pb-2">
           <button
             onClick={() => setCategory("")}
-            className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border ${
+            className={`text-[12px] py-1 border-b-2 -mb-[9px] ${
               category === ""
-                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
+                ? "text-amber-300 border-amber-450 font-medium"
+                : "text-zinc-400 border-transparent hover:text-zinc-200"
             }`}
           >
             todas
           </button>
           {categoriesError ? (
-            <span className="text-[12px] text-red-400/80 self-center">
+            <span className="text-[12px] text-red-400 self-center">
               Error al cargar categorías
             </span>
           ) : (
@@ -100,10 +104,10 @@ export default function ExploradorPage() {
                 onClick={() =>
                   setCategory(category === cat.categoria ? "" : cat.categoria)
                 }
-                className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border ${
+                className={`text-[12px] py-1 border-b-2 -mb-[9px] ${
                   category === cat.categoria
-                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                    : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
+                    ? "text-amber-300 border-amber-450 font-medium"
+                    : "text-zinc-400 border-transparent hover:text-zinc-200"
                 }`}
               >
                 {cat.categoria}
@@ -126,20 +130,21 @@ export default function ExploradorPage() {
 
       {/* Right: product detail */}
       <div className="w-full lg:w-96 shrink-0">
-        <div className="sticky top-24">
-          <h2 className="text-lg font-semibold text-zinc-100 mb-4">
+        <div className="sticky top-28">
+          <h2 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 border-b border-hairline pb-2 mb-5">
             Detalle del producto
           </h2>
 
           {!selectedProduct ? (
-            <div className="rounded-xl border border-dashed border-zinc-800/40 p-12 text-center">
+            <div className="pt-8 text-center">
               <Search
-                size={32}
+                size={26}
                 strokeWidth={1.2}
-                className="mx-auto text-zinc-600 mb-4"
+                className="mx-auto text-zinc-700 mb-3"
               />
-              <p className="text-sm text-zinc-500">
-                Seleccioná un producto para ver su detalle.
+              <p className="text-sm text-zinc-500 max-w-55 mx-auto">
+                Seleccion&aacute; un producto de la tabla para ver su historial
+                y d&oacute;nde conviene comprarlo.
               </p>
             </div>
           ) : (

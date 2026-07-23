@@ -11,7 +11,7 @@ Seguimiento personalizado de inflacion en Argentina. Compara tu canasta real con
 | Estilos | Tailwind CSS v4 | Utility-first, dark theme con clases `bg-zinc-*` |
 | Charts | Recharts | Wrapper declarativo sobre D3 para React |
 | Base de datos | better-sqlite3 | Driver SQLite sincronico, corre server-side |
-| Iconos | lucide-react | Iconos SVG livianos |
+| Iconos | SVG propios (`src/components/Icons.tsx`) | Iconos SVG livianos, sin dependencia externa |
 | Bundler | Turbopack | Bundler de Next.js en dev, reemplaza Webpack |
 
 ## Estilos

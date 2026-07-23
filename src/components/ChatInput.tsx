@@ -56,8 +56,8 @@ export default function ChatInput({
 
   return (
     <div
-      className="rounded-2xl border border-zinc-800 bg-zinc-900/80 shadow-lg shadow-black/20
-                 focus-within:border-zinc-700"
+      className="rounded-md border border-hairline-strong bg-panel
+                 focus-within:border-amber-450"
     >
       <textarea
         ref={textareaRef}
@@ -85,7 +85,7 @@ export default function ChatInput({
 
       <div className="flex items-center gap-1.5 px-2.5 pb-2.5 pt-1 flex-wrap">
         <div
-          className="flex gap-0.5 rounded-lg bg-zinc-950/50 p-0.5"
+          className="flex gap-0.5 rounded-sm bg-zinc-950 p-0.5"
           role="radiogroup"
           aria-label="Prioridad de la recomendación"
         >
@@ -96,9 +96,9 @@ export default function ChatInput({
               role="radio"
               aria-checked={priority === value}
               onClick={() => onPriorityChange(value)}
-              className={`rounded-md px-2 py-1 text-[11px] font-medium ${
+              className={`rounded-sm px-2 py-1 text-[11px] font-medium ${
                 priority === value
-                  ? "bg-zinc-800 text-amber-300"
+                  ? "bg-amber-tint-2 text-amber-300"
                   : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
@@ -119,9 +119,9 @@ export default function ChatInput({
             }
           }}
           aria-pressed={radiusOpen}
-          className={`rounded-md px-2 py-1 text-[11px] font-medium ${
+          className={`rounded-sm px-2 py-1 text-[11px] font-medium ${
             radiusOpen
-              ? "bg-zinc-800 text-amber-300"
+              ? "bg-amber-tint-2 text-amber-300"
               : "text-zinc-400 hover:text-zinc-200"
           }`}
         >
@@ -148,7 +148,7 @@ export default function ChatInput({
           aria-label="Enviar mensaje"
           className={`ml-auto flex size-8 shrink-0 items-center justify-center rounded-full ${
             canSend
-              ? "bg-amber-400 text-zinc-950 hover:bg-amber-300"
+              ? "bg-amber-450 text-zinc-950 hover:bg-amber-400"
               : "bg-zinc-800 text-zinc-500"
           }`}
         >

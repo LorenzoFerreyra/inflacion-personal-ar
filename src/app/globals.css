@@ -1,17 +1,33 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-dm-sans);
-  --font-mono: var(--font-dm-mono);
+  --font-sans: var(--font-ubuntu);
+  --font-mono: var(--font-ubuntu-mono);
   --font-display: var(--font-fraunces);
+
+  /* Brand */
   --color-amber-450: #e0a535;
+
+  /* Solid surface scale — no translucent layering */
+  --color-panel: #121214;
+  --color-panel-2: #19191c;
+  --color-hairline: #27272a;
+  --color-hairline-strong: #3f3f46;
+
+  /* Solid amber tints for selection states (amber mixed over zinc-950) */
+  --color-amber-tint: #221a0b;
+  --color-amber-tint-2: #2e2410;
 }
 
 html {
+  color-scheme: dark;
   font-kerning: normal;
-  font-optical-sizing: auto;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+body {
+  line-height: 1.55;
 }
 
 .font-display {
@@ -20,25 +36,8 @@ html {
 }
 
 .tabular {
-  font-family: var(--font-dm-mono);
-  font-feature-settings: "tnum";
+  font-family: var(--font-ubuntu-mono);
   font-variant-numeric: tabular-nums;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #3f3f46;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
 }
 
 /* Smooth transitions on interactive elements */
@@ -50,16 +49,25 @@ a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]) {
 
 /* Selection color */
 ::selection {
-  background: rgba(217, 166, 78, 0.25);
+  background: rgba(224, 165, 53, 0.3);
   color: #fafafa;
 }
 
-/* Table row animation */
+/* Single focus vocabulary across the app */
+:focus-visible {
+  outline: 2px solid var(--color-amber-450);
+  outline-offset: 1px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-amber-450);
+}
+
+/* Step / view transitions (state change, not decoration) */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(2px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in {
   animation: fadeIn 0.2s cubic-bezier(0.25, 1, 0.5, 1) both;
 }
@@ -68,7 +76,6 @@ a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]) {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
 }
-
 .animate-slide-in {
   animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -83,16 +90,18 @@ a, button, input, select, textarea, [tabindex]:not([tabindex="-1"]) {
   -webkit-mask-image: none;
 }
 
-/* Glass card */
-.glass {
-  background: rgba(24, 24, 27, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+/* Editorial double rule (newspaper masthead separator) */
+.rule-double {
+  border-bottom: 1px solid var(--color-hairline);
+  position: relative;
 }
-
-/* Subtle glow on focus */
-input:focus, select:focus {
-  box-shadow: 0 0 0 2px rgba(217, 166, 78, 0.12);
+.rule-double::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
 /* Satisfying button press */
@@ -109,8 +118,6 @@ button:active:not(:disabled) {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   animation: lightboxFadeIn 0.2s ease-out both;
   cursor: pointer;
 }
@@ -118,10 +125,10 @@ button:active:not(:disabled) {
 .image-lightbox-card {
   max-width: 420px;
   width: 90vw;
-  border-radius: 12px;
+  border-radius: 6px;
   overflow: hidden;
-  border: 1px solid rgba(63, 63, 70, 0.4);
-  background: rgba(24, 24, 27, 0.97);
+  border: 1px solid var(--color-hairline-strong);
+  background: var(--color-panel);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
   animation: lightboxScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
   cursor: default;
@@ -131,7 +138,7 @@ button:active:not(:disabled) {
   width: 100%;
   max-height: 50vh;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.03);
+  background: #ffffff08;
   padding: 12px;
 }
 
@@ -141,14 +148,25 @@ button:active:not(:disabled) {
 }
 
 @keyframes lightboxScaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Skeleton loading shimmer */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.skeleton {
+  background: var(--color-panel-2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+/* Readable placeholders on panel surfaces */
+input::placeholder,
+textarea::placeholder {
+  color: #8b8b94;
 }
 
 /* Pulse for severity dots — only runs 3 times to save battery */
@@ -172,10 +190,10 @@ button:active:not(:disabled) {
 
 /* Leaflet popup dark theme */
 .branch-popup .leaflet-popup-content-wrapper {
-  background: rgba(24, 24, 27, 0.95);
+  background: var(--color-panel);
   color: #e4e4e7;
-  border: 1px solid rgba(63, 63, 70, 0.5);
-  border-radius: 8px;
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   padding: 0;
 }
@@ -183,16 +201,10 @@ button:active:not(:disabled) {
   margin: 10px 14px;
 }
 .branch-popup .leaflet-popup-tip {
-  background: rgba(24, 24, 27, 0.95);
-  border: 1px solid rgba(63, 63, 70, 0.5);
+  background: var(--color-panel);
+  border: 1px solid var(--color-hairline-strong);
   border-top: none;
   border-left: none;
-}
-
-/* Dark mode typography compensation: slightly looser leading */
-body {
-  line-height: 1.6;
-  letter-spacing: 0.005em;
 }
 
 /* Uppercase labels need tracking */

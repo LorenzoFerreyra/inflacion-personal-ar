@@ -2,11 +2,10 @@
 
 import { Product } from "@/lib/types";
 import { PAGE_SIZE } from "@/lib/constants";
-import { Package } from "@/components/Icons";
+import { Package, Check } from "@/components/Icons";
 import ProductImage from "@/components/ProductImage";
 import Pagination from "@/components/Pagination";
 import VariationBadge from "@/components/VariationBadge";
-import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
 
 interface Props {
@@ -19,6 +18,27 @@ interface Props {
   selectedEans?: Set<string>;
   loading?: boolean;
   chainFiltered?: boolean;
+}
+
+const HEADER_CELL =
+  "py-2.5 px-3 text-[11px] font-bold text-zinc-400 uppercase";
+
+function SkeletonRows() {
+  return (
+    <div aria-live="polite">
+      <span className="sr-only">Cargando productos...</span>
+      <div className="border-y border-hairline divide-y divide-hairline">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 py-3 px-3">
+            <div className="skeleton w-7 h-7 shrink-0" />
+            <div className="skeleton h-3 flex-1 max-w-72" />
+            <div className="skeleton h-3 w-20 hidden sm:block" />
+            <div className="skeleton h-3 w-14 ml-auto" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function ProductTable({
@@ -34,7 +54,7 @@ export default function ProductTable({
 }: Props) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   if (loading) {
-    return <LoadingSpinner message="Cargando productos..." />;
+    return <SkeletonRows />;
   }
 
   if (products.length === 0) {
@@ -48,7 +68,7 @@ export default function ProductTable({
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-xl border border-zinc-800/40 bg-zinc-900/30">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm table-fixed">
           <colgroup>
             <col className="w-[40%]" />
@@ -58,64 +78,63 @@ export default function ProductTable({
             <col className="w-[13%]" />
           </colgroup>
           <thead>
-            <tr className="border-b border-zinc-800/80">
-              <th className="py-3 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Producto
-              </th>
-              <th className="py-3 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Marca
-              </th>
-              <th className="py-3 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Categor&iacute;a
-              </th>
-              <th className="py-3 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            <tr className="border-b border-hairline-strong">
+              <th className={`${HEADER_CELL} text-left`}>Producto</th>
+              <th className={`${HEADER_CELL} text-left`}>Marca</th>
+              <th className={`${HEADER_CELL} text-left`}>Categor&iacute;a</th>
+              <th className={`${HEADER_CELL} text-right`}>
                 {chainFiltered ? "Precio" : "Precio prom."}
               </th>
-              <th className="py-3 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                Variaci&oacute;n
-              </th>
+              <th className={`${HEADER_CELL} text-right`}>Variaci&oacute;n</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((product, idx) => {
+            {products.map((product) => {
               const isSelected = selectedEans?.has(product.ean);
 
               return (
                 <tr
                   key={product.ean}
                   onClick={() => onSelect?.(product)}
-                  style={{ animationDelay: `${idx * 20}ms` }}
+                  aria-selected={isSelected}
                   className={`
-                    border-b border-zinc-800/30 cursor-pointer animate-fade-in
-                    ${
-                      isSelected
-                        ? "bg-amber-500/8 border-l-2 border-l-amber-400/50"
-                        : "hover:bg-zinc-800/40"
-                    }
+                    border-b border-hairline cursor-pointer
+                    ${isSelected ? "bg-amber-tint" : "hover:bg-panel-2"}
                   `}
                 >
                   <td className="py-2.5 px-3 text-zinc-200 font-medium">
                     <div className="flex items-center gap-2.5 min-w-0">
+                      {isSelected && (
+                        <Check
+                          size={13}
+                          strokeWidth={2.5}
+                          className="text-amber-400 shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
                       <ProductImage
                         src={product.image_url}
                         alt={product.product_description}
                         marca={product.marca}
                       />
-                      <span className="truncate min-w-0" title={product.product_description}>
+                      <span
+                        className="truncate min-w-0"
+                        title={product.product_description}
+                      >
                         {product.product_description}
                       </span>
                     </div>
                   </td>
-                  <td className="py-2.5 px-3 text-zinc-400 text-[13px]">
+                  <td className="py-2.5 px-3 text-zinc-400 text-[13px] truncate">
                     {product.marca}
                   </td>
-                  <td className="py-2.5 px-3">
-                    <span className="text-[11px] bg-zinc-800/60 text-zinc-400 rounded-full px-2 py-0.5">
-                      {product.categoria}
-                    </span>
+                  <td className="py-2.5 px-3 text-zinc-500 text-[12px] truncate">
+                    {product.categoria}
                   </td>
-                  <td className="py-2.5 px-3 text-right text-zinc-200 font-mono text-[13px]">
-                    <span>${product.precio_actual?.toLocaleString("es-AR") ?? "—"}</span>
+                  <td className="py-2.5 px-3 text-right text-zinc-200 tabular text-[13px]">
+                    <span>
+                      ${product.precio_actual?.toLocaleString("es-AR") ?? "—"}
+                    </span>
                     {!chainFiltered && product.cobertura_cadenas > 0 && (
                       <span className="ml-1 text-[9px] font-sans text-zinc-600 font-normal">
                         {product.cobertura_cadenas}c

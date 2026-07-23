@@ -35,39 +35,38 @@ export default function Navigation() {
   }, []);
 
   return (
-    <nav
-      className="sticky top-0 z-50 border-b border-zinc-800/40 bg-zinc-950/80 backdrop-blur-xl"
-      aria-label="Navegación principal"
-    >
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 py-3 md:py-0 md:h-14">
-          {/* Logo + IPC badge + period dropdown */}
-          <div className="flex w-full md:w-auto flex-wrap items-center gap-x-4 gap-y-1 md:shrink-0">
+    <header className="sticky top-0 z-50 bg-zinc-950">
+      <nav aria-label="Navegación principal">
+        <div className="max-w-7xl mx-auto px-6">
+          {/* Masthead */}
+          <div className="flex items-baseline justify-between gap-4 pt-4 pb-2.5 border-b border-hairline">
             <Link
               href="/"
               aria-label="Ir a inicio"
-              className="font-display text-lg md:text-xl font-semibold text-amber-300 hover:opacity-80 whitespace-nowrap"
+              className="font-display text-lg md:text-[22px] font-semibold text-zinc-50 whitespace-nowrap hover:text-amber-300"
             >
               Observatorio de inflaci&oacute;n
+              <span className="text-amber-450">.</span>
             </Link>
-            <div className="flex items-center gap-2.5 bg-zinc-900/50 border border-zinc-800/40 rounded-full px-3.5 py-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/70 shrink-0" />
-              <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-                IPC
+
+            {/* IPC readout + period selector */}
+            <div className="flex items-baseline gap-2 whitespace-nowrap">
+              <span className="hidden sm:inline text-[11px] uppercase text-zinc-500">
+                IPC oficial
               </span>
               <span
-                className={`text-sm font-semibold ${ipcError ? "text-zinc-500" : "text-amber-400/90"}`}
+                className={`tabular text-sm font-bold ${ipcError ? "text-zinc-500" : "text-amber-400"}`}
               >
                 {ipcError ? "—" : `${ipc[period]}%`}
               </span>
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative inline-block" ref={dropdownRef}>
                 <button
                   onClick={() => setPeriodOpen((v) => !v)}
                   aria-label="Cambiar período"
                   aria-haspopup="listbox"
                   aria-expanded={periodOpen}
-                  className="text-[11px] text-zinc-400 font-medium hover:text-zinc-200 flex items-center gap-1
-                             min-h-[44px] min-w-[44px] justify-center"
+                  className="text-[12px] text-zinc-400 hover:text-zinc-100 inline-flex items-center gap-1
+                             underline decoration-dotted decoration-zinc-600 underline-offset-4"
                 >
                   {PERIODS[period].label.toLowerCase()}
                   <svg
@@ -86,7 +85,7 @@ export default function Navigation() {
                   </svg>
                 </button>
                 {periodOpen && (
-                  <div className="absolute top-full left-0 mt-2 bg-zinc-900 border border-zinc-700/60 rounded-lg shadow-xl py-1 min-w-[110px] z-50">
+                  <div className="absolute top-full right-0 mt-2 bg-panel-2 border border-hairline-strong rounded-sm shadow-xl py-1 min-w-[110px] z-50">
                     {(Object.keys(PERIODS) as PeriodKey[]).map((key) => (
                       <button
                         key={key}
@@ -94,10 +93,10 @@ export default function Navigation() {
                           setPeriod(key);
                           setPeriodOpen(false);
                         }}
-                        className={`block w-full text-left px-3 py-1.5 text-[12px] font-medium ${
+                        className={`block w-full text-left px-3 py-1.5 text-[12px] ${
                           period === key
-                            ? "text-amber-300 bg-amber-500/10"
-                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60"
+                            ? "text-amber-300 bg-amber-tint"
+                            : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
                         }`}
                       >
                         {PERIODS[key].label}
@@ -109,8 +108,8 @@ export default function Navigation() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex w-full md:w-auto min-w-0 flex-1 bg-zinc-900/30 rounded-lg p-1 overflow-x-auto scrollbar-hide">
+          {/* Section tabs */}
+          <div className="flex overflow-x-auto scrollbar-hide -mx-1">
             {tabs.map(({ href, label }) => {
               const isActive =
                 href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -118,23 +117,26 @@ export default function Navigation() {
                 <Link
                   key={href}
                   href={href}
-                  className={`
-                    px-2.5 py-2 rounded-md text-xs font-medium whitespace-nowrap
-                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50
-                    ${
-                      isActive
-                        ? "bg-zinc-800 text-zinc-50 shadow-sm"
-                        : "text-zinc-400 hover:text-zinc-200"
-                    }
-                  `}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`relative px-3 py-2.5 text-[13px] whitespace-nowrap ${
+                    isActive
+                      ? "text-zinc-50 font-medium"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
                 >
                   {label}
+                  {isActive && (
+                    <span className="absolute inset-x-3 bottom-0 h-[2px] bg-amber-450" />
+                  )}
                 </Link>
               );
             })}
           </div>
         </div>
-      </div>
-    </nav>
+
+        {/* Newspaper double rule */}
+        <div className="h-[3px] border-y border-hairline" aria-hidden="true" />
+      </nav>
+    </header>
   );
 }

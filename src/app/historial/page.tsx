@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Product, Category, PricePoint } from "@/lib/types";
 import { PERIODS, PAGE_SIZE, MAX_COMPARE_PRODUCTS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
@@ -8,9 +8,11 @@ import { useDebounce } from "@/lib/useDebounce";
 import { Search, ArrowRight } from "@/components/Icons";
 import { chainLabel } from "@/lib/chainColors";
 import ProductImage from "@/components/ProductImage";
+import VariationBadge from "@/components/VariationBadge";
 import Link from "next/link";
 import PriceChart from "@/components/PriceChart";
 import Pagination from "@/components/Pagination";
+import { fmtPct } from "@/lib/format";
 import {
   ResponsiveContainer,
   LineChart,
@@ -55,49 +57,78 @@ export default function HistorialPage() {
       .catch(() => {});
   }, []);
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        search: debouncedSearch,
-        category,
-        cadena,
-        dias: String(PERIODS[period].dias),
-        page: String(page),
-        pageSize: String(PAGE_SIZE),
-      });
-      const res = await fetch(`/api/products?${params}`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setProducts(data.products);
-      setTotalCount(data.total);
-    } catch {
-      setProducts([]);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
-    }
+  // Reset page when a filter changes — during render, so the fetch effect
+  // below never runs with the stale page number.
+  const filtersKey = `${debouncedSearch}|${category}|${cadena}|${period}`;
+  const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+  if (filtersKey !== prevFiltersKey) {
+    setPrevFiltersKey(filtersKey);
+    setPage(1);
+  }
+
+  // Clear the category trend as soon as the category changes.
+  const [prevCategory, setPrevCategory] = useState(category);
+  if (category !== prevCategory) {
+    setPrevCategory(category);
+    setCategoryHistory([]);
+  }
+
+  useEffect(() => {
+    const abort = new AbortController();
+
+    (async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          search: debouncedSearch,
+          category,
+          cadena,
+          dias: String(PERIODS[period].dias),
+          page: String(page),
+          pageSize: String(PAGE_SIZE),
+        });
+        const res = await fetch(`/api/products?${params}`, {
+          signal: abort.signal,
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setProducts(data.products);
+        setTotalCount(data.total);
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          setProducts([]);
+          setTotalCount(0);
+        }
+      } finally {
+        if (!abort.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => abort.abort();
   }, [debouncedSearch, category, cadena, period, page]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    if (!category) return;
+    let cancelled = false;
 
-  useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, category, cadena, period]);
+    (async () => {
+      setLoadingCategoryHistory(true);
+      try {
+        const res = await fetch(
+          `/api/category-history?category=${encodeURIComponent(category)}`,
+        );
+        const data = res.ok ? await res.json() : [];
+        if (!cancelled) setCategoryHistory(data);
+      } catch {
+        if (!cancelled) setCategoryHistory([]);
+      } finally {
+        if (!cancelled) setLoadingCategoryHistory(false);
+      }
+    })();
 
-  useEffect(() => {
-    if (!category) {
-      setCategoryHistory([]);
-      return;
-    }
-    setLoadingCategoryHistory(true);
-    fetch(`/api/category-history?category=${encodeURIComponent(category)}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setCategoryHistory)
-      .catch(() => setCategoryHistory([]))
-      .finally(() => setLoadingCategoryHistory(false));
+    return () => {
+      cancelled = true;
+    };
   }, [category]);
 
   function toggleCompare(product: Product) {
@@ -112,38 +143,54 @@ export default function HistorialPage() {
     });
   }
 
+  // Clear the compare panel as soon as the selection empties.
+  const [prevCompareEans, setPrevCompareEans] = useState(compareEans);
+  if (compareEans !== prevCompareEans) {
+    setPrevCompareEans(compareEans);
+    if (compareEans.size === 0) setCompareProducts([]);
+  }
+
   useEffect(() => {
-    if (compareEans.size === 0) {
-      setCompareProducts([]);
-      return;
-    }
-    setLoadingCompare(true);
-    Promise.allSettled(
-      Array.from(compareEans).map(async (ean) => {
-        const [prodRes, histRes] = await Promise.all([
-          fetch(`/api/product?ean=${ean}`),
-          fetch(`/api/history?ean=${ean}`),
-        ]);
-        const prodData = prodRes.ok ? await prodRes.json() : null;
-        const histData = histRes.ok ? await histRes.json() : null;
-        return {
-          product: prodData?.product as Product,
-          history: (histData?.average ?? []) as PricePoint[],
-        };
-      }),
-    )
-      .then((results) =>
-        setCompareProducts(
-          results
-            .filter(
-              (r): r is PromiseFulfilledResult<{ product: Product; history: PricePoint[] }> =>
-                r.status === "fulfilled" && r.value.product != null,
-            )
-            .map((r) => r.value),
-        ),
-      )
-      .catch(() => setCompareProducts([]))
-      .finally(() => setLoadingCompare(false));
+    if (compareEans.size === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      setLoadingCompare(true);
+      try {
+        const results = await Promise.allSettled(
+          Array.from(compareEans).map(async (ean) => {
+            const [prodRes, histRes] = await Promise.all([
+              fetch(`/api/product?ean=${ean}`),
+              fetch(`/api/history?ean=${ean}`),
+            ]);
+            const prodData = prodRes.ok ? await prodRes.json() : null;
+            const histData = histRes.ok ? await histRes.json() : null;
+            return {
+              product: prodData?.product as Product,
+              history: (histData?.average ?? []) as PricePoint[],
+            };
+          }),
+        );
+        if (!cancelled) {
+          setCompareProducts(
+            results
+              .filter(
+                (r): r is PromiseFulfilledResult<{ product: Product; history: PricePoint[] }> =>
+                  r.status === "fulfilled" && r.value.product != null,
+              )
+              .map((r) => r.value),
+          );
+        }
+      } catch {
+        if (!cancelled) setCompareProducts([]);
+      } finally {
+        if (!cancelled) setLoadingCompare(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [compareEans]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
@@ -197,16 +244,15 @@ export default function HistorialPage() {
             placeholder="Buscar producto..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg pl-10 pr-4 py-2.5
-                       text-sm text-zinc-200 placeholder-zinc-500
-                       focus:outline-none focus:border-amber-500/40"
+            className="w-full bg-panel border border-hairline-strong rounded-sm pl-10 pr-4 py-2.5
+                       text-sm text-zinc-100 focus:outline-none"
           />
         </div>
         <select
           value={cadena}
           onChange={(e) => setCadena(e.target.value)}
-          className="bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
-                     text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
+          className="bg-panel border border-hairline-strong rounded-sm px-3 py-2.5
+                     text-sm text-zinc-300 focus:outline-none"
         >
           <option value="">Todos los supermercados</option>
           {chains.map((ch) => (
@@ -217,14 +263,14 @@ export default function HistorialPage() {
         </select>
       </div>
 
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-1.5">
+      {/* Category filters: editorial underline tags */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-hairline pb-2">
         <button
           onClick={() => setCategory("")}
-          className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border ${
+          className={`text-[12px] py-1 border-b-2 -mb-[9px] ${
             category === ""
-              ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-              : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
+              ? "text-amber-300 border-amber-450 font-medium"
+              : "text-zinc-400 border-transparent hover:text-zinc-200"
           }`}
         >
           todas
@@ -235,10 +281,10 @@ export default function HistorialPage() {
             onClick={() =>
               setCategory(category === cat.categoria ? "" : cat.categoria)
             }
-            className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border ${
+            className={`text-[12px] py-1 border-b-2 -mb-[9px] ${
               category === cat.categoria
-                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                : "bg-zinc-900/40 text-zinc-400 border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60"
+                ? "text-amber-300 border-amber-450 font-medium"
+                : "text-zinc-400 border-transparent hover:text-zinc-200"
             }`}
           >
             {cat.categoria}
@@ -295,10 +341,10 @@ function ProductCard({
 }) {
   return (
     <div
-      className={`group bg-zinc-900/50 border rounded-xl p-4 transition-all ${
+      className={`group border rounded-sm p-4 ${
         isComparing
-          ? "border-amber-500/40 ring-1 ring-amber-500/20"
-          : "border-zinc-800/50 hover:border-zinc-700/60"
+          ? "bg-amber-tint border-amber-450"
+          : "bg-panel border-hairline hover:border-hairline-strong"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -317,25 +363,12 @@ function ProductCard({
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-800/40">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-hairline">
         <div className="flex items-baseline gap-2">
-          <span className="text-lg font-bold text-zinc-100 font-mono">
+          <span className="text-lg font-bold text-zinc-100 tabular">
             ${product.precio_actual?.toLocaleString("es-AR")}
           </span>
-          {product.variacion_pct !== null && (
-            <span
-              className={`text-[12px] font-semibold px-1.5 py-0.5 rounded ${
-                product.variacion_pct > 0
-                  ? "bg-green-500/10 text-green-400"
-                  : product.variacion_pct < 0
-                    ? "bg-red-500/10 text-red-400"
-                    : "bg-zinc-800/50 text-zinc-400"
-              }`}
-            >
-              {product.variacion_pct > 0 ? "+" : ""}
-              {product.variacion_pct}%
-            </span>
-          )}
+          <VariationBadge value={product.variacion_pct} />
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -345,21 +378,20 @@ function ProductCard({
               onToggleCompare();
             }}
             disabled={!isComparing && !canCompare}
-            className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
+            className={`px-2 py-1 rounded-sm text-[11px] font-medium border ${
               isComparing
-                ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                ? "bg-amber-tint-2 text-amber-300 border-transparent"
                 : canCompare
-                  ? "text-zinc-500 hover:text-zinc-300 border border-zinc-800/40 hover:border-zinc-700/60"
-                  : "text-zinc-600 border border-zinc-800/30 cursor-not-allowed"
+                  ? "text-zinc-400 hover:text-zinc-200 border-hairline-strong"
+                  : "text-zinc-600 border-hairline cursor-not-allowed"
             }`}
           >
             {isComparing ? "Quitar" : "Comparar"}
           </button>
           <Link
             href={`/historial/${product.ean}`}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium
-                       text-amber-400/80 hover:text-amber-300 border border-amber-500/20 hover:border-amber-500/40
-                       transition-all"
+            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium
+                       text-amber-400 hover:text-amber-300 underline decoration-dotted decoration-amber-400/50 underline-offset-4"
           >
             Ver historial
             <ArrowRight size={10} />
@@ -399,10 +431,9 @@ function ComparePanel({
   })();
 
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-5">
+    <div className="bg-panel border border-hairline rounded-sm p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
-          
+        <h3 className="text-sm font-medium text-zinc-50 flex items-center gap-2">
           Comparación de productos ({products.length}/{MAX_COMPARE_PRODUCTS})
         </h3>
         <button
@@ -462,7 +493,7 @@ function CompareChart({
   colors: string[];
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-3">
+    <div className="border-t border-hairline pt-3">
       <ResponsiveContainer width="100%" height={280}>
         <LineChart
           data={data}
@@ -484,9 +515,9 @@ function CompareChart({
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#18181b",
-              border: "1px solid #27272a",
-              borderRadius: "10px",
+              backgroundColor: "#121214",
+              border: "1px solid #3f3f46",
+              borderRadius: "4px",
               fontSize: "12px",
               boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             }}
@@ -528,9 +559,9 @@ function CategoryTrend({
 }) {
   if (loading) {
     return (
-      <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-5">
+      <div className="bg-panel border border-hairline rounded-sm p-5">
         <div className="flex items-center justify-center py-6">
-          <div className="w-6 h-6 border-2 border-zinc-700 border-t-amber-400 rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-zinc-800 border-t-amber-400 rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -543,20 +574,17 @@ function CategoryTrend({
   const changePct = ((last - first) / first) * 100;
 
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-5">
+    <div className="bg-panel border border-hairline rounded-sm p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-zinc-200">
+        <h3 className="text-sm font-medium text-zinc-50">
           Tendencia: {category}
         </h3>
         <span
-          className={`text-sm font-semibold px-2 py-0.5 rounded-md ${
-            changePct > 0
-              ? "bg-red-500/10 text-red-400"
-              : "bg-green-500/10 text-green-400"
+          className={`tabular text-sm font-bold ${
+            changePct > 0 ? "text-red-400" : "text-green-400"
           }`}
         >
-          {changePct > 0 ? "+" : ""}
-          {changePct.toFixed(1)}%
+          {fmtPct(changePct)}
         </span>
       </div>
       <PriceChart

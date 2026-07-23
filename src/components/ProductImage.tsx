@@ -70,7 +70,7 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
       >
         {hasImage ? (
           <div
-            className="rounded-md overflow-hidden border border-zinc-700/40 bg-zinc-800/60"
+            className="rounded-sm overflow-hidden border border-hairline bg-panel-2"
             style={{ width: px, height: px }}
           >
             <Image
@@ -84,7 +84,7 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
           </div>
         ) : (
           <div
-            className="rounded-md flex items-center justify-center text-[10px] font-bold text-white/70 select-none"
+            className="rounded-sm flex items-center justify-center text-[10px] font-bold text-white/70 select-none"
             style={{
               width: px,
               height: px,

@@ -1,6 +1,7 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import {
   getProducts,
   getCategories,
@@ -237,18 +238,25 @@ const handler = createMcpHandler(
  * x-api-key header. If not set, the endpoint is open (useful for
  * local development or personal deployments behind a firewall).
  */
+/** Comparación en tiempo constante para no filtrar la key por timing. */
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
+}
+
 function checkAuth(request: NextRequest): boolean {
   const requiredKey = process.env.MCP_API_KEY;
   if (!requiredKey) return true; // Auth not configured — open access
 
   const authHeader = request.headers.get("authorization");
   if (authHeader?.startsWith("Bearer ")) {
-    return authHeader.slice(7) === requiredKey;
+    return safeEqual(authHeader.slice(7), requiredKey);
   }
 
   const apiKeyHeader = request.headers.get("x-api-key");
   if (apiKeyHeader) {
-    return apiKeyHeader === requiredKey;
+    return safeEqual(apiKeyHeader, requiredKey);
   }
 
   return false;

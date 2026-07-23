@@ -39,10 +39,13 @@ export function useProducts(): UseProductsReturn {
   const [categoriesError, setCategoriesError] = useState(false);
   const [chainsError, setChainsError] = useState(false);
 
-  // Reset page when period changes.
-  useEffect(() => {
+  // Reset page when period changes — during render, so the fetch effect
+  // below never runs with the stale page number.
+  const [prevPeriod, setPrevPeriod] = useState(period);
+  if (period !== prevPeriod) {
+    setPrevPeriod(period);
     setPageRaw(1);
-  }, [period]);
+  }
 
   // Wrapped setters: changing a filter resets page to 1.
   const setSearch = useCallback((val: React.SetStateAction<string>) => {
@@ -131,7 +134,7 @@ export function useProducts(): UseProductsReturn {
           setTotalCount(0);
         }
       } finally {
-        setLoading(false);
+        if (!abort.signal.aborted) setLoading(false);
       }
     })();
 

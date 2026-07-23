@@ -12,7 +12,27 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored / generated bundles:
+    "ds-bundle/**",
+    "packages/ui/dist/**",
+    ".design-sync/**",
+    ".ds-sync/**",
+    // Tooling directories, not app code:
+    ".claude/**",
+    ".impeccable/**",
   ]),
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, DM_Sans, DM_Mono } from "next/font/google";
+import { Fraunces, Ubuntu, Ubuntu_Mono } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import { PeriodProvider } from "@/lib/PeriodContext";
@@ -9,15 +9,16 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const ubuntu = Ubuntu({
+  variable: "--font-ubuntu",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
-const dmMono = DM_Mono({
-  variable: "--font-dm-mono",
+const ubuntuMono = Ubuntu_Mono({
+  variable: "--font-ubuntu-mono",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -40,7 +41,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${fraunces.variable} ${dmSans.variable} ${dmMono.variable} h-full antialiased dark`}
+      className={`${fraunces.variable} ${ubuntu.variable} ${ubuntuMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100">
         <PeriodProvider>

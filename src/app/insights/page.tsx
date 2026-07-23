@@ -11,6 +11,7 @@ import { Download } from "@/components/Icons";
 import { downloadCsv } from "@/lib/exportCsv";
 import VariationBadge from "@/components/VariationBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { fmtPct } from "@/lib/format";
 
 export default function InsightsPage() {
   const { period, ipc: ipcValues } = usePeriod();
@@ -102,7 +103,7 @@ export default function InsightsPage() {
         </p>
         <button
           onClick={() => { setError(false); setLoading(true); }}
-          className="text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-800/60 rounded-lg px-4 py-2"
+          className="text-xs text-zinc-400 hover:text-zinc-200 border border-hairline-strong rounded-sm px-4 py-2"
         >
           Reintentar
         </button>
@@ -112,23 +113,23 @@ export default function InsightsPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-zinc-100">Panorama general</h2>
+      <h2 className="text-lg font-medium text-zinc-50">Panorama general</h2>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <KpiCard
           label="Productos monitoreados"
           value={String(products.length)}
         />
         <KpiCard
           label="Mayor suba"
-          value={maxUp ? `+${maxUp.variacion_pct}%` : "—"}
+          value={maxUp ? fmtPct(maxUp.variacion_pct ?? 0) : "—"}
           subtitle={maxUp?.product_description}
           color="red"
         />
         <KpiCard
           label="Mayor baja"
-          value={maxDown ? `${maxDown.variacion_pct}%` : "—"}
+          value={maxDown ? fmtPct(maxDown.variacion_pct ?? 0) : "—"}
           subtitle={maxDown?.product_description}
           color="green"
         />
@@ -138,8 +139,7 @@ export default function InsightsPage() {
         {/* Alerts */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2.5">
-              <span className="w-1 h-1 rounded-full bg-red-400/70 shrink-0" />
+            <h3 className="text-sm font-medium text-zinc-50">
               Alertas de precio
             </h3>
             <button
@@ -153,23 +153,22 @@ export default function InsightsPage() {
                   ]),
                 )
               }
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium
-                         text-zinc-500 border border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60
-                         transition-all"
+              className="flex items-center gap-1 px-2 py-1 rounded-sm text-[11px] font-medium
+                         text-zinc-400 border border-hairline-strong hover:text-zinc-200 hover:bg-panel-2"
             >
               <Download size={11} />
               CSV
             </button>
           </div>
-          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm table-fixed">
               <thead>
-                <tr className="border-b border-zinc-800/80">
+                <tr className="border-b border-hairline-strong">
                   <th className="py-2.5 px-3 w-8"></th>
-                  <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase">
                     Producto
                   </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider w-[22%]">
+                  <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase w-[22%]">
                     Var %
                   </th>
                 </tr>
@@ -182,12 +181,12 @@ export default function InsightsPage() {
                       ? "bg-red-500 pulse-dot"
                       : v > 10
                         ? "bg-amber-500"
-                        : "bg-green-500";
+                        : "bg-zinc-600";
                   return (
                     <tr
                       key={p.ean}
                       onClick={() => setSelectedProduct(p)}
-                      className="border-b border-zinc-800/30 hover:bg-zinc-800/20 cursor-pointer"
+                      className="border-b border-hairline hover:bg-panel-2 cursor-pointer"
                     >
                       <td className="py-2 px-3">
                         <span
@@ -211,9 +210,8 @@ export default function InsightsPage() {
         {/* IPC comparison */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2.5">
-              <span className="w-1 h-1 rounded-full bg-amber-400/60 shrink-0" />
-              vs. IPC ({ipcValue}%)
+            <h3 className="text-sm font-medium text-zinc-50">
+              vs. IPC ({fmtPct(ipcValue, false)})
             </h3>
             <button
               onClick={() =>
@@ -227,25 +225,24 @@ export default function InsightsPage() {
                   ]),
                 )
               }
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium
-                         text-zinc-500 border border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60
-                         transition-all"
+              className="flex items-center gap-1 px-2 py-1 rounded-sm text-[11px] font-medium
+                         text-zinc-400 border border-hairline-strong hover:text-zinc-200 hover:bg-panel-2"
             >
               <Download size={11} />
               CSV
             </button>
           </div>
-          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm table-fixed">
               <thead>
-                <tr className="border-b border-zinc-800/80">
-                  <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider w-[55%]">
+                <tr className="border-b border-hairline-strong">
+                  <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase w-[55%]">
                     Producto
                   </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider w-[22%]">
+                  <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase w-[22%]">
                     Var %
                   </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider w-[23%]">
+                  <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase w-[23%]">
                     &Delta; %
                   </th>
                 </tr>
@@ -255,26 +252,21 @@ export default function InsightsPage() {
                   <tr
                     key={p.ean}
                     onClick={() => setSelectedProduct(p)}
-                    className="border-b border-zinc-800/30 hover:bg-zinc-800/20 cursor-pointer"
+                    className="border-b border-hairline hover:bg-panel-2 cursor-pointer"
                   >
                     <td className="py-2 px-3 text-zinc-200 truncate text-[13px]" title={p.product_description}>
                       {p.product_description}
                     </td>
-                    <td className="py-2 px-3 text-right text-zinc-500 text-[13px] tabular-nums">
-                      {p.variacion_pct !== null
-                        ? `${p.variacion_pct > 0 ? "+" : ""}${p.variacion_pct}%`
-                        : "—"}
+                    <td className="py-2 px-3 text-right text-zinc-500 text-[13px] tabular">
+                      {p.variacion_pct !== null ? fmtPct(p.variacion_pct) : "—"}
                     </td>
                     <td className="py-2 px-3 text-right">
                       <span
-                        className={`inline-flex px-2 py-0.5 rounded-md text-[12px] font-semibold tabular-nums ${
-                          p.delta_pp > 0
-                            ? "bg-red-500/10 text-red-400"
-                            : "bg-green-500/10 text-green-400"
+                        className={`tabular text-[13px] font-bold ${
+                          p.delta_pp > 0 ? "text-red-400" : "text-green-400"
                         }`}
                       >
-                        {p.delta_pp > 0 ? "+" : ""}
-                        {p.delta_pp}%
+                        {fmtPct(p.delta_pp)}
                       </span>
                     </td>
                   </tr>
@@ -286,11 +278,10 @@ export default function InsightsPage() {
 
         {/* Chain ranking */}
         <div>
-          <h3 className="text-sm font-semibold text-zinc-200 mb-3 flex items-center gap-2.5">
-            <span className="w-1 h-1 rounded-full bg-zinc-500/80 shrink-0" />
+          <h3 className="text-sm font-medium text-zinc-50 mb-3">
             Ranking de cadenas
           </h3>
-          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">
+          <div className="border-t border-hairline pt-4">
             <ChainBarChart data={chains} height={350} />
           </div>
         </div>
@@ -308,7 +299,7 @@ export default function InsightsPage() {
         >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
-            className="relative w-full max-w-md bg-zinc-950 border-l border-zinc-800/60 overflow-y-auto p-6 animate-slide-in"
+            className="relative w-full max-w-md bg-zinc-950 border-l border-hairline-strong overflow-y-auto p-6 animate-slide-in"
             onClick={(e) => e.stopPropagation()}
           >
             <ProductDetail

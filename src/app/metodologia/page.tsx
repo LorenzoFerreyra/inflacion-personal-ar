@@ -10,64 +10,58 @@ export const metadata: Metadata = {
 export default function MetodologiaPage() {
   const chainIds = getChainList();
   return (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-lg font-semibold text-zinc-100">Metodología</h2>
+    <div className="animate-fade-in">
+      <h1 className="font-display text-[26px] font-semibold text-zinc-50 mb-8">
+        Metodolog&iacute;a
+      </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Fuente de datos */}
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 space-y-3">
-          <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 mb-12">
+        <section className="border-t border-hairline pt-4">
+          <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
             Fuente de datos
           </h3>
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <p className="text-sm text-zinc-400 leading-relaxed prose-width">
             Los precios se obtienen diariamente de las principales cadenas de
             supermercados de Argentina a través de sus portales públicos de
             precios, en cumplimiento con la regulación de transparencia de
             precios vigente.
           </p>
-        </div>
+        </section>
 
-        {/* Cálculo de variación */}
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 space-y-3">
-          <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
+        <section className="border-t border-hairline pt-4">
+          <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
             Cálculo de variación
           </h3>
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <p className="text-sm text-zinc-400 leading-relaxed prose-width">
             La variación porcentual de cada producto se calcula comparando el
             precio más reciente contra el precio registrado al inicio del
             período seleccionado (30, 90 o 365 días).
           </p>
-        </div>
+        </section>
 
-        {/* IPC de referencia */}
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 space-y-3">
-          <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
+        <section className="border-t border-hairline pt-4">
+          <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
             IPC de referencia
           </h3>
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <p className="text-sm text-zinc-400 leading-relaxed prose-width">
             El Índice de Precios al Consumidor (IPC) utilizado como referencia
             es el publicado por el INDEC. Se emplea para contextualizar las
             variaciones individuales de cada producto respecto a la inflación
             general.
           </p>
-        </div>
+        </section>
 
-        {/* Limitaciones */}
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 space-y-3">
-          <h3 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-            <span className="w-0.5 h-4 rounded-full bg-zinc-500/80 shrink-0" />
+        <section className="border-t border-hairline pt-4">
+          <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
             Limitaciones
           </h3>
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <p className="text-sm text-zinc-400 leading-relaxed prose-width">
             Este observatorio no pretende reemplazar las mediciones oficiales de
             inflación. Los datos reflejan únicamente precios de góndola en
             cadenas seleccionadas y no incluyen servicios, alquileres ni otros
             componentes del IPC.
           </p>
-        </div>
+        </section>
       </div>
 
       <DataFlowDiagram chains={chainIds} />

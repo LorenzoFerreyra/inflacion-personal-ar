@@ -33,7 +33,7 @@ function renderContent(content: string): React.ReactNode {
       <ul key={`ul-${blocks.length}`} className="my-2 space-y-1.5">
         {listItems.map((item, i) => (
           <li key={i} className="flex gap-2.5">
-            <span className="mt-[9px] size-1 shrink-0 rounded-full bg-amber-400/70" />
+            <span className="mt-[9px] size-1 shrink-0 rounded-full bg-amber-400" />
             <span>{renderInline(item)}</span>
           </li>
         ))}
@@ -76,7 +76,7 @@ export default function ChatMessage({
     return (
       <div className="flex justify-end">
         <div
-          className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-zinc-800
+          className="max-w-[85%] whitespace-pre-wrap rounded-md bg-panel-2 border border-hairline
                      px-4 py-2.5 text-[15px] leading-6 text-zinc-100 md:max-w-[70%]"
         >
           {message.content}

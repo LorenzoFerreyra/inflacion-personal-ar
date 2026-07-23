@@ -30,7 +30,7 @@ export default function CoberturaPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display font-semibold text-gradient">
+        <h1 className="font-display text-[26px] font-semibold text-zinc-50">
           Cobertura
         </h1>
         <p className="text-[14px] text-zinc-400 mt-2 max-w-2xl leading-relaxed">
@@ -42,22 +42,21 @@ export default function CoberturaPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* Map */}
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden min-h-140">
+        <div className="rounded-sm border border-hairline overflow-hidden min-h-140">
           <BranchMapLoader branches={mappableBranches} chains={chains} />
         </div>
 
         {/* Chain list sidebar */}
         <div className="space-y-3">
-          <h3 className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+          <h3 className="text-[11px] font-bold text-zinc-400 uppercase border-b border-hairline-strong pb-2">
             Cadenas relevadas
           </h3>
 
-          <ul className="space-y-2">
+          <ul className="divide-y divide-hairline">
             {chains.map((chain) => (
               <li
                 key={chain.id}
-                className="flex items-center gap-3 bg-zinc-900/50 border border-zinc-800/50 rounded-lg px-4 py-3
-                           hover:border-zinc-700/60"
+                className="flex items-center gap-3 py-2.5"
               >
                 <span
                   className="w-2.5 h-2.5 shrink-0"
@@ -65,7 +64,6 @@ export default function CoberturaPage() {
                     backgroundColor: chain.color,
                     borderRadius: "2px",
                     transform: "rotate(45deg)",
-                    boxShadow: `0 0 4px ${chain.color}80`,
                   }}
                 />
                 <div className="min-w-0 flex-1">
@@ -73,14 +71,14 @@ export default function CoberturaPage() {
                     {chain.name}
                   </p>
                 </div>
-                <span className="text-[11px] text-zinc-500 tabular font-medium">
+                <span className="text-[12px] text-zinc-400 tabular">
                   {countByChain[chain.id] ?? 0}
                 </span>
               </li>
             ))}
           </ul>
 
-          <div className="pt-3 border-t border-zinc-800/40">
+          <div className="pt-3 border-t border-hairline-strong">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] text-zinc-500">
                 Total sucursales

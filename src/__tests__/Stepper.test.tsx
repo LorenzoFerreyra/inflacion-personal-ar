@@ -41,9 +41,8 @@ describe("Stepper", () => {
     const { container } = render(
       <Stepper currentStep={2} steps={SAMPLE_STEPS} />,
     );
-    // Connectors use bg-zinc-800 or bg-gradient-to-r
     // With 3 steps there are 2 connectors
-    const connectors = container.querySelectorAll(".w-24");
+    const connectors = container.querySelectorAll(".h-px");
     expect(connectors.length).toBe(2);
   });
 

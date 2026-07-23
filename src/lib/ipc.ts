@@ -34,7 +34,7 @@
  * └──────────────────────────────────────────────────────────────────────┘
  */
 
-import { prepare } from "./database";
+import { query } from "./database";
 import { type IpcValues } from "./constants";
 
 /**
@@ -60,6 +60,7 @@ function computeAllVariations(): {
       FROM price_series
       WHERE fecha = (SELECT fecha FROM fecha_actual)
         AND precio_lista > 0
+        AND is_outlier = 0
       GROUP BY ean
     ),
     precio_30 AS (
@@ -70,6 +71,7 @@ function computeAllVariations(): {
         WHERE fecha >= DATE((SELECT fecha FROM fecha_actual), '-30 days')
       )
         AND precio_lista > 0
+        AND is_outlier = 0
       GROUP BY ean
     ),
     precio_90 AS (
@@ -80,6 +82,7 @@ function computeAllVariations(): {
         WHERE fecha >= DATE((SELECT fecha FROM fecha_actual), '-90 days')
       )
         AND precio_lista > 0
+        AND is_outlier = 0
       GROUP BY ean
     ),
     precio_365 AS (
@@ -90,6 +93,7 @@ function computeAllVariations(): {
         WHERE fecha >= DATE((SELECT fecha FROM fecha_actual), '-365 days')
       )
         AND precio_lista > 0
+        AND is_outlier = 0
       GROUP BY ean
     )
     SELECT
@@ -104,7 +108,7 @@ function computeAllVariations(): {
   `;
 
   type Row = { var_30: number; var_90: number; var_365: number };
-  const rows = prepare(sql).all() as Row[];
+  const rows = query<Row>(sql).all();
 
   function median(values: number[]): number {
     if (values.length === 0) return 0;

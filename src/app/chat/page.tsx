@@ -132,7 +132,7 @@ export default function ChatPage() {
   if (messages.length === 0) {
     return (
       <div className="mx-auto flex h-[calc(100dvh-13rem)] min-h-[420px] md:h-[calc(100dvh-10rem)] w-full max-w-2xl flex-col justify-center pb-16">
-        <h1 className="font-display text-3xl font-semibold text-gradient text-balance">
+        <h1 className="font-display text-3xl font-semibold text-zinc-50 text-balance">
           ¿Dónde conviene comprar hoy?
         </h1>
         <p className="mt-3 text-[15px] leading-relaxed text-zinc-400">
@@ -148,9 +148,9 @@ export default function ChatPage() {
               key={s}
               type="button"
               onClick={() => send(s)}
-              className="w-fit rounded-xl border border-zinc-800/60 bg-zinc-900/40 px-3.5 py-2
+              className="w-fit rounded-sm border border-hairline bg-panel px-3.5 py-2
                          text-left text-[13px] text-zinc-300
-                         hover:border-zinc-700 hover:text-zinc-100"
+                         hover:border-hairline-strong hover:text-zinc-100"
             >
               {s}
             </button>

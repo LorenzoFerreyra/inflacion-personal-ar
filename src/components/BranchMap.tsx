@@ -101,7 +101,12 @@ export default function BranchMap({ branches, chains }: Props) {
 
       layer.clearLayers();
 
-      for (const b of branches) {
+      const located = branches.filter(
+        (b): b is Branch & { latitud: number; longitud: number } =>
+          b.latitud != null && b.longitud != null,
+      );
+
+      for (const b of located) {
         const color = sanitizeColor(chainColors[b.cadena] ?? "#888");
         const icon = L.divIcon({
           className: "",
@@ -130,9 +135,9 @@ export default function BranchMap({ branches, chains }: Props) {
           );
       }
 
-      if (branches.length > 0) {
+      if (located.length > 0) {
         const bounds = L.latLngBounds(
-          branches.map((b) => [b.latitud, b.longitud] as [number, number]),
+          located.map((b) => [b.latitud, b.longitud] as [number, number]),
         );
         map.fitBounds(bounds, { padding: [30, 30] });
       }

@@ -39,12 +39,12 @@ export default function Pagination({
       onClick={() => onPageChange(n)}
       aria-label={btnLabel ?? `Ir a página ${n}`}
       aria-current={n === page ? "page" : undefined}
-      className={`min-h-[44px] rounded-md text-[13px] font-medium
+      className={`min-h-[44px] rounded-sm text-[13px]
         ${btnLabel ? "px-3" : "min-w-[44px] tabular-nums"}
         ${
           n === page
-            ? "bg-amber-500/15 text-amber-300 border border-amber-500/25"
-            : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+            ? "bg-amber-tint-2 text-amber-300 font-bold"
+            : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900"
         }`}
     >
       {btnLabel ?? n}
@@ -62,8 +62,8 @@ export default function Pagination({
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
           aria-label="Página anterior"
-          className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-zinc-400 hover:text-zinc-100
-                     hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-sm text-zinc-400 hover:text-zinc-100
+                     hover:bg-zinc-900 disabled:opacity-25 disabled:cursor-not-allowed"
         >
           <ChevronLeft size={15} aria-hidden="true" />
         </button>
@@ -88,8 +88,8 @@ export default function Pagination({
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
           aria-label="Página siguiente"
-          className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-md text-zinc-400 hover:text-zinc-100
-                     hover:bg-zinc-800/60 disabled:opacity-25 disabled:cursor-not-allowed"
+          className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-sm text-zinc-400 hover:text-zinc-100
+                     hover:bg-zinc-900 disabled:opacity-25 disabled:cursor-not-allowed"
         >
           <ChevronRight size={15} aria-hidden="true" />
         </button>

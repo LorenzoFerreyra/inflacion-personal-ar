@@ -109,7 +109,7 @@ describe("ProductTable", () => {
       // Use getAllByText since Producto appears in the <th> element
       expect(screen.getAllByText("Producto").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Marca").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Precio").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Precio/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -123,7 +123,7 @@ describe("ProductTable", () => {
           onPageChange={() => {}}
         />,
       );
-      expect(screen.getByText("+10.5%")).toBeInTheDocument();
+      expect(screen.getByText("+10,5%")).toBeInTheDocument();
     });
 
     it("shows negative variation", () => {
@@ -135,7 +135,7 @@ describe("ProductTable", () => {
           onPageChange={() => {}}
         />,
       );
-      expect(screen.getByText("-3.2%")).toBeInTheDocument();
+      expect(screen.getByText("-3,2%")).toBeInTheDocument();
     });
 
     it("shows zero variation", () => {
@@ -147,7 +147,7 @@ describe("ProductTable", () => {
           onPageChange={() => {}}
         />,
       );
-      expect(screen.getByText("0.0%")).toBeInTheDocument();
+      expect(screen.getByText("0,0%")).toBeInTheDocument();
     });
 
     it("shows dash for null variation", () => {
@@ -202,7 +202,8 @@ describe("ProductTable", () => {
       );
 
       const row = container.querySelector("tbody tr")!;
-      expect(row.className).toContain("border-l-amber");
+      expect(row.className).toContain("bg-amber-tint");
+      expect(row.getAttribute("aria-selected")).toBe("true");
     });
 
     it("calls onSelect when a row is clicked", () => {

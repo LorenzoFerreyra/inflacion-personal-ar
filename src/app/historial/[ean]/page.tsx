@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, use } from "react";
 import { Product, PriceHistoryData, ChainPrice } from "@/lib/types";
 import PriceChart from "@/components/PriceChart";
 import ProductImage from "@/components/ProductImage";
+import VariationBadge from "@/components/VariationBadge";
 import { ArrowLeft, Download } from "@/components/Icons";
 import { downloadCsv } from "@/lib/exportCsv";
 import { MAX_PRICE_TABLE_ROWS, MAX_CHAIN_COLUMNS } from "@/lib/constants";
@@ -68,28 +69,38 @@ export default function HistorialProductPage({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      fetch(`/api/product?ean=${ean}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/history?ean=${ean}`).then((r) => (r.ok ? r.json() : null)),
-      fetch(`/api/chains?eans=${ean}`).then((r) => (r.ok ? r.json() : null)),
-    ])
-      .then(([prodData, histData, chainsData]) => {
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [prodData, histData, chainsData] = await Promise.all([
+          fetch(`/api/product?ean=${ean}`).then((r) => (r.ok ? r.json() : null)),
+          fetch(`/api/history?ean=${ean}`).then((r) => (r.ok ? r.json() : null)),
+          fetch(`/api/chains?eans=${ean}`).then((r) => (r.ok ? r.json() : null)),
+        ]);
+        if (cancelled) return;
         if (prodData) {
           setProduct(prodData.product);
           setStats(prodData.stats);
         }
         if (histData) setPriceHistory(histData);
         if (chainsData) setChainPrices(chainsData);
-      })
-      .catch((err) => {
+      } catch (err) {
+        if (cancelled) return;
         console.error("Failed to load product data:", err);
         setError(
           "No se pudieron cargar los datos del producto. Reintentá más tarde.",
         );
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [ean]);
 
   const filteredHistory = useMemo(
@@ -206,9 +217,9 @@ export default function HistorialProductPage({
       </Link>
 
       {/* Product header */}
-      <div className="bg-linear-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/40 rounded-xl p-6">
+      <div className="border-y border-hairline py-6">
         <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl overflow-hidden bg-zinc-800/60 shrink-0">
+          <div className="w-16 h-16 rounded-sm overflow-hidden bg-panel-2 shrink-0">
             <ProductImage
               src={product.image_url}
               alt={product.product_description}
@@ -223,21 +234,13 @@ export default function HistorialProductPage({
               {product.marca} · {product.categoria}
             </p>
             <div className="flex items-baseline gap-3 mt-3">
-              <span className="text-3xl font-bold text-zinc-50 font-mono">
+              <span className="font-display text-3xl font-semibold text-zinc-50 tabular-nums">
                 ${product.precio_actual?.toLocaleString("es-AR")}
               </span>
               {product.variacion_pct !== null && (
-                <span
-                  className={`text-sm font-semibold px-2.5 py-1 rounded-lg ${
-                    product.variacion_pct > 0
-                      ? "bg-green-500/10 text-green-400"
-                      : product.variacion_pct < 0
-                        ? "bg-red-500/10 text-red-400"
-                        : "bg-zinc-800/50 text-zinc-400"
-                  }`}
-                >
-                  {product.variacion_pct > 0 ? "+" : ""}
-                  {product.variacion_pct}% (30d)
+                <span className="flex items-baseline gap-1.5">
+                  <VariationBadge value={product.variacion_pct} />
+                  <span className="text-[11px] text-zinc-500">30 d&iacute;as</span>
                 </span>
               )}
             </div>
@@ -246,20 +249,19 @@ export default function HistorialProductPage({
 
         {/* Price badge */}
         {priceBadge && (
-          <div
-            className={`mt-4 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${
-              priceBadge.type === "low"
-                ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                : "bg-green-500/10 text-green-400 border border-green-500/20"
+          <p
+            className={`mt-4 text-sm font-medium flex items-center gap-2 ${
+              priceBadge.type === "low" ? "text-green-400" : "text-red-400"
             }`}
           >
+            <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
             {priceBadge.text}
-          </div>
+          </p>
         )}
 
         {/* Stats row */}
         {stats && (
-          <div className="grid grid-cols-3 gap-3 mt-4">
+          <div className="grid grid-cols-3 gap-6 mt-6">
             <StatBox
               label="Mínimo histórico"
               value={`$${stats.min_historico.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
@@ -283,19 +285,19 @@ export default function HistorialProductPage({
       </div>
 
       {/* Chart with time range controls */}
-      <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-5">
+      <div className="border-t border-hairline pt-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+          <h2 className="text-[15px] font-medium text-zinc-50">
             Evolución de precios
           </h2>
-          <div className="flex bg-zinc-800/60 rounded-lg p-0.5">
+          <div className="flex bg-zinc-950 border border-hairline rounded-sm p-0.5">
             {TIME_RANGES.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setTimeRange(key)}
-                className={`px-3 py-1 rounded-md text-[12px] font-medium transition-all ${
+                className={`px-3 py-1 rounded-sm text-[12px] font-medium ${
                   timeRange === key
-                    ? "bg-amber-500/15 text-amber-300"
+                    ? "bg-amber-tint-2 text-amber-300"
                     : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
@@ -314,7 +316,7 @@ export default function HistorialProductPage({
         {/* Chain toggles */}
         {allChains.length > 0 && (
           <div className="mt-4">
-            <h4 className="text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-wider">
+            <h4 className="text-[11px] font-bold text-zinc-400 mb-2 uppercase">
               Filtrar por cadena
             </h4>
             <div className="flex flex-wrap gap-2">
@@ -331,10 +333,10 @@ export default function HistorialProductPage({
                         return next;
                       });
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all ${
+                    className={`px-2.5 py-1 rounded-sm text-[11px] font-medium border ${
                       isSelected
-                        ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                        : "text-zinc-500 border-zinc-800/40 hover:text-zinc-300 hover:border-zinc-700/60"
+                        ? "bg-amber-tint-2 text-amber-300 border-transparent"
+                        : "text-zinc-400 border-hairline-strong hover:text-zinc-200"
                     }`}
                   >
                     {chain}
@@ -348,27 +350,25 @@ export default function HistorialProductPage({
 
       {/* Chain prices grid */}
       {chainPrices.length > 0 && (
-        <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-zinc-200 uppercase tracking-wider mb-4">
+        <div className="border-t border-hairline pt-5">
+          <h2 className="text-[15px] font-medium text-zinc-50 mb-4">
             Precio actual por cadena
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
             {chainPrices.map((c) => {
               const isCheapest = c.cadena === cheapestChain;
               return (
                 <div
                   key={c.cadena}
-                  className={`rounded-xl p-3.5 text-center ${
-                    isCheapest
-                      ? "bg-green-500/8 border-2 border-green-500/30"
-                      : "bg-zinc-900/50 border border-zinc-800/50"
+                  className={`border-t-2 pt-2.5 ${
+                    isCheapest ? "border-green-400" : "border-hairline-strong"
                   }`}
                 >
-                  <p className="text-[11px] text-zinc-400 truncate font-medium uppercase tracking-wide">
+                  <p className="text-[12px] text-zinc-400 truncate">
                     {c.cadena}
                   </p>
                   <p
-                    className={`text-xl font-bold mt-1.5 ${
+                    className={`text-xl font-bold tabular mt-0.5 ${
                       isCheapest ? "text-green-400" : "text-zinc-200"
                     }`}
                   >
@@ -378,7 +378,7 @@ export default function HistorialProductPage({
                     })}
                   </p>
                   {isCheapest && (
-                    <span className="text-[10px] text-green-400/80 font-bold uppercase tracking-widest">
+                    <span className="text-[11px] text-green-400 font-medium">
                       Más barato
                     </span>
                   )}
@@ -391,9 +391,9 @@ export default function HistorialProductPage({
 
       {/* Price history table */}
       {priceTable.length > 0 && (
-        <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-5">
+        <div className="border-t border-hairline pt-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+            <h2 className="text-[15px] font-medium text-zinc-50">
               Tabla de precios
             </h2>
             <button
@@ -411,28 +411,27 @@ export default function HistorialProductPage({
                   ]),
                 );
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium
-                         text-zinc-400 border border-zinc-800/40 hover:text-zinc-200 hover:border-zinc-700/60
-                         transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[12px] font-medium
+                         text-zinc-400 border border-hairline-strong hover:text-zinc-200 hover:bg-panel-2"
             >
               <Download size={13} />
               Exportar CSV
             </button>
           </div>
-          <div className="overflow-x-auto rounded-lg border border-zinc-800/40">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-800/80">
-                  <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                <tr className="border-b border-hairline-strong">
+                  <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase">
                     Fecha
                   </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase">
                     Promedio
                   </th>
                   {allChains.slice(0, MAX_CHAIN_COLUMNS).map((chain) => (
                     <th
                       key={chain}
-                      className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider"
+                      className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase"
                     >
                       {chain}
                     </th>
@@ -443,12 +442,12 @@ export default function HistorialProductPage({
                 {priceTable.slice(0, MAX_PRICE_TABLE_ROWS).map((row) => (
                   <tr
                     key={row.fecha}
-                    className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
+                    className="border-b border-hairline hover:bg-panel-2"
                   >
                     <td className="py-2 px-3 text-zinc-400 text-[13px]">
                       {formatDate(row.fecha)}
                     </td>
-                    <td className="py-2 px-3 text-right text-zinc-200 font-mono text-[13px]">
+                    <td className="py-2 px-3 text-right text-zinc-200 tabular text-[13px]">
                       $
                       {row.precio.toLocaleString("es-AR", {
                         maximumFractionDigits: 0,
@@ -457,7 +456,7 @@ export default function HistorialProductPage({
                     {allChains.slice(0, MAX_CHAIN_COLUMNS).map((chain) => (
                       <td
                         key={chain}
-                        className="py-2 px-3 text-right text-zinc-400 font-mono text-[13px]"
+                        className="py-2 px-3 text-right text-zinc-400 tabular text-[13px]"
                       >
                         {row.cadenas[chain]
                           ? `$${row.cadenas[chain].toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
@@ -492,17 +491,16 @@ function StatBox({
   color: "green" | "red" | "amber";
 }) {
   const colorClasses = {
-    green: "text-green-400",
-    red: "text-red-400",
-    amber: "text-amber-400",
+    green: { rule: "border-green-400", value: "text-green-400" },
+    red: { rule: "border-red-400", value: "text-red-400" },
+    amber: { rule: "border-amber-450", value: "text-amber-400" },
   };
+  const c = colorClasses[color];
 
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800/40 rounded-lg p-3">
-      <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-        {label}
-      </p>
-      <p className={`text-lg font-bold mt-1 ${colorClasses[color]}`}>{value}</p>
+    <div className={`border-t-2 ${c.rule} pt-2.5`}>
+      <p className="text-[12px] text-zinc-400">{label}</p>
+      <p className={`text-lg font-bold tabular mt-0.5 ${c.value}`}>{value}</p>
       <p className="text-[11px] text-zinc-500 mt-0.5">{sub}</p>
     </div>
   );

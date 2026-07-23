@@ -44,7 +44,11 @@ const nextConfig: NextConfig = {
             "style-src 'self' 'unsafe-inline'; " +
             "img-src 'self' https: data: blob:; " +
             "connect-src 'self' https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; " +
-            "font-src 'self' data:;",
+            "font-src 'self' data:; " +
+            "object-src 'none'; " +
+            "base-uri 'self'; " +
+            "form-action 'self'; " +
+            "frame-ancestors 'none';",
         },
       ],
     },

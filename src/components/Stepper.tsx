@@ -7,37 +7,45 @@ interface Props {
   steps: string[];
 }
 
+/**
+ * Progreso del flujo como secuencia editorial en línea:
+ * número en mono + etiqueta, conectados por hairlines.
+ */
 export default function Stepper({ currentStep, steps }: Props) {
   return (
-    <nav aria-label="Progreso" className="flex items-center justify-center mb-12">
+    <nav aria-label="Progreso" className="flex items-center mb-10">
       {steps.map((label, i) => {
         const stepNum = i + 1;
         const isDone = stepNum < currentStep;
         const isActive = stepNum === currentStep;
 
         return (
-          <div key={i} className="flex items-center">
-            <div className="flex flex-col items-center">
-              <div
-                className={`
-                  w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium
-                  ${
-                    isDone
-                      ? "bg-green-500/15 text-green-400 border border-green-500/40"
-                      : isActive
-                        ? "bg-amber-500/10 text-amber-300 border border-amber-400/40"
-                        : "bg-zinc-800/40 text-zinc-500 border border-zinc-700/40"
-                  }
-                `}
-              >
-                {isDone ? <Check size={15} strokeWidth={2} /> : stepNum}
-              </div>
+          <div key={i} className="flex items-center min-w-0">
+            <div
+              className="flex items-baseline gap-2 whitespace-nowrap"
+              aria-current={isActive ? "step" : undefined}
+            >
+              {isDone ? (
+                <Check
+                  size={13}
+                  strokeWidth={2.5}
+                  className="text-amber-400 self-center"
+                />
+              ) : (
+                <span
+                  className={`tabular text-[13px] ${
+                    isActive ? "text-amber-400 font-bold" : "text-zinc-600"
+                  }`}
+                >
+                  {stepNum}
+                </span>
+              )}
               <span
-                className={`text-[11px] font-medium mt-2.5 tracking-wide ${
+                className={`text-[13px] ${
                   isDone
-                    ? "text-green-400/70"
+                    ? "text-zinc-400"
                     : isActive
-                      ? "text-amber-300/70"
+                      ? "text-zinc-50 font-medium"
                       : "text-zinc-500"
                 }`}
               >
@@ -46,13 +54,7 @@ export default function Stepper({ currentStep, steps }: Props) {
             </div>
 
             {i < steps.length - 1 && (
-              <div
-                className={`w-20 h-px mx-4 mb-7 ${
-                  stepNum < currentStep
-                    ? "bg-green-500/30"
-                    : "bg-zinc-800/60"
-                }`}
-              />
+              <div className="w-8 sm:w-14 h-px mx-3 sm:mx-4 bg-zinc-800 shrink-0" />
             )}
           </div>
         );

@@ -19,6 +19,7 @@ import {
 import ProductImage from "@/components/ProductImage";
 import VariationBadge from "@/components/VariationBadge";
 import { chainLabel } from "@/lib/chainColors";
+import { fmtPct } from "@/lib/format";
 
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
@@ -114,7 +115,7 @@ export default function MiCanastaPage() {
       });
 
       setStep(3);
-    } catch (err) {
+    } catch {
       setError("Error al obtener datos. Reintentá más tarde.");
     } finally {
       setCalculating(false);
@@ -136,7 +137,7 @@ export default function MiCanastaPage() {
       {step === 1 && (
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold text-zinc-100 mb-4">
+            <h2 className="text-lg font-medium text-zinc-50 mb-4">
               Buscar productos
             </h2>
 
@@ -147,16 +148,15 @@ export default function MiCanastaPage() {
                   placeholder="Buscar por nombre, marca o EAN..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-4 py-2.5
-                             text-sm text-zinc-200 placeholder-zinc-400
-                             focus:outline-none focus:border-amber-500/40"
+                  className="w-full bg-panel border border-hairline-strong rounded-sm px-4 py-2.5
+                             text-sm text-zinc-100 focus:outline-none"
                 />
               </div>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="sm:w-52 bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
-                           text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
+                className="sm:w-52 bg-panel border border-hairline-strong rounded-sm px-3 py-2.5
+                           text-sm text-zinc-300 focus:outline-none"
 >
                 <option value="">
                   {categoriesError
@@ -172,8 +172,8 @@ export default function MiCanastaPage() {
               <select
                 value={cadena}
                 onChange={(e) => setCadena(e.target.value)}
-                className="sm:w-52 bg-zinc-900/60 border border-zinc-700/50 rounded-lg px-3 py-2.5
-                           text-sm text-zinc-300 focus:outline-none focus:border-amber-500/40"
+                className="sm:w-52 bg-panel border border-hairline-strong rounded-sm px-3 py-2.5
+                           text-sm text-zinc-300 focus:outline-none"
               >
                 <option value="">
                   {chainsError
@@ -202,12 +202,12 @@ export default function MiCanastaPage() {
           {/* Basket sidebar */}
           <div className="w-full lg:w-80 shrink-0">
             <div className="sticky top-24">
-              <h2 className="text-lg font-semibold text-zinc-100 mb-4">
+              <h2 className="text-lg font-medium text-zinc-50 mb-4">
                 Tu canasta
               </h2>
 
               {basket.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-zinc-800/40 p-10 text-center">
+                <div className="rounded-sm border border-dashed border-zinc-800 p-10 text-center">
                   <ShoppingBasket
                     size={32}
                     strokeWidth={1.2}
@@ -223,8 +223,8 @@ export default function MiCanastaPage() {
                     {basket.map((p) => (
                       <li
                         key={p.ean}
-                        className="group flex items-center justify-between bg-zinc-900/50 border border-zinc-800/50
-                                   rounded-lg px-3 py-2.5 text-sm hover:border-zinc-700/60"
+                        className="group flex items-center justify-between bg-panel border border-hairline
+                                   rounded-sm px-3 py-2.5 text-sm hover:border-hairline-strong"
                       >
                         <ProductImage
                           src={p.image_url}
@@ -235,18 +235,17 @@ export default function MiCanastaPage() {
                           <span className="text-zinc-200 truncate block text-[13px] font-medium">
                             {p.product_description}
                           </span>
-                          <span className="text-xs text-zinc-500">
+                          <span className="text-xs text-zinc-500 tabular">
                             ${p.precio_actual?.toLocaleString("es-AR")}
                             {p.variacion_pct !== null && (
                               <span
-                                className={`ml-2 font-medium ${
+                                className={`ml-2 font-bold ${
                                   p.variacion_pct > 0
-                                    ? "text-green-400/80"
-                                    : "text-red-400/80"
+                                    ? "text-red-400"
+                                    : "text-green-400"
                                 }`}
                               >
-                                {p.variacion_pct > 0 ? "+" : ""}
-                                {p.variacion_pct}%
+                                {fmtPct(p.variacion_pct)}
                               </span>
                             )}
                           </span>
@@ -269,9 +268,8 @@ export default function MiCanastaPage() {
 
                   <button
                     onClick={() => setStep(2)}
-                    className="w-full flex items-center justify-center gap-2 bg-amber-500/15 hover:bg-amber-500/25
-                               text-amber-300 font-semibold py-3 rounded-xl text-sm border border-amber-500/20
-                               hover:border-amber-500/40"
+                    className="w-full flex items-center justify-center gap-2 bg-amber-450 hover:bg-amber-400
+                               text-zinc-950 font-bold py-3 rounded-sm text-sm"
                   >
                     Revisar canasta
                     <ArrowRight size={16} />
@@ -286,34 +284,34 @@ export default function MiCanastaPage() {
       {/* ── STEP 2 ── */}
       {step === 2 && (
         <div className="max-w-2xl mx-auto animate-fade-in">
-          <h2 className="text-lg font-semibold text-zinc-100 mb-5">
+          <h2 className="text-lg font-medium text-zinc-50 mb-5">
             Revisar tu canasta
           </h2>
 
-          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden mb-6">
+          <div className="overflow-x-auto mb-8">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-800/80">
-                  <th className="py-3 px-4 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                <tr className="border-b border-hairline-strong">
+                  <th className="py-2.5 px-4 text-left text-[11px] font-bold text-zinc-400 uppercase">
                     Producto
                   </th>
-                  <th className="py-3 px-4 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-4 text-left text-[11px] font-bold text-zinc-400 uppercase">
                     Marca
                   </th>
-                  <th className="py-3 px-4 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-4 text-right text-[11px] font-bold text-zinc-400 uppercase">
                     Precio
                   </th>
-                  <th className="py-3 px-4 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-4 text-right text-[11px] font-bold text-zinc-400 uppercase">
                     Var %
                   </th>
-                  <th className="py-3 px-4 w-10"></th>
+                  <th className="py-2.5 px-4 w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {basket.map((p) => (
                   <tr
                     key={p.ean}
-                    className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
+                    className="border-b border-hairline hover:bg-panel-2"
                   >
                     <td className="py-2.5 px-4 text-zinc-200 font-medium text-[13px] truncate max-w-48" title={p.product_description}>
                       {p.product_description}
@@ -321,7 +319,7 @@ export default function MiCanastaPage() {
                     <td className="py-2.5 px-4 text-zinc-500 text-[13px]">
                       {p.marca}
                     </td>
-                    <td className="py-2.5 px-4 text-right text-zinc-200 font-mono text-[13px] tabular-nums">
+                    <td className="py-2.5 px-4 text-right text-zinc-200 tabular text-[13px]">
                       ${p.precio_actual?.toLocaleString("es-AR") ?? "—"}
                     </td>
                     <td className="py-2.5 px-4 text-right">
@@ -343,32 +341,26 @@ export default function MiCanastaPage() {
           </div>
 
           {/* Summary */}
-          <div className="bg-linear-to-br from-zinc-800/30 to-transparent border border-zinc-800/40 rounded-xl p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[13px] text-zinc-400 font-medium">
-                  Productos en canasta
-                </p>
-                <p className="font-display text-3xl font-bold text-zinc-100 mt-1 tabular-nums">
-                  {basket.length}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[13px] text-zinc-400 font-medium">
-                  Per&iacute;odo
-                </p>
-                <p className="text-lg font-semibold text-amber-300 mt-1">
-                  {PERIODS[period].label}
-                </p>
-              </div>
+          <div className="flex gap-12 border-t-2 border-zinc-200 pt-3 mb-8">
+            <div>
+              <p className="text-[13px] text-zinc-400">Productos en canasta</p>
+              <p className="font-display text-3xl font-semibold text-zinc-50 mt-1 tabular-nums">
+                {basket.length}
+              </p>
+            </div>
+            <div>
+              <p className="text-[13px] text-zinc-400">Per&iacute;odo</p>
+              <p className="font-display text-3xl font-semibold text-amber-300 mt-1">
+                {PERIODS[period].label}
+              </p>
             </div>
           </div>
 
           <div className="flex gap-3">
             <button
               onClick={() => setStep(1)}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
-                         bg-zinc-900/60 border border-zinc-800/60 text-zinc-300 hover:bg-zinc-800/60
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-sm
+                         border border-hairline-strong text-zinc-300 hover:bg-panel-2
                          text-sm font-medium"
             >
               <ArrowLeft size={16} />
@@ -377,13 +369,13 @@ export default function MiCanastaPage() {
             <button
               onClick={calculate}
               disabled={calculating || basket.length === 0}
-              className="flex-1 flex items-center justify-center gap-2 bg-amber-500/10 hover:bg-amber-500/18
-                         text-amber-300 font-medium py-3 rounded-xl text-sm border border-amber-500/15
-                         hover:border-amber-500/30 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 bg-amber-450 hover:bg-amber-400
+                         text-zinc-950 font-bold py-3 rounded-sm text-sm
+                         disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {calculating ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-zinc-950/30 border-t-zinc-950 rounded-full animate-spin" />
                   Calculando...
                 </>
               ) : (
@@ -392,7 +384,7 @@ export default function MiCanastaPage() {
             </button>
           </div>
           {error && (
-            <div className="mt-4 text-center rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+            <div className="mt-4 text-center rounded-sm border border-red-900 bg-red-950 p-4">
               <p className="text-red-400 text-sm">{error}</p>
               <button
                 onClick={calculate}
@@ -408,45 +400,52 @@ export default function MiCanastaPage() {
       {/* ── STEP 3 ── */}
       {step === 3 && result && (
         <div className="space-y-6 animate-fade-in">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiCard
-              label="Tu inflaci&oacute;n personal"
-              value={`${result.personal}%`}
-              subtitle={PERIODS[period].label.toLowerCase()}
-              color={result.personal > result.ipc ? "red" : "green"}
-            />
-            <KpiCard
-              label="IPC oficial"
-              value={`${result.ipc}%`}
-              subtitle={PERIODS[period].label.toLowerCase()}
-            />
-            <KpiCard
-              label="Diferencia"
-              value={`${result.diff > 0 ? "+" : ""}${result.diff} %`}
-              subtitle={
-                result.diff > 0 ? "por encima del IPC" : "por debajo del IPC"
-              }
-              color={result.diff > 0 ? "red" : "green"}
-            />
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <KpiCard
+                label="Tu inflaci&oacute;n personal"
+                value={fmtPct(result.personal, false)}
+                subtitle={PERIODS[period].label.toLowerCase()}
+                color={result.personal > result.ipc ? "red" : "green"}
+              />
+              <KpiCard
+                label="IPC oficial"
+                value={fmtPct(result.ipc, false)}
+                subtitle={PERIODS[period].label.toLowerCase()}
+              />
+              <KpiCard
+                label="Diferencia"
+                value={fmtPct(result.diff)}
+                subtitle={
+                  result.diff > 0 ? "por encima del IPC" : "por debajo del IPC"
+                }
+                color={result.diff > 0 ? "red" : "green"}
+              />
+            </div>
+            <p className="text-xs text-zinc-500 mt-4">
+              Fuente: relevamiento propio de supermercados · IPC oficial: INDEC
+              · promedio simple de {result.products.length} producto
+              {result.products.length !== 1 ? "s" : ""} de tu canasta.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Ranked products */}
             <div>
-              <h3 className="text-[15px] font-semibold text-zinc-200 mb-3">
+              <h3 className="text-[15px] font-medium text-zinc-50 mb-3">
                 Productos por variaci&oacute;n
               </h3>
-              <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 overflow-hidden">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-zinc-800/80">
-                      <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                    <tr className="border-b border-hairline-strong">
+                      <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase">
                         #
                       </th>
-                      <th className="py-2.5 px-3 text-left text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase">
                         Producto
                       </th>
-                      <th className="py-2.5 px-3 text-right text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase">
                         Var %
                       </th>
                     </tr>
@@ -455,9 +454,9 @@ export default function MiCanastaPage() {
                     {result.products.map((p, i) => (
                       <tr
                         key={p.ean}
-                        className="border-b border-zinc-800/30 hover:bg-zinc-800/20"
+                        className="border-b border-hairline hover:bg-panel-2"
                       >
-                        <td className="py-2 px-3 text-zinc-600 text-[13px] font-mono">
+                        <td className="py-2 px-3 text-zinc-600 text-[13px] tabular">
                           {i + 1}
                         </td>
                         <td className="py-2 px-3 text-zinc-200 text-[13px] truncate max-w-64">
@@ -476,10 +475,10 @@ export default function MiCanastaPage() {
             {/* Chain chart */}
             {result.chains.length > 0 && (
               <div>
-                <h3 className="text-[15px] font-semibold text-zinc-200 mb-3">
+                <h3 className="text-[15px] font-medium text-zinc-50 mb-3">
                   Precio promedio por cadena
                 </h3>
-                <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4">
+                <div className="border-t border-hairline pt-4">
                   <ChainBarChart data={result.chains} height={300} />
                 </div>
               </div>
@@ -488,8 +487,8 @@ export default function MiCanastaPage() {
 
           <button
             onClick={reset}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl
-                       bg-zinc-900/60 border border-zinc-800/60 text-zinc-300 hover:bg-zinc-800/60
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-sm
+                       border border-hairline-strong text-zinc-300 hover:bg-panel-2
                        text-sm font-medium"
           >
             <RotateCcw size={15} />

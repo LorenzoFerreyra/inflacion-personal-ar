@@ -16,10 +16,14 @@ export default function SobreMiPage() {
     <div className="space-y-10">
       {/* Hero profile — centered */}
       <div className="flex flex-col items-center text-center pt-4">
-        <div className="w-20 h-20 rounded-full bg-linear-to-br from-amber-400/20 to-amber-600/20 border border-amber-400/30 flex items-center justify-center mb-4">
-          <span className="text-2xl font-bold text-amber-400">LM</span>
+        <div className="w-20 h-20 rounded-full bg-amber-tint-2 border border-amber-450 flex items-center justify-center mb-4">
+          <span className="font-display text-2xl font-semibold text-amber-400">
+            LM
+          </span>
         </div>
-        <h2 className="text-xl font-semibold text-zinc-100">Lorenzo Máximo</h2>
+        <h2 className="font-display text-xl font-semibold text-zinc-50">
+          Lorenzo Máximo
+        </h2>
         <p className="text-sm text-zinc-500 mt-1">
           Creador del Observatorio de inflación
         </p>
@@ -33,7 +37,7 @@ export default function SobreMiPage() {
           href="https://github.com/LorenzoFerreyra/inflacion-personal-ar"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-zinc-700/50 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-300 hover:text-amber-400 hover:border-amber-400/40 transition-colors"
+          className="mt-4 inline-flex items-center gap-2 rounded-sm border border-hairline-strong px-4 py-2 text-sm text-zinc-300 hover:text-amber-400 hover:border-amber-450 transition-colors"
         >
           <GithubIcon />
           Ver repositorio
@@ -41,19 +45,18 @@ export default function SobreMiPage() {
       </div>
 
       {/* Divider */}
-      <div className="border-t border-zinc-800/60" />
+      <div className="border-t border-hairline" />
 
       {/* Other projects */}
       <div className="space-y-5">
-        <h3 className="text-[15px] font-semibold text-zinc-200 text-center">
+        <h3 className="text-[15px] font-medium text-zinc-50 text-center">
           Otros proyectos
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 flex flex-col justify-between gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+          <section className="border-t border-hairline pt-4 flex flex-col justify-between gap-4">
             <div className="space-y-3">
-              <h4 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-                <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
+              <h4 className="text-[15px] font-medium text-zinc-50">
                 Reddit Data Extraction
               </h4>
               <p className="text-sm text-zinc-400 leading-relaxed">
@@ -73,12 +76,11 @@ export default function SobreMiPage() {
               <GithubIcon />
               Ver en GitHub
             </a>
-          </div>
+          </section>
 
-          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 flex flex-col justify-between gap-4">
+          <section className="border-t border-hairline pt-4 flex flex-col justify-between gap-4">
             <div className="space-y-3">
-              <h4 className="text-[15px] font-semibold text-zinc-200 flex items-center gap-2.5">
-                <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
+              <h4 className="text-[15px] font-medium text-zinc-50">
                 Sociedad de Datos — UFLO
               </h4>
               <p className="text-sm text-zinc-400 leading-relaxed">
@@ -98,14 +100,14 @@ export default function SobreMiPage() {
               <GithubIcon />
               Ver en GitHub
             </a>
-          </div>
+          </section>
         </div>
       </div>
 
       {/* Contact */}
       <div className="flex justify-center pb-4">
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 max-w-lg w-full text-center space-y-2">
-          <h3 className="text-[15px] font-semibold text-zinc-200">Contacto</h3>
+        <div className="border-t border-hairline pt-4 max-w-lg w-full text-center space-y-2">
+          <h3 className="text-[15px] font-medium text-zinc-50">Contacto</h3>
           <p className="text-sm text-zinc-400 leading-relaxed">
             Para sugerencias, reportar errores o colaborar con el proyecto,
             podés escribirme a través de GitHub o por correo electrónico.
