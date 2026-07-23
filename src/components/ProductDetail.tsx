@@ -167,7 +167,7 @@ function IndecProductView({
   return (
     <div className="space-y-4">
       {/* Info card */}
-      <div className="bg-linear-to-br from-zinc-800/30 to-transparent border border-zinc-800/40 rounded-xl p-5">
+      <div className="bg-panel border border-hairline rounded-sm p-5">
         <div className="flex items-start gap-3">
           <ProductImage
             src={product.image_url}
@@ -201,7 +201,7 @@ function IndecProductView({
         </div>
         {indecLinks && indecLinks.linked_count > 0 && (
           <div className="mt-3 flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 text-[12px] font-medium text-purple-300">
+            <span className="inline-flex items-center gap-1.5 rounded-sm border border-purple-800 px-2.5 py-1 text-[12px] font-medium text-purple-300">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400" />
               {indecLinks.linked_count} productos vinculados de supermercados
             </span>
@@ -212,7 +212,7 @@ function IndecProductView({
       {/* Chart with INDEC line + supermarket band */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-[13px] font-semibold text-zinc-400 uppercase tracking-wider">
+          <h4 className="text-[11px] font-bold text-zinc-400 uppercase">
             Evolución de precios
           </h4>
           <Link
@@ -233,7 +233,7 @@ function IndecProductView({
       {/* Aggregated stats */}
       {lastAgg && (
         <div>
-          <h4 className="text-[13px] font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+          <h4 className="text-[11px] font-bold text-zinc-400 uppercase mb-2">
             Precios en supermercados (hoy)
           </h4>
           <div className="grid grid-cols-4 gap-2">
@@ -274,14 +274,14 @@ function IndecProductView({
       {/* Brands list */}
       {brandsToShow.length > 0 && (
         <div>
-          <h4 className="text-[13px] font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+          <h4 className="text-[11px] font-bold text-zinc-400 uppercase mb-2">
             Por marca
           </h4>
           <div className="space-y-1.5">
             {brandsToShow.map((b) => (
               <div
                 key={b.marca}
-                className="flex items-center justify-between rounded-lg bg-zinc-900/50 border border-zinc-800/50 px-3.5 py-2.5"
+                className="flex items-center justify-between border-b border-hairline px-1 py-2.5"
               >
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-zinc-200 truncate">
@@ -326,11 +326,9 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="rounded-lg bg-zinc-900/50 border border-zinc-800/50 p-2.5 text-center">
-      <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide">
-        {label}
-      </p>
-      <p className={`text-[15px] font-bold mt-0.5 tabular-nums ${color}`}>
+    <div className="border-t-2 border-hairline-strong pt-2">
+      <p className="text-[10px] text-zinc-500 font-medium uppercase">{label}</p>
+      <p className={`text-[15px] font-bold mt-0.5 tabular ${color}`}>
         {value}
       </p>
     </div>
@@ -373,7 +371,7 @@ function RegularProductView({
   return (
     <div className="space-y-4">
       {/* Info card */}
-      <div className="bg-linear-to-br from-zinc-800/30 to-transparent border border-zinc-800/40 rounded-xl p-5">
+      <div className="bg-panel border border-hairline rounded-sm p-5">
         <div className="flex items-start gap-3">
           <ProductImage
             src={product.image_url}
@@ -409,7 +407,7 @@ function RegularProductView({
 
       {/* INDEC reference badge (Vista B) */}
       {indecRef?.indec_ean && indecRef.indec_price && (
-        <div className="rounded-xl bg-purple-500/6 border border-purple-500/20 px-4 py-3 flex items-center justify-between">
+        <div className="rounded-sm bg-panel border border-purple-800 px-4 py-3 flex items-center justify-between">
           <div>
             <p className="text-[11px] text-purple-300/70 font-medium uppercase tracking-wide">
               Referencia INDEC
@@ -439,7 +437,7 @@ function RegularProductView({
       {/* Price history */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-[13px] font-semibold text-zinc-400 uppercase tracking-wider">
+          <h4 className="text-[11px] font-bold text-zinc-400 uppercase">
             Evolución de precios
           </h4>
           <Link
@@ -479,7 +477,7 @@ function RegularProductView({
           return (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-[13px] font-semibold text-zinc-400 uppercase tracking-wider">
+                <h4 className="text-[11px] font-bold text-zinc-400 uppercase">
                   Precio por cadena
                 </h4>
                 {selectedChains.size > 0 && (
@@ -516,19 +514,19 @@ function RegularProductView({
                           return next;
                         });
                       }}
-                      className={`rounded-xl p-3.5 text-center cursor-pointer transition-all ${
+                      className={`rounded-sm p-3.5 text-center cursor-pointer border ${
                         isSelected
-                          ? "ring-2 ring-amber-500/60 bg-amber-500/8 border border-amber-500/30"
+                          ? "bg-amber-tint border-amber-450"
                           : isCheapest
-                            ? "bg-green-500/8 border border-green-500/30"
-                            : "bg-zinc-900/50 border border-zinc-800/50 hover:border-zinc-700/60"
+                            ? "bg-panel border-green-800"
+                            : "bg-panel border-hairline hover:border-hairline-strong"
                       }`}
                     >
-                      <p className="text-[11px] text-zinc-400 truncate font-medium uppercase tracking-wide">
+                      <p className="text-[11px] text-zinc-400 truncate">
                         {c.cadena}
                       </p>
                       <p
-                        className={`text-xl font-bold mt-1.5 tabular-nums ${
+                        className={`text-xl font-bold mt-1 tabular ${
                           isCheapest ? "text-green-400" : "text-zinc-200"
                         }`}
                       >
@@ -538,12 +536,12 @@ function RegularProductView({
                         })}
                       </p>
                       {isCheapest && !isSelected && (
-                        <span className="text-[10px] text-green-400/80 font-bold uppercase tracking-widest">
+                        <span className="text-[11px] text-green-400 font-medium">
                           Más barato
                         </span>
                       )}
                       {isSelected && (
-                        <span className="text-[10px] text-amber-400/80 font-medium uppercase tracking-wide">
+                        <span className="text-[11px] text-amber-400 font-medium">
                           Comparando
                         </span>
                       )}
@@ -554,7 +552,7 @@ function RegularProductView({
 
               {/* Comparison summary */}
               {priceDiff !== null && selected.length >= 2 && (
-                <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 animate-fade-in">
+                <div className="mt-3 rounded-sm border border-hairline bg-panel p-3 animate-fade-in">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-[11px] text-zinc-400 font-medium uppercase tracking-wide">

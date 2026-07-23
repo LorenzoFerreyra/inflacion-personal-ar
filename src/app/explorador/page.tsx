@@ -131,7 +131,7 @@ export default function ExploradorPage() {
       {/* Right: product detail */}
       <div className="w-full lg:w-96 shrink-0">
         <div className="sticky top-28">
-          <h2 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 border-b border-hairline pb-2 mb-5">
+          <h2 className="text-[11px] font-bold uppercase text-zinc-400 border-b border-hairline pb-2 mb-5">
             Detalle del producto
           </h2>
 

@@ -77,7 +77,7 @@ export default function PriceChart({
 
   if (data.average.length < 2) {
     return (
-      <div className="rounded-xl border border-zinc-800/40 bg-zinc-900/30">
+      <div className="rounded-sm border border-hairline">
         <EmptyState message="No hay suficientes datos para graficar." />
       </div>
     );
@@ -87,7 +87,7 @@ export default function PriceChart({
   const hasIndecRef = indecReferenceLine && indecReferenceLine.length > 0;
 
   return (
-    <div className="rounded-xl border border-zinc-800/40 bg-zinc-900/30 p-3">
+    <div className="border-t border-hairline pt-3">
       <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2 px-1">
         {visibleChains.map((chain) => (
           <span
@@ -161,9 +161,9 @@ export default function PriceChart({
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#18181b",
-              border: "1px solid #27272a",
-              borderRadius: "10px",
+              backgroundColor: "#121214",
+              border: "1px solid #3f3f46",
+              borderRadius: "4px",
               fontSize: "12px",
               boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             }}

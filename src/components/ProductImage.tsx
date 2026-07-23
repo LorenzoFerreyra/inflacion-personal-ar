@@ -111,7 +111,7 @@ export default function ProductImage({ src, alt, marca, size = "sm" }: Props) {
                 height={600}
                 className="image-lightbox-img"
               />
-              <div className="px-4 py-3 border-t border-zinc-800/60">
+              <div className="px-4 py-3 border-t border-hairline">
                 <p className="text-[13px] text-zinc-200 font-medium leading-snug line-clamp-2">
                   {alt}
                 </p>

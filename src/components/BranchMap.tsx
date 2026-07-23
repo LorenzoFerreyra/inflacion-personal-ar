@@ -150,7 +150,7 @@ export default function BranchMap({ branches, chains }: Props) {
 
   return (
     <div className="relative w-full h-full min-h-140">
-      <div ref={mapRef} className="absolute inset-0 rounded-xl" />
+      <div ref={mapRef} className="absolute inset-0 rounded-sm" />
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="text-sm text-zinc-500">Cargando mapa…</p>

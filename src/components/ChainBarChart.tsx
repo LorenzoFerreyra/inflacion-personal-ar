@@ -57,9 +57,9 @@ export default function ChainBarChart({ data, height = 250 }: Props) {
         />
         <Tooltip
           contentStyle={{
-            backgroundColor: "#18181b",
+            backgroundColor: "#121214",
             border: "1px solid #3f3f46",
-            borderRadius: "8px",
+            borderRadius: "4px",
             fontSize: "12px",
             color: "#e4e4e7",
             boxShadow: "0 8px 32px rgba(0,0,0,0.6)",

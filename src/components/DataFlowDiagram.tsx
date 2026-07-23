@@ -200,14 +200,11 @@ export default function DataFlowDiagram({ chains = [] }: Props) {
   return (
     <div
       ref={containerRef}
-      className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-5 md:p-8 space-y-6"
+      className="border-t border-hairline pt-6 space-y-6"
     >
-      <div className="flex items-center gap-2.5 mb-2">
-        <span className="w-0.5 h-4 rounded-full bg-amber-400/60 shrink-0" />
-        <h3 className="text-[15px] font-semibold text-zinc-200">
-          Flujo de datos
-        </h3>
-      </div>
+      <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
+        Flujo de datos
+      </h3>
 
       {/* Pipeline */}
       <div className="relative">
@@ -226,12 +223,12 @@ export default function DataFlowDiagram({ chains = [] }: Props) {
                 {/* Node */}
                 <div
                   className={`
-                    relative w-14 h-14 md:w-16 md:h-16 rounded-2xl border
+                    relative w-14 h-14 md:w-16 md:h-16 rounded-sm border
                     flex items-center justify-center transition-all duration-300
                     ${
                       isActive
-                        ? "border-amber-400/80 bg-amber-400/10 shadow-[0_0_24px_rgba(251,191,36,0.15)] scale-110"
-                        : "border-zinc-700/60 bg-zinc-800/60 hover:border-zinc-600/80"
+                        ? "border-amber-450 bg-amber-tint"
+                        : "border-hairline-strong bg-panel-2 hover:border-zinc-600"
                     }
                   `}
                 >
@@ -244,7 +241,7 @@ export default function DataFlowDiagram({ chains = [] }: Props) {
                   />
                   {/* Pulse ring */}
                   {isActive && (
-                    <div className="absolute inset-0 rounded-2xl border border-amber-400/40 animate-ping" />
+                    <div className="absolute inset-0 rounded-sm border border-amber-400/40 animate-ping" />
                   )}
                 </div>
 
@@ -329,7 +326,7 @@ export default function DataFlowDiagram({ chains = [] }: Props) {
         }`}
       >
         {activeStage !== null && (
-          <div className="rounded-lg border border-zinc-800/60 bg-zinc-950/60 p-4 mt-2">
+          <div className="rounded-sm border border-hairline bg-panel p-4 mt-2">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
               <span className="text-sm font-medium text-amber-300/90">
