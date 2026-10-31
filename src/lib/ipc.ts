@@ -85,13 +85,16 @@ function daysBetween(a: string, b: string): number {
 }
 
 /** Mediana de variaciones % por producto entre dos fechas (todas las cadenas). */
-function medianVariationBetween(baseDate: string, actualDate: string): number {
-  const rows = query<{ v: number }>(`
+async function medianVariationBetween(
+  baseDate: string,
+  actualDate: string,
+): Promise<number> {
+  const rows = await query<{ v: number }>(`
     SELECT (pa.precio - pb.precio) / pb.precio * 100 AS v
-    FROM (SELECT ean, AVG(precio_lista) AS precio FROM price_series
-          WHERE fecha = ? AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pa
-    JOIN (SELECT ean, AVG(precio_lista) AS precio FROM price_series
-          WHERE fecha = ? AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pb
+    FROM (SELECT ean, AVG(precio_lista) AS precio FROM ps_at(?::date)
+          WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pa
+    JOIN (SELECT ean, AVG(precio_lista) AS precio FROM ps_at(?::date)
+          WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pb
       USING (ean)
     WHERE pb.precio > 0
   `).all(actualDate, baseDate);
@@ -99,28 +102,28 @@ function medianVariationBetween(baseDate: string, actualDate: string): number {
 }
 
 /** Mediana de variaciones % de la serie INDEC entre dos fechas. */
-function medianIndecVariationBetween(
+async function medianIndecVariationBetween(
   baseDate: string,
   actualDate: string,
-): number {
-  const rows = query<{ v: number }>(`
+): Promise<number> {
+  const rows = await query<{ v: number }>(`
     SELECT (pa.precio - pb.precio) / pb.precio * 100 AS v
-    FROM (SELECT ean, AVG(precio_lista) AS precio FROM price_series
-          WHERE fecha = ? AND cadena = 'indec' AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pa
-    JOIN (SELECT ean, AVG(precio_lista) AS precio FROM price_series
-          WHERE fecha = ? AND cadena = 'indec' AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pb
+    FROM (SELECT ean, AVG(precio_lista) AS precio FROM ps_at(?::date)
+          WHERE cadena = 'indec' AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pa
+    JOIN (SELECT ean, AVG(precio_lista) AS precio FROM ps_at(?::date)
+          WHERE cadena = 'indec' AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pb
       USING (ean)
     WHERE pb.precio > 0
   `).all(actualDate, baseDate);
   return median(rows.map((r) => r.v));
 }
 
-function computePeriod(
+async function computePeriod(
   days: number,
   dateCounts: { fecha: string; n: number }[],
   latest: string,
   indecDates: string[],
-): number {
+): Promise<number> {
   const cutoff = addDays(latest, -days);
 
   // Fecha densa más antigua dentro de la ventana (excluyendo la actual).
@@ -155,29 +158,31 @@ function computePeriod(
   return 0;
 }
 
-function computeAllVariations(): {
+async function computeAllVariations(): Promise<{
   mensual: number;
   trimestral: number;
   interanual: number;
-} {
-  const dateCounts = query<{ fecha: string; n: number }>(
-    "SELECT fecha, COUNT(*) AS n FROM price_series GROUP BY fecha ORDER BY fecha",
+}> {
+  const dateCounts = await query<{ fecha: string; n: number }>(
+    "SELECT fecha::text AS fecha, n FROM daily_counts ORDER BY fecha",
   ).all();
   if (dateCounts.length === 0) {
     return { mensual: 0, trimestral: 0, interanual: 0 };
   }
 
   const latest = dateCounts[dateCounts.length - 1].fecha;
-  const indecDates = query<{ fecha: string }>(
-    "SELECT DISTINCT fecha FROM price_series WHERE cadena = 'indec' ORDER BY fecha",
-  )
-    .all()
-    .map((r) => r.fecha);
+  const indecDates = (
+    await query<{ fecha: string }>(
+      `SELECT DISTINCT g::date::text AS fecha
+       FROM price_runs, generate_series(desde, hasta, interval '1 day') g
+       WHERE cadena = 'indec' ORDER BY fecha`,
+    ).all()
+  ).map((r) => r.fecha);
 
   return {
-    mensual: computePeriod(30, dateCounts, latest, indecDates),
-    trimestral: computePeriod(90, dateCounts, latest, indecDates),
-    interanual: computePeriod(365, dateCounts, latest, indecDates),
+    mensual: await computePeriod(30, dateCounts, latest, indecDates),
+    trimestral: await computePeriod(90, dateCounts, latest, indecDates),
+    interanual: await computePeriod(365, dateCounts, latest, indecDates),
   };
 }
 
@@ -193,14 +198,14 @@ const globalForIpcCache = globalThis as unknown as {
 };
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
-export function getIpc(): IpcValues {
+export async function getIpc(): Promise<IpcValues> {
   const now = Date.now();
   const cached = globalForIpcCache.__ipcCacheV2;
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
     return cached.values;
   }
 
-  const values = computeAllVariations();
+  const values = await computeAllVariations();
 
   // Un resultado totalmente nulo indica falta de datos; no vale la pena
   // fijarlo durante 6 horas.

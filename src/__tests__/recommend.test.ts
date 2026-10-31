@@ -71,8 +71,8 @@ const PEDIDO = [
 ];
 
 describe("recommend — variantes casi iguales", () => {
-  it("elige la variante más barata de cada keyword por cadena", () => {
-    const rec = recommend(PEDIDO);
+  it("elige la variante más barata de cada keyword por cadena", async () => {
+    const rec = await recommend(PEDIDO);
     const coto = rec.cadenas.find((c) => c.cadena === "coto")!;
     const arroz = coto.productos.find((p) => p.keyword === "arroz")!;
     // coto tiene A1 ($2000) y A2 ($1500): debe elegir A2
@@ -82,35 +82,35 @@ describe("recommend — variantes casi iguales", () => {
     expect(coto.total_precio).toBe(1500 + 3000);
   });
 
-  it("faltantes son keywords sin ninguna variante, no EANs", () => {
-    const rec = recommend(PEDIDO);
+  it("faltantes son keywords sin ninguna variante, no EANs", async () => {
+    const rec = await recommend(PEDIDO);
     const extra = rec.cadenas.find((c) => c.cadena === "extra")!;
     expect(extra.faltantes).toEqual(["arroz"]);
     expect(extra.productos.map((p) => p.keyword)).toEqual(["aceite"]);
   });
 
-  it("una cadena con una sola variante de la keyword no registra faltante", () => {
-    const rec = recommend(PEDIDO);
+  it("una cadena con una sola variante de la keyword no registra faltante", async () => {
+    const rec = await recommend(PEDIDO);
     const dia = rec.cadenas.find((c) => c.cadena === "dia")!;
     expect(dia.faltantes).toEqual([]);
     expect(dia.total_precio).toBe(1800 + 2500);
   });
 
-  it("rankea primero por cobertura de keywords, después por score", () => {
-    const rec = recommend(PEDIDO);
+  it("rankea primero por cobertura de keywords, después por score", async () => {
+    const rec = await recommend(PEDIDO);
     // coto ($4500) y dia ($4300) cubren 2 keywords; extra solo 1
     expect(rec.cadenas.map((c) => c.cadena)).toEqual(["dia", "coto", "extra"]);
   });
 
-  it("sin ubicación no hay sucursal cercana y se rankea solo por precio", () => {
-    const rec = recommend(PEDIDO);
+  it("sin ubicación no hay sucursal cercana y se rankea solo por precio", async () => {
+    const rec = await recommend(PEDIDO);
     expect(rec.cadenas.every((c) => c.sucursal_cercana === null)).toBe(true);
     expect(rec.fecha_precios).toBe("2026-07-11");
   });
 
-  it("con ubicación asigna la sucursal más cercana y respeta el radio", () => {
+  it("con ubicación asigna la sucursal más cercana y respeta el radio", async () => {
     // Usuario en Caballito: coto a ~0km, dia a ~4km
-    const rec = recommend(PEDIDO, -34.62, -58.43, "distance", 2);
+    const rec = await recommend(PEDIDO, -34.62, -58.43, "distance", 2);
     const coto = rec.cadenas.find((c) => c.cadena === "coto")!;
     expect(coto.sucursal_cercana?.direccion).toBe("Av. Rivadavia 5000");
     expect(coto.sucursal_cercana?.distancia_km).toBeLessThan(1);
@@ -120,14 +120,14 @@ describe("recommend — variantes casi iguales", () => {
     expect(rec.cadenas.find((c) => c.cadena === "extra")).toBeDefined();
   });
 
-  it("pedido vacío devuelve sin cadenas", () => {
-    expect(recommend([]).cadenas).toEqual([]);
-    expect(recommend([{ keyword: "arroz", eans: [] }]).cadenas).toEqual([]);
+  it("pedido vacío devuelve sin cadenas", async () => {
+    expect((await recommend([])).cadenas).toEqual([]);
+    expect((await recommend([{ keyword: "arroz", eans: [] }])).cadenas).toEqual([]);
   });
 });
 
 describe("haversineKm", () => {
-  it("Obelisco a Caballito ~5km", () => {
+  it("Obelisco a Caballito ~5km", async () => {
     const d = haversineKm(-34.6037, -58.3816, -34.6187, -58.4409);
     expect(d).toBeGreaterThan(4);
     expect(d).toBeLessThan(7);

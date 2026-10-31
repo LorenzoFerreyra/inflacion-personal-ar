@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const average = getPriceHistory(ean);
-    const rawByChain = getPriceHistoryByChain(ean);
+    const average = await getPriceHistory(ean);
+    const rawByChain = await getPriceHistoryByChain(ean);
 
     const byChain: Record<string, { fecha: string; precio: number }[]> = {};
     for (const row of rawByChain) {

@@ -30,6 +30,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local npm build artifacts
+/11.21.1
+/inflacion-personal-ar@0.1.0
+/next
+/npm
+
 # env files (can opt-in for committing if needed)
 .env*
 

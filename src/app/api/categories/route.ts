@@ -9,7 +9,7 @@ import { getCategories } from "@/lib/database";
 
 export async function GET() {
   try {
-    const categories = getCategories();
+    const categories = await getCategories();
     return NextResponse.json(categories);
   } catch {
     return NextResponse.json(

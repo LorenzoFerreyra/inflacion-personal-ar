@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const eans = parseEans(eansParam);
-    const chains = getChainPrices(eans);
+    const chains = await getChainPrices(eans);
     return NextResponse.json(chains);
   } catch {
     return NextResponse.json(

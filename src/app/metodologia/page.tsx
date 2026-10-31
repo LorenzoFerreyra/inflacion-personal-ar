@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import { getChainList } from "@/lib/database";
 import DataFlowDiagram from "@/components/DataFlowDiagram";
 
+// Lee la base en cada request: no prerenderizar en build.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Metodología del observatorio de inflación",
   description: "Metodología del cálculo de variación de precios",
 };
 
-export default function MetodologiaPage() {
-  const chainIds = getChainList();
+export default async function MetodologiaPage() {
+  const chainIds = await getChainList();
   return (
     <div className="animate-fade-in">
       <h1 className="font-display text-[26px] font-semibold text-zinc-50 mb-8">

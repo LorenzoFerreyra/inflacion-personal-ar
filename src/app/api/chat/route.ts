@@ -35,7 +35,7 @@ function getClient(): OpenAI | null {
 function buildContextMessage(
   extraction: Extraction,
   matches: { keyword: string; productos: MatchedProduct[] }[],
-  recommendation: ReturnType<typeof recommend> | null,
+  recommendation: Awaited<ReturnType<typeof recommend>> | null,
   geocodeFailed: boolean,
 ): string {
   return [
@@ -116,10 +116,12 @@ export async function POST(request: NextRequest) {
     }
 
     // B) Buscar cada keyword en el catálogo.
-    const matches = extraction.productos.map((keyword) => ({
-      keyword,
-      productos: searchProducts(keyword),
-    }));
+    const matches = await Promise.all(
+      extraction.productos.map(async (keyword) => ({
+        keyword,
+        productos: await searchProducts(keyword),
+      })),
+    );
     const items = matches
       .map((m) => ({ keyword: m.keyword, eans: m.productos.map((p) => p.ean) }))
       .filter((i) => i.eans.length > 0);
@@ -135,7 +137,7 @@ export async function POST(request: NextRequest) {
     // D) Rankear cadenas (una variante por keyword, la más barata por cadena).
     const recommendation =
       items.length > 0
-        ? recommend(items, coords?.lat, coords?.lng, priority, radiusKm)
+        ? await recommend(items, coords?.lat, coords?.lng, priority, radiusKm)
         : null;
 
     // E) Respuesta conversacional streameada con los datos inyectados.

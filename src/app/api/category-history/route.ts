@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const history = getCategoryPriceHistory(category);
+    const history = await getCategoryPriceHistory(category);
     return NextResponse.json(history);
   } catch {
     return NextResponse.json(

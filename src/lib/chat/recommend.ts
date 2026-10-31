@@ -14,6 +14,7 @@ import {
   getLatestDate,
   getProducts,
 } from "@/lib/database";
+import type { Branch } from "@/lib/types";
 import type {
   ChainRecommendation,
   NearestBranch,
@@ -49,12 +50,13 @@ export function haversineKm(
 
 /** Sucursal más cercana al usuario por cadena (solo con coordenadas válidas). */
 function nearestBranchByChain(
+  branches: Branch[],
   userLat: number,
   userLng: number,
   radiusKm?: number,
 ): Map<string, NearestBranch> {
   const nearest = new Map<string, NearestBranch>();
-  for (const b of getBranches()) {
+  for (const b of branches) {
     if (b.latitud == null || b.longitud == null) continue;
     const distancia_km = haversineKm(userLat, userLng, b.latitud, b.longitud);
     if (radiusKm != null && distancia_km > radiusKm) continue;
@@ -75,21 +77,21 @@ function minMaxNorm(value: number, min: number, max: number): number {
   return (value - min) / (max - min);
 }
 
-export function recommend(
+export async function recommend(
   items: ProductRequest[],
   userLat?: number,
   userLng?: number,
   priority: Priority = "balanced",
   radiusKm?: number,
-): Recommendation {
-  const fecha_precios = getLatestDate();
+): Promise<Recommendation> {
+  const fecha_precios = await getLatestDate();
   const validItems = items.filter((i) => i.eans.length > 0);
   if (validItems.length === 0) return { cadenas: [], fecha_precios };
 
   const allEans = [...new Set(validItems.flatMap((i) => i.eans))];
 
   // Descripciones para armar el detalle por producto.
-  const { products } = getProducts({
+  const { products } = await getProducts({
     eans: allEans,
     page: 1,
     pageSize: allEans.length,
@@ -97,7 +99,7 @@ export function recommend(
   const descByEan = new Map(products.map((p) => [p.ean, p.product_description]));
 
   // Matriz EAN × cadena → precio (última fecha disponible).
-  const prices = getLatestChainPricesByEan(allEans);
+  const prices = await getLatestChainPricesByEan(allEans);
   const byChain = new Map<string, Map<string, number>>();
   for (const row of prices) {
     let chainPrices = byChain.get(row.cadena);
@@ -107,9 +109,16 @@ export function recommend(
   if (byChain.size === 0) return { cadenas: [], fecha_precios };
 
   const hasLocation = userLat != null && userLng != null;
+  const branches = hasLocation ? await getBranches() : [];
   const nearest = hasLocation
-    ? nearestBranchByChain(userLat, userLng, radiusKm)
+    ? nearestBranchByChain(branches, userLat, userLng, radiusKm)
     : new Map<string, NearestBranch>();
+  // Cadenas que tienen al menos una sucursal con coordenadas.
+  const chainsWithCoords = new Set(
+    branches
+      .filter((b) => b.latitud != null && b.longitud != null)
+      .map((b) => b.cadena),
+  );
 
   interface Candidate extends Omit<ChainRecommendation, "score"> {
     score?: number;
@@ -120,7 +129,7 @@ export function recommend(
     // Con ubicación y radio configurado, descartar cadenas fuera del radio
     // (pero solo si la cadena tiene sucursales geolocalizadas).
     const sucursal = nearest.get(cadena) ?? null;
-    if (hasLocation && radiusKm != null && !sucursal && chainHasCoords(cadena))
+    if (hasLocation && radiusKm != null && !sucursal && chainsWithCoords.has(cadena))
       continue;
 
     const productos: ChainRecommendation["productos"] = [];
@@ -198,18 +207,3 @@ export function recommend(
   return { cadenas, fecha_precios };
 }
 
-const globalForChainCoords = globalThis as unknown as {
-  __chainsWithCoords: Set<string> | undefined;
-};
-
-/** Cadenas que tienen al menos una sucursal con coordenadas. */
-function chainHasCoords(cadena: string): boolean {
-  if (!globalForChainCoords.__chainsWithCoords) {
-    const set = new Set<string>();
-    for (const b of getBranches()) {
-      if (b.latitud != null && b.longitud != null) set.add(b.cadena);
-    }
-    globalForChainCoords.__chainsWithCoords = set;
-  }
-  return globalForChainCoords.__chainsWithCoords.has(cadena);
-}

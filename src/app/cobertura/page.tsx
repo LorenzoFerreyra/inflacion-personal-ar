@@ -3,17 +3,20 @@ import { getBranches, getChainList } from "@/lib/database";
 import { chainColor, chainLabel } from "@/lib/chainColors";
 import BranchMapLoader from "@/components/BranchMapLoader";
 
+// Lee la base en cada request: no prerenderizar en build.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Cobertura del observatorio de inflación",
   description: "Cadenas de supermercados relevadas",
 };
 
-export default function CoberturaPage() {
-  const allBranches = getBranches();
+export default async function CoberturaPage() {
+  const allBranches = await getBranches();
   const mappableBranches = allBranches.filter(
     (b) => b.latitud != null && b.longitud != null,
   ) as (typeof allBranches[number] & { latitud: number; longitud: number })[];
-  const chainIds = getChainList();
+  const chainIds = await getChainList();
 
   const chains = chainIds.map((id) => ({
     id,

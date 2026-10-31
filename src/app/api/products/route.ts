@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const eans = eansParam ? parseEans(eansParam) : undefined;
 
   try {
-    const { products, total } = getProducts({
+    const { products, total } = await getProducts({
       search,
       category,
       cadena,

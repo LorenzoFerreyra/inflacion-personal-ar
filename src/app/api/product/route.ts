@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const product = getProductByEan(ean, dias);
+    const product = await getProductByEan(ean, dias);
     if (!product) {
       return NextResponse.json(
         { error: "Producto no encontrado" },
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const stats = getPriceStats(ean);
+    const stats = await getPriceStats(ean);
     return NextResponse.json({ product, stats });
   } catch {
     return NextResponse.json(

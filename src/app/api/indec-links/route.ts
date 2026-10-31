@@ -25,9 +25,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "EAN inválido" }, { status: 400 });
       }
 
-      const linkedEans = getLinkedEansForIndec(indecEan);
-      const aggregates = getIndecLinkedAggregates(indecEan);
-      const byBrand = getIndecLinkedByBrand(indecEan);
+      const linkedEans = await getLinkedEansForIndec(indecEan);
+      const aggregates = await getIndecLinkedAggregates(indecEan);
+      const byBrand = await getIndecLinkedByBrand(indecEan);
 
       return NextResponse.json({
         indec_ean: indecEan,
@@ -42,12 +42,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "EAN inválido" }, { status: 400 });
       }
 
-      const indecLinked = getIndecEanForProduct(canonEan);
+      const indecLinked = await getIndecEanForProduct(canonEan);
       if (!indecLinked) {
         return NextResponse.json({ indec_ean: null });
       }
 
-      const indecHistory = getPriceHistory(indecLinked);
+      const indecHistory = await getPriceHistory(indecLinked);
       const lastPoint = indecHistory.at(-1);
 
       return NextResponse.json({

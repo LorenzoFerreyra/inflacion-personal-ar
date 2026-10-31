@@ -3,7 +3,7 @@ import { getChainList } from "@/lib/database";
 
 export async function GET() {
   try {
-    return NextResponse.json(getChainList());
+    return NextResponse.json(await getChainList());
   } catch {
     return NextResponse.json(
       { error: "Error al obtener lista de cadenas" },

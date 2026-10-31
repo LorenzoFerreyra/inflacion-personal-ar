@@ -1,14 +1,19 @@
 /**
- * database.ts — Capa de acceso a datos (SQLite)
+ * database.ts — Capa de acceso a datos (PostgreSQL)
  *
  * Todas las queries viven acá. El resto de la app nunca toca SQL directo.
- * La base de datos viene del scraper (no público) y tiene dos tablas principales:
- *   - price_series: registros diarios de precios por EAN y cadena
+ * La base viene del scraper (no público) y tiene estas tablas principales:
+ *   - price_runs: precios por EAN y cadena guardados como tramos [desde, hasta]
+ *     en los que el precio no cambió (en vez de una fila por día)
  *   - canonical_products: catálogo de productos con descripción, marca, categoría
+ *   - daily_counts / category_daily: agregados diarios precalculados
+ *
+ * Funciones SQL auxiliares (sql/schema_runs_pg.sql del scraper):
+ *   - ps_at(fecha): los precios vigentes ese día
+ *   - ps_eans(eans[]): la serie diaria expandida de una lista de EANs
  */
 
-import Database from "better-sqlite3";
-import path from "path";
+import { Pool, types } from "pg";
 import type {
   Product,
   PricePoint,
@@ -19,41 +24,32 @@ import type {
 
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
-import fs from "fs";
-
-const DB_PATH = (() => {
-  const p = path.resolve(
-    process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "prices.db"),
-  );
-  if (!fs.existsSync(p)) {
-    throw new Error(
-      `Database file not found at ${p}. Set DATABASE_PATH env variable to the correct path.`,
-    );
-  }
-  return p;
-})();
+// COUNT() (int8) y NUMERIC llegan como string por defecto; DATE como Date.
+types.setTypeParser(20, (v) => Number(v));
+types.setTypeParser(1700, (v) => Number(v));
+types.setTypeParser(1082, (v) => v);
 
 /**
- * Singleton: una sola conexión reutilizada entre requests.
- * better-sqlite3 es sincrónico, ideal para Next.js API routes.
+ * Singleton: un solo pool reutilizado entre requests. Se crea recién en la
+ * primera query, así `next build` no necesita DATABASE_URL.
  */
 const globalForDb = globalThis as unknown as {
-  __db: Database.Database | undefined;
+  __pgPool: Pool | undefined;
 };
 
-let db = globalForDb.__db;
-
-export function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH, { readonly: true });
-    db.pragma("journal_mode = WAL");
-    db.pragma("mmap_size = 268435456"); // 256MB
-    globalForDb.__db = db;
-    const normalizeFn = (str: unknown): string =>
-      str != null ? stripDiacritics(String(str)) : "";
-    db.function("normalize", normalizeFn);
+export function getPool(): Pool {
+  if (!globalForDb.__pgPool) {
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error("DATABASE_URL env variable is required.");
+    }
+    globalForDb.__pgPool = new Pool({
+      connectionString,
+      max: 10,
+      statement_timeout: 30_000,
+    });
   }
-  return db;
+  return globalForDb.__pgPool;
 }
 
 interface CachedProduct extends Product {
@@ -70,33 +66,40 @@ interface ProductsSnapshot {
 
 let productsSnapshot: ProductsSnapshot | null = null;
 
-function getProductsSnapshot(dias: number): CachedProduct[] {
-  const latestDate = query<{ f: string | null }>(
-    "SELECT MAX(fecha) AS f FROM price_series",
-  ).get()?.f;
+/** Fecha de corte (hoy UTC menos N días); el parámetro es la cantidad de días. */
+const CUTOFF_CTE =
+  "WITH c AS (SELECT ((now() AT TIME ZONE 'UTC')::date - ?::int) AS d)";
+
+async function getProductsSnapshot(dias: number): Promise<CachedProduct[]> {
+  const latestDate = (
+    await query<{ f: string | null }>(
+      "SELECT MAX(hasta)::text AS f FROM price_runs",
+    ).get()
+  )?.f;
   if (!latestDate) return [];
 
   if (productsSnapshot && productsSnapshot.latestDate === latestDate && productsSnapshot.dias === dias) {
     return productsSnapshot.products;
   }
 
-  const baseDateSql = "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days')";
-  const baseDate = query<{ f: string | null }>(baseDateSql).get(dias)?.f ?? null;
+  const baseDateSql = `${CUTOFF_CTE}
+    SELECT MIN(GREATEST(desde, c.d))::text AS f FROM price_runs, c WHERE hasta >= c.d`;
+  const baseDate = (await query<{ f: string | null }>(baseDateSql).get(dias))?.f ?? null;
 
-  const products = query<Product>(`
+  const products = await query<Product>(`
     WITH
     precio_actual AS (
       SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
-      FROM price_series WHERE fecha = ? AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean
+      FROM ps_at(?::date) WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean
     ),
     precio_base AS (
       SELECT ean, AVG(precio_lista) AS precio_antes
-      FROM price_series WHERE fecha = ? AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean
+      FROM ps_at(?::date) WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean
     )
     SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
-      ROUND(pa.precio_hoy, 0) AS precio_actual,
+      ROUND(pa.precio_hoy::numeric, 0) AS precio_actual,
       CASE WHEN pb.precio_antes IS NOT NULL AND pb.precio_antes > 0
-        THEN ROUND((pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100, 1)
+        THEN ROUND(((pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100)::numeric, 1)
         ELSE NULL END AS variacion_pct,
       pa.cobertura_cadenas
     FROM precio_actual pa
@@ -119,7 +122,7 @@ function getProductsSnapshot(dias: number): CachedProduct[] {
 function stripDiacritics(str: string): string {
   return str
     .normalize("NFD")
-    .replace(/[\u0300-\u036F]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 }
 
@@ -138,13 +141,13 @@ function buildSearchConditions(
     if (/^\d+$/.test(token)) {
       const escaped = escapeLike(token);
       conditions.push(
-        "(cp.ean LIKE ? ESCAPE '\\' OR normalize(cp.product_description) LIKE ? ESCAPE '\\' OR normalize(cp.marca) LIKE ? ESCAPE '\\')",
+        "(cp.ean LIKE ? ESCAPE '\\' OR cp.descr_norm LIKE ? ESCAPE '\\' OR cp.marca_norm LIKE ? ESCAPE '\\')",
       );
       const pattern = `%${escaped}%`;
       params.push(pattern, pattern, pattern);
     } else {
       conditions.push(
-        "(normalize(cp.product_description) LIKE ? ESCAPE '\\' OR normalize(cp.marca) LIKE ? ESCAPE '\\')",
+        "(cp.descr_norm LIKE ? ESCAPE '\\' OR cp.marca_norm LIKE ? ESCAPE '\\')",
       );
       const pattern = `%${escapeLike(stripDiacritics(token))}%`;
       params.push(pattern, pattern);
@@ -152,54 +155,26 @@ function buildSearchConditions(
   }
 }
 
-/**
- * Cache de prepared statements por forma de SQL.
- * better-sqlite3 compila cada SQL string una vez; reutilizarlo evita
- * re-compilación en cada request con los mismos filtros activos.
- */
-const STMT_CACHE_MAX = 50;
+type SqlParam = string | number | bigint | boolean | null | string[];
 
-const globalForStmtCache = globalThis as unknown as {
-  __stmtCache: Map<string, Database.Statement> | undefined;
-};
-
-function getStmtCache(): Map<string, Database.Statement> {
-  if (!globalForStmtCache.__stmtCache) {
-    globalForStmtCache.__stmtCache = new Map();
-  }
-  return globalForStmtCache.__stmtCache;
+/** Convierte los `?` del SQL en placeholders posicionales `$1, $2, …` de pg. */
+function numberPlaceholders(sql: string): string {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
 }
-
-function prepare(sql: string): Database.Statement {
-  const cache = getStmtCache();
-  let stmt = cache.get(sql);
-  if (stmt) {
-    // LRU bump: move to end of insertion order
-    cache.delete(sql);
-    cache.set(sql, stmt);
-    return stmt;
-  }
-  if (cache.size >= STMT_CACHE_MAX) {
-    const oldest = cache.keys().next().value;
-    if (oldest !== undefined) cache.delete(oldest);
-  }
-  stmt = getDb().prepare(sql);
-  cache.set(sql, stmt);
-  return stmt;
-}
-
-type SqlParam = string | number | bigint | Buffer | null;
 
 /**
  * Statement tipado: el tipo de fila se declara una sola vez, junto al SQL.
- * Es el único lugar donde se castea el resultado de better-sqlite3, así los
- * call sites quedan tipados sin `as` dispersos.
+ * Es el único lugar donde se castea el resultado de pg, así los call sites
+ * quedan tipados sin `as` dispersos. El SQL usa `?` como placeholder.
  */
 export function query<Row>(sql: string) {
+  const text = numberPlaceholders(sql);
   return {
-    all: (...params: SqlParam[]): Row[] => prepare(sql).all(...params) as Row[],
-    get: (...params: SqlParam[]): Row | undefined =>
-      prepare(sql).get(...params) as Row | undefined,
+    all: async (...params: SqlParam[]): Promise<Row[]> =>
+      (await getPool().query(text, params)).rows as Row[],
+    get: async (...params: SqlParam[]): Promise<Row | undefined> =>
+      (await getPool().query(text, params)).rows[0] as Row | undefined,
   };
 }
 
@@ -208,9 +183,9 @@ export function query<Row>(sql: string) {
 /**
  * Devuelve la fecha más reciente con datos de precios.
  */
-export function getLatestDate(): string | null {
-  const row = query<{ fecha: string | null }>(
-    "SELECT MAX(fecha) AS fecha FROM price_series",
+export async function getLatestDate(): Promise<string | null> {
+  const row = await query<{ fecha: string | null }>(
+    "SELECT MAX(hasta)::text AS fecha FROM price_runs",
   ).get();
   return row?.fecha ?? null;
 }
@@ -218,7 +193,7 @@ export function getLatestDate(): string | null {
 /**
  * Lista de categorías con cantidad de productos en cada una.
  */
-export function getCategories(): Category[] {
+export async function getCategories(): Promise<Category[]> {
   return query<Category>(
     `SELECT categoria, COUNT(*) AS n
      FROM canonical_products
@@ -229,13 +204,18 @@ export function getCategories(): Category[] {
 }
 
 /**
- * Lista de cadenas con datos de precios.
+ * Lista de cadenas con datos de precios. Cacheada: no cambia entre requests.
  */
-export function getChainList(): string[] {
-  const rows = query<{ cadena: string }>(
-    `SELECT DISTINCT cadena FROM price_series WHERE cadena IS NOT NULL AND cadena != '' ORDER BY cadena`,
-  ).all();
-  return rows.map((r) => r.cadena);
+let chainsSnapshot: string[] | null = null;
+
+export async function getChainList(): Promise<string[]> {
+  if (!chainsSnapshot) {
+    const rows = await query<{ cadena: string }>(
+      `SELECT DISTINCT cadena FROM price_runs WHERE cadena IS NOT NULL AND cadena != '' ORDER BY cadena`,
+    ).all();
+    chainsSnapshot = rows.map((r) => r.cadena);
+  }
+  return chainsSnapshot;
 }
 
 interface ProductQueryOptions {
@@ -281,10 +261,10 @@ function buildProductQueryParts(options: ProductQueryOptions) {
  * For the common case (no chain filter), uses an in-memory cache of per-date
  * price aggregations so only the first request per date pays the full scan.
  */
-export function getProducts(options: ProductQueryOptions): {
+export async function getProducts(options: ProductQueryOptions): Promise<{
   products: Product[];
   total: number;
-} {
+}> {
   const { cadena = "" } = options;
   const hasCadena = cadena.trim().length > 0;
 
@@ -292,43 +272,52 @@ export function getProducts(options: ProductQueryOptions): {
   return getProductsCached(options);
 }
 
-function getProductsFromDb(options: ProductQueryOptions): {
+async function getProductsFromDb(options: ProductQueryOptions): Promise<{
   products: Product[];
   total: number;
-} {
+}> {
   const { dias = 30, page = 1, pageSize = 30, cadena = "" } = options;
   const { params, whereClause } = buildProductQueryParts(options);
   const offset = (Math.max(page, 1) - 1) * pageSize;
 
-  const latestDate = query<{ f: string | null }>(
-    "SELECT MAX(fecha) AS f FROM price_series WHERE cadena = ? AND is_outlier = 0",
-  ).get(cadena)?.f;
+  const latestDate = (
+    await query<{ f: string | null }>(
+      "SELECT MAX(hasta)::text AS f FROM price_runs WHERE cadena = ? AND is_outlier = 0",
+    ).get(cadena)
+  )?.f;
   if (!latestDate) return { products: [], total: 0 };
 
-  const baseDate = query<{ f: string | null }>(
-    "SELECT MIN(fecha) AS f FROM price_series WHERE fecha >= DATE('now', '-' || ? || ' days') AND cadena = ? AND is_outlier = 0",
-  ).get(dias, cadena)?.f ?? null;
+  const baseDate =
+    (
+      await query<{ f: string | null }>(
+        `${CUTOFF_CTE}
+         SELECT MIN(GREATEST(desde, c.d))::text AS f FROM price_runs, c
+         WHERE hasta >= c.d AND cadena = ? AND is_outlier = 0`,
+      ).get(dias, cadena)
+    )?.f ?? null;
 
   const total =
-    query<{ cnt: number }>(
-      `SELECT COUNT(*) AS cnt FROM
-       (SELECT ean FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pa
-       JOIN canonical_products cp USING (ean) ${whereClause}`,
-    ).get(latestDate, cadena, ...params)?.cnt ?? 0;
+    (
+      await query<{ cnt: number }>(
+        `SELECT COUNT(*) AS cnt FROM
+         (SELECT ean FROM ps_at(?::date) WHERE precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pa
+         JOIN canonical_products cp USING (ean) ${whereClause}`,
+      ).get(latestDate, cadena, ...params)
+    )?.cnt ?? 0;
 
   if (total === 0) return { products: [], total: 0 };
 
-  const products = query<Product>(`
+  const products = await query<Product>(`
     SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
-      ROUND(pa.precio_hoy, 0) AS precio_actual,
+      ROUND(pa.precio_hoy::numeric, 0) AS precio_actual,
       CASE WHEN pb.precio_antes IS NOT NULL AND pb.precio_antes > 0
-        THEN ROUND((pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100, 1)
+        THEN ROUND(((pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100)::numeric, 1)
         ELSE NULL END AS variacion_pct,
       pa.cobertura_cadenas
     FROM (SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
-          FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pa
+          FROM ps_at(?::date) WHERE precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pa
     LEFT JOIN (SELECT ean, AVG(precio_lista) AS precio_antes
-               FROM price_series WHERE fecha = ? AND precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pb USING (ean)
+               FROM ps_at(?::date) WHERE precio_lista > 0 AND cadena = ? AND is_outlier = 0 GROUP BY ean) pb USING (ean)
     JOIN canonical_products cp USING (ean)
     ${whereClause}
     ORDER BY pa.cobertura_cadenas DESC, cp.product_description
@@ -338,14 +327,14 @@ function getProductsFromDb(options: ProductQueryOptions): {
   return { products, total };
 }
 
-function getProductsCached(options: ProductQueryOptions): {
+async function getProductsCached(options: ProductQueryOptions): Promise<{
   products: Product[];
   total: number;
-} {
+}> {
   const { dias = 30, page = 1, pageSize = 30, search = "", category = "", eans } = options;
   const offset = (Math.max(page, 1) - 1) * pageSize;
 
-  const all = getProductsSnapshot(dias);
+  const all = await getProductsSnapshot(dias);
   if (all.length === 0) return { products: [], total: 0 };
 
   let filtered: CachedProduct[] = all;
@@ -380,14 +369,13 @@ function getProductsCached(options: ProductQueryOptions): {
  * Serie histórica de precios para un EAN.
  * Usa media geométrica (EXP(AVG(LN(x)))) para agregar precios de distintas cadenas.
  */
-export function getPriceHistory(ean: string): PricePoint[] {
+export async function getPriceHistory(ean: string): Promise<PricePoint[]> {
   const sql = `
     SELECT
-      fecha,
+      fecha::text AS fecha,
       EXP(AVG(LN(precio_lista))) AS precio_promedio
-    FROM price_series
-    WHERE ean = ?
-      AND precio_lista > 0
+    FROM ps_eans(ARRAY[?::text])
+    WHERE precio_lista > 0
       AND is_outlier = 0
     GROUP BY fecha
     ORDER BY fecha
@@ -395,14 +383,13 @@ export function getPriceHistory(ean: string): PricePoint[] {
   return query<PricePoint>(sql).all(ean);
 }
 
-export function getPriceHistoryByChain(
+export async function getPriceHistoryByChain(
   ean: string,
-): { fecha: string; cadena: string; precio: number }[] {
+): Promise<{ fecha: string; cadena: string; precio: number }[]> {
   const sql = `
-    SELECT fecha, cadena, precio_lista AS precio
-    FROM price_series
-    WHERE ean = ?
-      AND precio_lista > 0
+    SELECT fecha::text AS fecha, cadena, precio_lista AS precio
+    FROM ps_eans(ARRAY[?::text])
+    WHERE precio_lista > 0
       AND is_outlier = 0
     ORDER BY fecha, cadena
   `;
@@ -413,12 +400,12 @@ export function getPriceHistoryByChain(
  * Precio promedio por cadena de supermercado para un conjunto de EANs.
  * Útil para comparar dónde conviene comprar la canasta.
  */
-export function getProductByEan(ean: string, dias = 30): Product | null {
-  const result = getProducts({ eans: [ean], dias, page: 1, pageSize: 1 });
+export async function getProductByEan(ean: string, dias = 30): Promise<Product | null> {
+  const result = await getProducts({ eans: [ean], dias, page: 1, pageSize: 1 });
   return result.products[0] ?? null;
 }
 
-export function getPriceStats(ean: string): {
+export async function getPriceStats(ean: string): Promise<{
   min_historico: number;
   max_historico: number;
   min_chain: string | null;
@@ -426,27 +413,29 @@ export function getPriceStats(ean: string): {
   min_fecha: string;
   max_fecha: string;
   dias_datos: number;
-} | null {
+} | null> {
   const sql = `
-    WITH stats AS (
+    WITH d AS (
+      SELECT cadena, fecha, precio_lista
+      FROM ps_eans(ARRAY[?::text])
+      WHERE precio_lista > 0 AND is_outlier = 0
+    ),
+    stats AS (
       SELECT
         MIN(precio_lista) AS min_historico,
         MAX(precio_lista) AS max_historico,
         COUNT(DISTINCT fecha) AS dias_datos
-      FROM price_series
-      WHERE ean = ? AND precio_lista > 0 AND is_outlier = 0
+      FROM d
     ),
     min_row AS (
-      SELECT cadena AS min_chain, fecha AS min_fecha
-      FROM price_series
-      WHERE ean = ? AND precio_lista > 0 AND is_outlier = 0
+      SELECT cadena AS min_chain, fecha::text AS min_fecha
+      FROM d
       ORDER BY precio_lista ASC
       LIMIT 1
     ),
     max_row AS (
-      SELECT cadena AS max_chain, fecha AS max_fecha
-      FROM price_series
-      WHERE ean = ? AND precio_lista > 0 AND is_outlier = 0
+      SELECT cadena AS max_chain, fecha::text AS max_fecha
+      FROM d
       ORDER BY precio_lista DESC
       LIMIT 1
     )
@@ -455,10 +444,10 @@ export function getPriceStats(ean: string): {
       mn.min_chain, mn.min_fecha,
       mx.max_chain, mx.max_fecha
     FROM stats s
-    LEFT JOIN min_row mn ON 1=1
-    LEFT JOIN max_row mx ON 1=1
+    LEFT JOIN min_row mn ON TRUE
+    LEFT JOIN max_row mx ON TRUE
   `;
-  const row = query<{
+  const row = await query<{
     min_historico: number;
     max_historico: number;
     min_chain: string | null;
@@ -466,46 +455,45 @@ export function getPriceStats(ean: string): {
     min_fecha: string;
     max_fecha: string;
     dias_datos: number;
-  }>(sql).get(ean, ean, ean);
+  }>(sql).get(ean);
   if (!row || row.min_historico == null) return null;
   return row;
 }
 
-export function getCategoryPriceHistory(category: string): PricePoint[] {
+/** Media geométrica diaria por categoría, desde la tabla precalculada category_daily. */
+export async function getCategoryPriceHistory(category: string): Promise<PricePoint[]> {
   const sql = `
-    SELECT
-      ps.fecha,
-      EXP(AVG(LN(ps.precio_lista))) AS precio_promedio
-    FROM price_series ps
-    JOIN canonical_products cp ON cp.ean = ps.ean
-    WHERE cp.categoria = ?
-      AND ps.precio_lista > 0
-      AND ps.is_outlier = 0
-    GROUP BY ps.fecha
-    ORDER BY ps.fecha
+    SELECT fecha::text AS fecha, EXP(sum_ln / n) AS precio_promedio
+    FROM category_daily
+    WHERE categoria = ?
+    ORDER BY fecha
   `;
   return query<PricePoint>(sql).all(category);
 }
 
-export function getChainPrices(eans: string[]): ChainPrice[] {
-  if (eans.length === 0) return [];
+/** Tramos vigentes en la última fecha con datos, filtrados por EAN. */
+const LATEST_RUNS_FOR_EANS = `
+  FROM price_runs pr
+  JOIN (SELECT MAX(hasta) AS d FROM price_runs) m
+    ON pr.desde <= m.d AND pr.hasta >= m.d
+  WHERE pr.ean = ANY(?::text[])
+    AND pr.precio_lista > 0
+    AND pr.is_outlier = 0
+`;
 
-  const placeholders = eans.map(() => "?").join(", ");
+export async function getChainPrices(eans: string[]): Promise<ChainPrice[]> {
+  if (eans.length === 0) return [];
 
   const sql = `
     SELECT
-      cadena,
-      ROUND(SUM(precio_lista), 0) AS total_canasta
-    FROM price_series
-    WHERE ean IN (${placeholders})
-      AND fecha = (SELECT MAX(fecha) FROM price_series)
-      AND precio_lista > 0
-      AND is_outlier = 0
-    GROUP BY cadena
+      pr.cadena,
+      ROUND(SUM(pr.precio_lista)::numeric, 0) AS total_canasta
+    ${LATEST_RUNS_FOR_EANS}
+    GROUP BY pr.cadena
     ORDER BY total_canasta
   `;
 
-  return query<ChainPrice>(sql).all(...eans);
+  return query<ChainPrice>(sql).all(eans);
 }
 
 /**
@@ -513,27 +501,20 @@ export function getChainPrices(eans: string[]): ChainPrice[] {
  * Devuelve una fila por (ean, cadena) — la matriz que usa el
  * algoritmo de recomendación del chat de compras.
  */
-export function getLatestChainPricesByEan(
+export async function getLatestChainPricesByEan(
   eans: string[],
-): { ean: string; cadena: string; precio: number }[] {
+): Promise<{ ean: string; cadena: string; precio: number }[]> {
   if (eans.length === 0) return [];
 
-  const placeholders = eans.map(() => "?").join(", ");
   const sql = `
-    SELECT ean, cadena, ROUND(AVG(precio_lista), 0) AS precio
-    FROM price_series
-    WHERE ean IN (${placeholders})
-      AND fecha = (SELECT MAX(fecha) FROM price_series)
-      AND precio_lista > 0
-      AND is_outlier = 0
-    GROUP BY ean, cadena
+    SELECT pr.ean, pr.cadena, ROUND(AVG(pr.precio_lista)::numeric, 0) AS precio
+    ${LATEST_RUNS_FOR_EANS}
+    GROUP BY pr.ean, pr.cadena
   `;
-  return query<{ ean: string; cadena: string; precio: number }>(sql).all(
-    ...eans,
-  );
+  return query<{ ean: string; cadena: string; precio: number }>(sql).all(eans);
 }
 
-export function getBranches(): Branch[] {
+export async function getBranches(): Promise<Branch[]> {
   const sql = `
     SELECT cadena, formato, direccion, latitud, longitud, provincia, localidad
     FROM sucursales
@@ -544,33 +525,31 @@ export function getBranches(): Branch[] {
 
 // ─── INDEC Product Links ────────────────────────────────────────────────────
 
-export function getLinkedEansForIndec(indecEan: string): string[] {
-  const rows = query<{ canon_ean: string }>(
+export async function getLinkedEansForIndec(indecEan: string): Promise<string[]> {
+  const rows = await query<{ canon_ean: string }>(
     `SELECT canon_ean FROM indec_product_links WHERE indec_ean = ? AND status = 'confirmed'`,
   ).all(indecEan);
   return rows.map((r) => r.canon_ean);
 }
 
-export function getIndecEanForProduct(canonEan: string): string | null {
-  const row = query<{ indec_ean: string }>(
+export async function getIndecEanForProduct(canonEan: string): Promise<string | null> {
+  const row = await query<{ indec_ean: string }>(
     `SELECT indec_ean FROM indec_product_links WHERE canon_ean = ? AND status = 'confirmed' LIMIT 1`,
   ).get(canonEan);
   return row?.indec_ean ?? null;
 }
 
-export function getIndecLinkedAggregates(
+export async function getIndecLinkedAggregates(
   indecEan: string,
-): { fecha: string; mediana: number; min: number; max: number }[] {
-  const linkedEans = getLinkedEansForIndec(indecEan);
+): Promise<{ fecha: string; mediana: number; min: number; max: number }[]> {
+  const linkedEans = await getLinkedEansForIndec(indecEan);
   if (linkedEans.length === 0) return [];
 
-  const placeholders = linkedEans.map(() => "?").join(", ");
   const sql = `
     WITH daily AS (
       SELECT fecha, ean, AVG(precio_lista) AS precio_avg
-      FROM price_series
-      WHERE ean IN (${placeholders})
-        AND precio_lista > 0
+      FROM ps_eans(?::text[])
+      WHERE precio_lista > 0
         AND is_outlier = 0
       GROUP BY fecha, ean
     ),
@@ -581,7 +560,7 @@ export function getIndecLinkedAggregates(
       FROM daily
     )
     SELECT
-      fecha,
+      fecha::text AS fecha,
       AVG(CASE WHEN rn IN (cnt/2, cnt/2+1) THEN precio_avg END) AS mediana,
       MIN(precio_avg) AS min,
       MAX(precio_avg) AS max
@@ -591,17 +570,16 @@ export function getIndecLinkedAggregates(
   `;
   return query<{ fecha: string; mediana: number; min: number; max: number }>(
     sql,
-  ).all(...linkedEans);
+  ).all(linkedEans);
 }
 
-export function getIndecLinkedByBrand(
+export async function getIndecLinkedByBrand(
   indecEan: string,
-): { marca: string; count: number; min_price: number; max_price: number }[] {
-  const linkedEans = getLinkedEansForIndec(indecEan);
+): Promise<{ marca: string; count: number; min_price: number; max_price: number }[]> {
+  const linkedEans = await getLinkedEansForIndec(indecEan);
   if (linkedEans.length === 0) return [];
 
-  const placeholders = linkedEans.map(() => "?").join(", ");
-  const latestDate = getLatestDate();
+  const latestDate = await getLatestDate();
   if (!latestDate) return [];
 
   const sql = `
@@ -611,9 +589,8 @@ export function getIndecLinkedByBrand(
       MIN(ps.precio_lista) AS min_price,
       MAX(ps.precio_lista) AS max_price
     FROM canonical_products cp
-    JOIN price_series ps ON ps.ean = cp.ean
-    WHERE cp.ean IN (${placeholders})
-      AND ps.fecha = ?
+    JOIN ps_at(?::date) ps ON ps.ean = cp.ean
+    WHERE cp.ean = ANY(?::text[])
       AND ps.precio_lista > 0
       AND ps.is_outlier = 0
     GROUP BY cp.marca
@@ -624,5 +601,5 @@ export function getIndecLinkedByBrand(
     count: number;
     min_price: number;
     max_price: number;
-  }>(sql).all(...linkedEans, latestDate);
+  }>(sql).all(latestDate, linkedEans);
 }

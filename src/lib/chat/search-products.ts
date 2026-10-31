@@ -14,11 +14,11 @@ const MAX_RESULTS_PER_KEYWORD = 5;
  * Busca productos del catálogo que matcheen lo que escribió el usuario
  * (ej: "carne picada"). Devuelve hasta 5 resultados con precio actual.
  */
-export function searchProducts(query: string): MatchedProduct[] {
+export async function searchProducts(query: string): Promise<MatchedProduct[]> {
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const { products } = getProducts({
+  const { products } = await getProducts({
     search: trimmed,
     page: 1,
     pageSize: MAX_RESULTS_PER_KEYWORD,

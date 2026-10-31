@@ -64,7 +64,7 @@ const handler = createMcpHandler(
           page: page ?? 1,
           pageSize: Math.min(pageSize ?? 20, 50),
         };
-        const { products, total } = getProducts(opts);
+        const { products, total } = await getProducts(opts);
         return {
           content: [
             {
@@ -89,7 +89,7 @@ const handler = createMcpHandler(
         inputSchema: {},
       },
       async () => {
-        const categories = getCategories();
+        const categories = await getCategories();
         return {
           content: [
             {
@@ -112,7 +112,7 @@ const handler = createMcpHandler(
         },
       },
       async ({ ean }) => {
-        const product = getProductByEan(ean);
+        const product = await getProductByEan(ean);
         if (!product) {
           return {
             content: [
@@ -120,7 +120,7 @@ const handler = createMcpHandler(
             ],
           };
         }
-        const stats = getPriceStats(ean);
+        const stats = await getPriceStats(ean);
         return {
           content: [
             {
@@ -144,8 +144,8 @@ const handler = createMcpHandler(
         },
       },
       async ({ ean }) => {
-        const average = getPriceHistory(ean);
-        const byChain = getPriceHistoryByChain(ean);
+        const average = await getPriceHistory(ean);
+        const byChain = await getPriceHistoryByChain(ean);
         return {
           content: [
             {
@@ -173,7 +173,7 @@ const handler = createMcpHandler(
         },
       },
       async ({ category }) => {
-        const history = getCategoryPriceHistory(category);
+        const history = await getCategoryPriceHistory(category);
         return {
           content: [
             { type: "text" as const, text: JSON.stringify(history, null, 2) },
@@ -198,7 +198,7 @@ const handler = createMcpHandler(
         },
       },
       async ({ eans }) => {
-        const prices = getChainPrices(eans);
+        const prices = await getChainPrices(eans);
         return {
           content: [
             { type: "text" as const, text: JSON.stringify(prices, null, 2) },
@@ -216,7 +216,7 @@ const handler = createMcpHandler(
         inputSchema: {},
       },
       async () => {
-        const date = getLatestDate();
+        const date = await getLatestDate();
         return {
           content: [{ type: "text" as const, text: date ?? "Sin datos" }],
         };
