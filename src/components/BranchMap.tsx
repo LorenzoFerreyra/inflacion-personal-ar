@@ -6,8 +6,8 @@ import type { Map, LayerGroup } from "leaflet";
 import { chainLabel } from "@/lib/chainColors";
 
 /** Escapa HTML para prevenir XSS en contenido generado dinámicamente. */
-function escapeHtml(str: string): string {
-  return str
+function escapeHtml(str: string | null | undefined): string {
+  return (str ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -127,7 +127,7 @@ export default function BranchMap({ branches, chains }: Props) {
             <strong style="font-size:13px">${escapeHtml(chainLabel(b.cadena))}</strong>
             <span style="opacity:0.6;margin-left:4px;font-size:11px">${escapeHtml(b.formato)}</span>
             <br/>${escapeHtml(b.direccion)}
-            <br/><span style="opacity:0.7">${escapeHtml(b.localidad)}, ${escapeHtml(b.provincia)}</span>
+            <br/><span style="opacity:0.7">${[b.localidad, b.provincia].filter(Boolean).map(escapeHtml).join(", ")}</span>
           </div>`,
             { closeButton: false, className: "branch-popup" },
           );
