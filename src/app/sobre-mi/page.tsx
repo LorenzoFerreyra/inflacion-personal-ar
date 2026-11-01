@@ -81,7 +81,7 @@ export default function SobreMiPage() {
           <section className="border-t border-hairline pt-4 flex flex-col justify-between gap-4">
             <div className="space-y-3">
               <h4 className="text-[15px] font-medium text-zinc-50">
-                Sociedad de Datos — UFLO
+                Sociedad de Datos. UFLO
               </h4>
               <p className="text-sm text-zinc-400 leading-relaxed">
                 Trabajo académico que analiza datos económicos de Argentina:
