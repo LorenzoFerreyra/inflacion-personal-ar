@@ -11,12 +11,23 @@ export const metadata: Metadata = {
   description: "Cadenas de supermercados relevadas",
 };
 
+// INDEC es la fuente oficial de referencia, no una cadena con sucursales.
+const NON_STORE_CHAINS = new Set(["indec"]);
+
+// La tabla de sucursales trae "super_top" y "supertop" para la misma cadena.
+const CHAIN_ALIASES: Record<string, string> = { super_top: "supertop" };
+
 export default async function CoberturaPage() {
-  const allBranches = await getBranches();
+  const allBranches = (await getBranches()).map((b) => ({
+    ...b,
+    cadena: CHAIN_ALIASES[b.cadena] ?? b.cadena,
+  }));
   const mappableBranches = allBranches.filter(
     (b) => b.latitud != null && b.longitud != null,
   ) as (typeof allBranches[number] & { latitud: number; longitud: number })[];
-  const chainIds = await getChainList();
+  const chainIds = (await getChainList()).filter(
+    (id) => !NON_STORE_CHAINS.has(id),
+  );
 
   const chains = chainIds.map((id) => ({
     id,
@@ -74,8 +85,15 @@ export default async function CoberturaPage() {
                     {chain.name}
                   </p>
                 </div>
-                <span className="text-[12px] text-zinc-400 tabular">
-                  {countByChain[chain.id] ?? 0}
+                <span
+                  className="text-[12px] text-zinc-400 tabular"
+                  title={
+                    countByChain[chain.id]
+                      ? undefined
+                      : "Sin sucursales cargadas todavía"
+                  }
+                >
+                  {countByChain[chain.id] ?? "—"}
                 </span>
               </li>
             ))}

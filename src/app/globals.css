@@ -188,6 +188,11 @@ textarea::placeholder {
   animation: checkDraw 0.3s cubic-bezier(0.25, 1, 0.5, 1) 0.15s both;
 }
 
+/* Mapa base oscuro a partir de los tiles claros de OSM */
+.map-tiles-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.9) saturate(0.5);
+}
+
 /* Leaflet popup dark theme */
 .branch-popup .leaflet-popup-content-wrapper {
   background: var(--color-panel);

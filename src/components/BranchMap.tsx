@@ -57,15 +57,13 @@ export default function BranchMap({ branches, chains }: Props) {
           attributionControl: true,
         });
 
-        L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-          {
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-            subdomains: "abcd",
-            maxZoom: 19,
-          },
-        ).addTo(map);
+        // OSM estándar (sin API key); el tema oscuro lo da el filtro CSS .map-tiles-dark.
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          className: "map-tiles-dark",
+          maxZoom: 19,
+        }).addTo(map);
 
         const layer = L.layerGroup().addTo(map);
         markersLayer.current = layer;
