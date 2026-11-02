@@ -14,7 +14,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { fmtPct } from "@/lib/format";
 
 export default function InsightsPage() {
-  const { period, ipc: ipcValues } = usePeriod();
+  const { period, ipc: ipcValues, ipcError } = usePeriod();
   const [products, setProducts] = useState<Product[]>([]);
   const [chains, setChains] = useState<ChainPrice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +208,7 @@ export default function InsightsPage() {
         </div>
 
         {/* IPC comparison */}
-        <div>
+        <div hidden={ipcError}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-zinc-50">
               vs. IPC ({fmtPct(ipcValue, false)})

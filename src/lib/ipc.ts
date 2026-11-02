@@ -1,218 +1,133 @@
 /**
- * ipc.ts — Cálculo del IPC (índice de precios al consumidor) a partir de los
- * datos reales de price_series.
+ * ipc.ts — IPC oficial del INDEC (nivel general, total nacional).
  *
  * ┌──────────────────────────────────────────────────────────────────────┐
- * │  ¿Cómo se calcula?                                                  │
+ * │  ¿De dónde sale?                                                    │
  * │                                                                      │
- * │  Para cada período (mensual, trimestral, interanual):                │
+ * │  1. Se pide a la API del INDEC (/v1/ipc_nacional) la serie del       │
+ * │     índice base dic-2016=100. Requiere INDEC_API_TOKEN.              │
  * │                                                                      │
- * │  1. Se toma la fecha más reciente con datos (fecha_actual) y la      │
- * │     fecha más antigua dentro del rango de días (fecha_base).         │
- * │                                                                      │
- * │  2. Para cada producto (EAN), se calcula el precio promedio entre    │
- * │     cadenas en fecha_actual y en fecha_base.                         │
- * │                                                                      │
- * │  3. Se calcula la variación porcentual individual de cada producto:  │
- * │        variacion = (precio_actual - precio_base) / precio_base * 100 │
- * │                                                                      │
- * │  4. El IPC es la mediana de todas esas variaciones individuales.     │
- * │     Se usa mediana (no promedio) para que los outliers — productos   │
- * │     con variaciones extremas por error de datos o discontinuidad —   │
- * │     no distorsionen el índice.                                       │
- * │                                                                      │
- * │  5. Solo se incluyen productos que tienen precio válido (>0) en      │
- * │     ambas fechas para evitar sesgos por productos nuevos o dados     │
- * │     de baja.                                                         │
+ * │  2. Las tres variaciones salen de la misma serie, comparando el      │
+ * │     último mes publicado contra 1, 3 y 12 meses antes:               │
+ * │        variacion = (indice_actual / indice_base - 1) * 100           │
  * │                                                                      │
  * │  Limitaciones:                                                       │
- * │  - No es el IPC oficial del INDEC (que usa una canasta ponderada     │
- * │    por participación en el gasto de los hogares).                    │
- * │  - Acá cada producto pesa igual. Es un índice "democrático" de      │
- * │    precios de supermercado, no una medida macroeconómica.            │
- * │  - La cobertura depende de los datos del scraper.                   │
+ * │  - El INDEC publica una vez por mes, con unas dos semanas de         │
+ * │    rezago: el dato siempre es del último mes cerrado y publicado.    │
+ * │  - Por redondeo, un valor puede diferir en 0,1 del informe técnico.  │
  * └──────────────────────────────────────────────────────────────────────┘
  */
 
-import { query } from "./database";
-import { type IpcValues } from "./constants";
+import { PERIODS, type IpcValues, type PeriodKey } from "./constants";
+
+const INDEC_IPC_URL = "https://api.indec.gob.ar/v1/ipc_nacional";
+const REQUEST_TIMEOUT_MS = 10_000;
+
+const MONTHS_BACK: Record<PeriodKey, number> = {
+  mensual: 1,
+  trimestral: 3,
+  interanual: 12,
+};
+
+export interface IndecRow {
+  periodo: string;
+  valor: number | null;
+}
+
+/** Mueve un período AAAAMM una cantidad de meses hacia atrás. */
+export function subtractMonths(periodo: string, months: number): string {
+  const year = Number(periodo.slice(0, 4));
+  const month = Number(periodo.slice(4, 6));
+  const total = year * 12 + (month - 1) - months;
+  const shifted = (total % 12) + 1;
+  return `${Math.floor(total / 12)}${String(shifted).padStart(2, "0")}`;
+}
 
 /**
- * Calcula las tres variaciones (mensual, trimestral, interanual) en una sola
- * pasada por la base de datos. Antes eran 3 queries separadas que cada una
- * re-escaneaba MAX(fecha) y recomputaba precio_actual desde cero.
+ * Calcula las tres variaciones a partir de la serie del índice.
  *
- * La query devuelve todas las variaciones individuales con sus 3 columnas.
- * Después en JS se calcula la mediana de cada columna por separado.
+ * Los filtros de la API deben dejar una sola serie. Si para un mismo período
+ * llegan valores distintos se está mezclando más de una, y mostrar cualquiera
+ * de ellos como "IPC oficial" sería peor que no mostrar nada.
  */
-/**
- * La base tiene dos regímenes de datos:
- *  - Scraper propio: cientos de miles de filas por día, desde mayo 2026.
- *  - Serie de referencia INDEC (cadena = 'indec'): 14 productos, un dato
- *    por mes, desde 2017.
- *
- * Cada período se calcula de forma independiente. Si dentro de la ventana
- * existe una fecha "densa" (datos del scraper) razonablemente cercana al
- * inicio de la ventana, se usa la mediana de variaciones de todos los
- * productos. Si no (p. ej. interanual, cuando el scraper todavía no tiene
- * un año de historia), se recurre a la serie mensual del INDEC comparando
- * los dos meses separados por la ventana.
- */
-
-/** Mínimo de filas para considerar una fecha como "densa" (datos scraper). */
-const DENSE_THRESHOLD = 1000;
-
-function median(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  const val =
-    sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-  return Math.round(val * 10) / 10;
-}
-
-function addDays(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-function daysBetween(a: string, b: string): number {
-  return Math.abs(
-    (new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) /
-      86_400_000,
-  );
-}
-
-/** Mediana de variaciones % por producto entre dos fechas (todas las cadenas). */
-async function medianVariationBetween(
-  baseDate: string,
-  actualDate: string,
-): Promise<number> {
-  const rows = await query<{ v: number }>(`
-    SELECT (pa.precio - pb.precio) / pb.precio * 100 AS v
-    FROM (SELECT ean, AVG(precio_lista) AS precio FROM ps_at(?::date)
-          WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pa
-    JOIN (SELECT ean, AVG(precio_lista) AS precio FROM ps_at(?::date)
-          WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pb
-      USING (ean)
-    WHERE pb.precio > 0
-  `).all(actualDate, baseDate);
-  return median(rows.map((r) => r.v));
-}
-
-/** Mediana de variaciones % de la serie INDEC entre dos fechas. */
-async function medianIndecVariationBetween(
-  baseDate: string,
-  actualDate: string,
-): Promise<number> {
-  const rows = await query<{ v: number }>(`
-    SELECT (pa.precio - pb.precio) / pb.precio * 100 AS v
-    FROM (SELECT ean, AVG(precio_lista) AS precio FROM ps_at(?::date)
-          WHERE cadena = 'indec' AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pa
-    JOIN (SELECT ean, AVG(precio_lista) AS precio FROM ps_at(?::date)
-          WHERE cadena = 'indec' AND precio_lista > 0 AND is_outlier = 0 GROUP BY ean) pb
-      USING (ean)
-    WHERE pb.precio > 0
-  `).all(actualDate, baseDate);
-  return median(rows.map((r) => r.v));
-}
-
-async function computePeriod(
-  days: number,
-  dateCounts: { fecha: string; n: number }[],
-  latest: string,
-  indecDates: string[],
-): Promise<number> {
-  const cutoff = addDays(latest, -days);
-
-  // Fecha densa más antigua dentro de la ventana (excluyendo la actual).
-  const denseBase = dateCounts.find(
-    (d) => d.fecha >= cutoff && d.fecha < latest && d.n >= DENSE_THRESHOLD,
-  )?.fecha;
-
-  // La base densa sirve si no está demasiado lejos del inicio de la ventana
-  // (si el scraper arrancó hace 2 meses, no puede representar "interanual").
-  const slackDays = Math.max(7, days * 0.25);
-  if (denseBase && daysBetween(cutoff, denseBase) <= slackDays) {
-    return medianVariationBetween(denseBase, latest);
-  }
-
-  // Fallback: serie mensual del INDEC. Se compara el último mes disponible
-  // contra el mes más cercano a (último - ventana).
-  if (indecDates.length >= 2) {
-    const actual = indecDates[indecDates.length - 1];
-    const target = addDays(actual, -days);
-    let base = indecDates[0];
-    for (const d of indecDates) {
-      if (
-        d < actual &&
-        daysBetween(d, target) < daysBetween(base, target)
-      ) {
-        base = d;
-      }
+export function variationsFromIndex(rows: IndecRow[]): IpcValues {
+  const byPeriodo = new Map<string, number>();
+  for (const { periodo, valor } of rows) {
+    if (valor === null) continue;
+    const existing = byPeriodo.get(periodo);
+    if (existing !== undefined && existing !== valor) {
+      throw new Error(`INDEC: más de una serie para el período ${periodo}`);
     }
-    if (base !== actual) return medianIndecVariationBetween(base, actual);
+    byPeriodo.set(periodo, valor);
   }
+  if (byPeriodo.size === 0) throw new Error("INDEC: serie del IPC vacía");
 
-  return 0;
-}
+  const latest = [...byPeriodo.keys()].sort().at(-1)!;
+  const actual = byPeriodo.get(latest)!;
 
-async function computeAllVariations(): Promise<{
-  mensual: number;
-  trimestral: number;
-  interanual: number;
-}> {
-  const dateCounts = await query<{ fecha: string; n: number }>(
-    "SELECT fecha::text AS fecha, n FROM daily_counts ORDER BY fecha",
-  ).all();
-  if (dateCounts.length === 0) {
-    return { mensual: 0, trimestral: 0, interanual: 0 };
-  }
-
-  const latest = dateCounts[dateCounts.length - 1].fecha;
-  const indecDates = (
-    await query<{ fecha: string }>(
-      `SELECT DISTINCT g::date::text AS fecha
-       FROM price_runs, generate_series(desde, hasta, interval '1 day') g
-       WHERE cadena = 'indec' ORDER BY fecha`,
-    ).all()
-  ).map((r) => r.fecha);
+  const variation = (key: PeriodKey): number => {
+    const base = byPeriodo.get(subtractMonths(latest, MONTHS_BACK[key]));
+    if (!base) {
+      throw new Error(`INDEC: falta la base ${PERIODS[key].label} de ${latest}`);
+    }
+    return Math.round((actual / base - 1) * 1000) / 10;
+  };
 
   return {
-    mensual: await computePeriod(30, dateCounts, latest, indecDates),
-    trimestral: await computePeriod(90, dateCounts, latest, indecDates),
-    interanual: await computePeriod(365, dateCounts, latest, indecDates),
+    mensual: variation("mensual"),
+    trimestral: variation("trimestral"),
+    interanual: variation("interanual"),
   };
 }
 
+async function fetchIndexSeries(): Promise<IndecRow[]> {
+  const token = process.env.INDEC_API_TOKEN;
+  if (!token) throw new Error("INDEC_API_TOKEN no está configurado");
+
+  const params = new URLSearchParams({
+    select: "periodo,valor",
+    // "ndice" cubre índice/Índice/indice sin depender de tildes ni mayúsculas.
+    tipo_de_indicador: "ilike.*ndice*",
+    descripcion: "ilike.*nivel general*",
+    region: "ilike.*nacional*",
+    order: "periodo.desc",
+    limit: "1000",
+  });
+
+  const res = await fetch(`${INDEC_IPC_URL}?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`INDEC: HTTP ${res.status}`);
+  return res.json();
+}
+
 /**
- * Devuelve los tres valores de IPC calculados desde la base de datos.
- * Se cachea en memoria porque el cálculo recorre toda la tabla; el cache
- * se invalida cada 6 horas (suficiente dado que los datos se scrapean diariamente).
- * El cache vive en globalThis para sobrevivir HMR en desarrollo.
+ * Devuelve los tres valores del IPC oficial. El dato cambia una vez por mes,
+ * así que se cachea en memoria 6 horas. Si el INDEC no responde se sigue
+ * sirviendo el último dato bueno. El cache vive en globalThis para sobrevivir
+ * HMR en desarrollo.
  */
 const globalForIpcCache = globalThis as unknown as {
-  // v2: se versiona la clave para descartar caches de la lógica anterior.
-  __ipcCacheV2: { values: IpcValues; timestamp: number } | undefined;
+  // v3: se versiona la clave para descartar caches del cálculo anterior.
+  __ipcCacheV3: { values: IpcValues; timestamp: number } | undefined;
 };
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 export async function getIpc(): Promise<IpcValues> {
   const now = Date.now();
-  const cached = globalForIpcCache.__ipcCacheV2;
+  const cached = globalForIpcCache.__ipcCacheV3;
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
     return cached.values;
   }
 
-  const values = await computeAllVariations();
-
-  // Un resultado totalmente nulo indica falta de datos; no vale la pena
-  // fijarlo durante 6 horas.
-  const degenerate =
-    values.mensual === 0 && values.trimestral === 0 && values.interanual === 0;
-  if (!degenerate) {
-    globalForIpcCache.__ipcCacheV2 = { values, timestamp: now };
+  try {
+    const values = variationsFromIndex(await fetchIndexSeries());
+    globalForIpcCache.__ipcCacheV3 = { values, timestamp: now };
+    return values;
+  } catch (err) {
+    if (cached) return cached.values;
+    throw err;
   }
-  return values;
 }

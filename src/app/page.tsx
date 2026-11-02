@@ -24,7 +24,7 @@ import { fmtPct } from "@/lib/format";
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
 export default function MiCanastaPage() {
-  const { period, ipc: ipcValues } = usePeriod();
+  const { period, ipc: ipcValues, ipcError } = usePeriod();
   const {
     search,
     setSearch,
@@ -406,20 +406,32 @@ export default function MiCanastaPage() {
                 label="Tu inflaci&oacute;n personal"
                 value={fmtPct(result.personal, false)}
                 subtitle={PERIODS[period].label.toLowerCase()}
-                color={result.personal > result.ipc ? "red" : "green"}
+                color={
+                  ipcError
+                    ? undefined
+                    : result.personal > result.ipc
+                      ? "red"
+                      : "green"
+                }
               />
               <KpiCard
                 label="IPC oficial"
-                value={fmtPct(result.ipc, false)}
+                value={ipcError ? "—" : fmtPct(result.ipc, false)}
                 subtitle={PERIODS[period].label.toLowerCase()}
               />
               <KpiCard
                 label="Diferencia"
-                value={fmtPct(result.diff)}
+                value={ipcError ? "—" : fmtPct(result.diff)}
                 subtitle={
-                  result.diff > 0 ? "por encima del IPC" : "por debajo del IPC"
+                  ipcError
+                    ? "IPC no disponible"
+                    : result.diff > 0
+                      ? "por encima del IPC"
+                      : "por debajo del IPC"
                 }
-                color={result.diff > 0 ? "red" : "green"}
+                color={
+                  ipcError ? undefined : result.diff > 0 ? "red" : "green"
+                }
               />
             </div>
             <p className="text-xs text-zinc-500 mt-4">
