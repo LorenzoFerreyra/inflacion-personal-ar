@@ -3,6 +3,15 @@
  * Espejan los tipos del backend (database.ts).
  */
 
+import type { PeriodKey } from "./constants";
+
+/** Respuesta de /api/periodos: qué períodos tienen precios comparables. */
+export interface RespuestaPeriodos {
+  desde: string | null;
+  ultimoMes: string | null;
+  disponibles: Record<PeriodKey, boolean>;
+}
+
 export interface Product {
   ean: string;
   product_description: string;

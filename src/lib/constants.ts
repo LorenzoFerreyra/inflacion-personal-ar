@@ -1,18 +1,21 @@
 /**
  * constants.ts — Valores de referencia para la app
  *
- * PERIODS: mapeo entre nombre legible y cantidad de días para cada período.
+ * PERIODS: para cada período, los días de la variación por producto y los
+ * meses calendario de las comparaciones con el INDEC.
  */
 
 export type PeriodKey = "mensual" | "trimestral" | "interanual";
 
 export type IpcValues = Record<PeriodKey, number>;
 
-export const PERIODS: Record<PeriodKey, { label: string; dias: number }> = {
-  mensual: { label: "Mensual", dias: 30 },
-  trimestral: { label: "Trimestral", dias: 90 },
-  interanual: { label: "Interanual", dias: 365 },
+export const PERIODS: Record<PeriodKey, { label: string; dias: number; meses: number }> = {
+  mensual: { label: "Mensual", dias: 30, meses: 1 },
+  trimestral: { label: "Trimestral", dias: 90, meses: 3 },
+  interanual: { label: "Interanual", dias: 365, meses: 12 },
 };
+
+export const PERIOD_KEYS = Object.keys(PERIODS) as PeriodKey[];
 
 export const PAGE_SIZE = 30;
 

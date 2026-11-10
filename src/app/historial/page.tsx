@@ -10,9 +10,7 @@ import { chainLabel } from "@/lib/chainColors";
 import ProductImage from "@/components/ProductImage";
 import VariationBadge from "@/components/VariationBadge";
 import Link from "next/link";
-import PriceChart from "@/components/PriceChart";
 import Pagination from "@/components/Pagination";
-import { fmtPct } from "@/lib/format";
 import {
   ResponsiveContainer,
   LineChart,
@@ -34,9 +32,6 @@ export default function HistorialPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [categoryHistory, setCategoryHistory] = useState<PricePoint[]>([]);
-  const [loadingCategoryHistory, setLoadingCategoryHistory] = useState(false);
 
   const [compareEans, setCompareEans] = useState<Set<string>>(new Set());
   const [compareProducts, setCompareProducts] = useState<
@@ -64,13 +59,6 @@ export default function HistorialPage() {
   if (filtersKey !== prevFiltersKey) {
     setPrevFiltersKey(filtersKey);
     setPage(1);
-  }
-
-  // Clear the category trend as soon as the category changes.
-  const [prevCategory, setPrevCategory] = useState(category);
-  if (category !== prevCategory) {
-    setPrevCategory(category);
-    setCategoryHistory([]);
   }
 
   useEffect(() => {
@@ -106,30 +94,6 @@ export default function HistorialPage() {
 
     return () => abort.abort();
   }, [debouncedSearch, category, cadena, period, page]);
-
-  useEffect(() => {
-    if (!category) return;
-    let cancelled = false;
-
-    (async () => {
-      setLoadingCategoryHistory(true);
-      try {
-        const res = await fetch(
-          `/api/category-history?category=${encodeURIComponent(category)}`,
-        );
-        const data = res.ok ? await res.json() : [];
-        if (!cancelled) setCategoryHistory(data);
-      } catch {
-        if (!cancelled) setCategoryHistory([]);
-      } finally {
-        if (!cancelled) setLoadingCategoryHistory(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [category]);
 
   function toggleCompare(product: Product) {
     setCompareEans((prev) => {
@@ -202,8 +166,15 @@ export default function HistorialPage() {
           Historial de precios
         </h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Explorá la evolución histórica de precios, compará productos y
-          descubrí tendencias por categoría.
+          Explorá la evolución histórica de precios y compará productos. La
+          evolución por rubro está en{" "}
+          <Link
+            href="/indices"
+            className="text-amber-400 hover:text-amber-300 underline decoration-dotted underline-offset-4"
+          >
+            índices por clase
+          </Link>
+          .
         </p>
       </div>
 
@@ -220,15 +191,6 @@ export default function HistorialPage() {
             })
           }
           onClear={() => setCompareEans(new Set())}
-        />
-      )}
-
-      {/* Category trend */}
-      {category && (
-        <CategoryTrend
-          category={category}
-          history={categoryHistory}
-          loading={loadingCategoryHistory}
         />
       )}
 
@@ -544,54 +506,6 @@ function CompareChart({
           ))}
         </LineChart>
       </ResponsiveContainer>
-    </div>
-  );
-}
-
-function CategoryTrend({
-  category,
-  history,
-  loading,
-}: {
-  category: string;
-  history: PricePoint[];
-  loading: boolean;
-}) {
-  if (loading) {
-    return (
-      <div className="bg-panel border border-hairline rounded-sm p-5">
-        <div className="flex items-center justify-center py-6">
-          <div className="w-6 h-6 border-2 border-zinc-800 border-t-amber-400 rounded-full animate-spin" />
-        </div>
-      </div>
-    );
-  }
-
-  if (history.length < 2) return null;
-
-  const first = history[0].precio_promedio;
-  const last = history[history.length - 1].precio_promedio;
-  const changePct = ((last - first) / first) * 100;
-
-  return (
-    <div className="bg-panel border border-hairline rounded-sm p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-zinc-50">
-          Tendencia: {category}
-        </h3>
-        <span
-          className={`tabular text-sm font-bold ${
-            changePct > 0 ? "text-red-400" : "text-green-400"
-          }`}
-        >
-          {fmtPct(changePct)}
-        </span>
-      </div>
-      <PriceChart
-        data={{ average: history, byChain: {} }}
-        selectedChains={new Set()}
-        height={180}
-      />
     </div>
   );
 }

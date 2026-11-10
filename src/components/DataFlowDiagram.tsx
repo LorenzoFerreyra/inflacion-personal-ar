@@ -25,7 +25,7 @@ const STAGES = [
   {
     id: "processing",
     label: "Procesamiento",
-    sublabel: "Cálculo de variaciones e IPC",
+    sublabel: "Índices por clase COICOP",
     icon: "cpu",
   },
   {
@@ -191,9 +191,9 @@ export default function DataFlowDiagram({ chains = [] }: Props) {
     scraper:
       "Un proceso automatizado recolecta diariamente los precios de miles de productos, registrando EAN, precio de lista, cadena y fecha.",
     database:
-      "Los datos se almacenan en una base SQLite con series históricas de precios y un catálogo canónico de productos con marca y categoría.",
+      "Los datos se guardan como series históricas de precios, con un catálogo canónico de productos clasificados en las clases COICOP del INDEC.",
     processing:
-      "Se calculan variaciones porcentuales por período (30, 90 o 365 días) y se comparan contra el IPC del INDEC para contextualizar.",
+      "Se calcula un índice mensual por clase COICOP y se agrega con los ponderadores del INDEC, para compararlo con la serie oficial del mismo código.",
     app: "El observatorio presenta los datos con tablas interactivas, gráficos de evolución y comparaciones por cadena de supermercado.",
   };
 

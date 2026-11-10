@@ -18,6 +18,10 @@ describe("PERIODS", () => {
     expect(PERIODS.interanual.dias).toBe(365);
   });
 
+  it("months for the INDEC comparisons match each period", () => {
+    expect([PERIODS.mensual.meses, PERIODS.trimestral.meses, PERIODS.interanual.meses]).toEqual([1, 3, 12]);
+  });
+
   it("each period has a label", () => {
     for (const key of Object.keys(PERIODS) as Array<keyof typeof PERIODS>) {
       expect(PERIODS[key].label).toBeTruthy();

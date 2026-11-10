@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { usePeriod } from "@/lib/PeriodContext";
 import { PERIODS, PeriodKey } from "@/lib/constants";
+import { fmtMes } from "@/lib/canasta";
 const tabs = [
   { href: "/", label: "Mi canasta" },
   { href: "/explorador", label: "Explorador" },
   { href: "/historial", label: "Historial" },
+  { href: "/indices", label: "Índices" },
   { href: "/insights", label: "Insights" },
   { href: "/cobertura", label: "Cobertura" },
   { href: "/chat", label: "Asistente" },
@@ -18,7 +20,7 @@ const tabs = [
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { period, setPeriod, ipc, ipcError } = usePeriod();
+  const { period, setPeriod, ipc, ipcError, periodos } = usePeriod();
   const [periodOpen, setPeriodOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -51,8 +53,11 @@ export default function Navigation() {
 
             {/* IPC readout + period selector */}
             <div className="flex items-baseline gap-2 whitespace-nowrap">
-              <span className="hidden sm:inline text-[11px] uppercase text-zinc-500">
-                IPC oficial
+              <span
+                className="hidden sm:inline text-[11px] uppercase text-zinc-500"
+                title="IPC nivel general, total nacional, último mes publicado por el INDEC. Es solo una referencia: las comparaciones se hacen por clase en Índices."
+              >
+                IPC nacional
               </span>
               <span
                 className={`tabular text-sm font-bold ${ipcError ? "text-zinc-500" : "text-amber-400"}`}
@@ -86,22 +91,36 @@ export default function Navigation() {
                 </button>
                 {periodOpen && (
                   <div className="absolute top-full right-0 mt-2 bg-panel-2 border border-hairline-strong rounded-sm shadow-xl py-1 min-w-[110px] z-50">
-                    {(Object.keys(PERIODS) as PeriodKey[]).map((key) => (
-                      <button
-                        key={key}
-                        onClick={() => {
-                          setPeriod(key);
-                          setPeriodOpen(false);
-                        }}
-                        className={`block w-full text-left px-3 py-1.5 text-[12px] ${
-                          period === key
-                            ? "text-amber-300 bg-amber-tint"
-                            : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-                        }`}
-                      >
-                        {PERIODS[key].label}
-                      </button>
-                    ))}
+                    {(Object.keys(PERIODS) as PeriodKey[]).map((key) => {
+                      const disponible = periodos?.disponibles[key] ?? true;
+                      return (
+                        <button
+                          key={key}
+                          disabled={!disponible}
+                          title={
+                            disponible || !periodos?.desde
+                              ? undefined
+                              : `Hay precios comparables desde ${fmtMes(periodos.desde)}`
+                          }
+                          onClick={() => {
+                            setPeriod(key);
+                            setPeriodOpen(false);
+                          }}
+                          className={`block w-full text-left px-3 py-1.5 text-[12px] ${
+                            !disponible
+                              ? "text-zinc-600 cursor-not-allowed"
+                              : period === key
+                                ? "text-amber-300 bg-amber-tint"
+                                : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                          }`}
+                        >
+                          {PERIODS[key].label}
+                          {!disponible && (
+                            <span className="block text-[10px] text-zinc-600">sin datos aún</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

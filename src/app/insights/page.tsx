@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import ComparacionClases from "@/components/ComparacionClases";
 import KpiCard from "@/components/KpiCard";
+import type { ComparacionIndices } from "@/lib/indices";
 import ChainBarChart from "@/components/ChainBarChart";
 import ProductDetail from "@/components/ProductDetail";
 import { Product, ChainPrice } from "@/lib/types";
@@ -14,12 +18,29 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { fmtPct } from "@/lib/format";
 
 export default function InsightsPage() {
-  const { period, ipc: ipcValues, ipcError } = usePeriod();
+  const { period } = usePeriod();
+  const router = useRouter();
+  const [indices, setIndices] = useState<ComparacionIndices | null>(null);
+  const [indicesError, setIndicesError] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [chains, setChains] = useState<ChainPrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    fetch("/api/indices", { signal: abort.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((d: ComparacionIndices) => setIndices(d))
+      .catch((err) => {
+        if (err.name !== "AbortError") setIndicesError(true);
+      });
+    return () => abort.abort();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,7 +83,6 @@ export default function InsightsPage() {
     };
   }, [period]);
 
-  const ipcValue = ipcValues[period];
   const validProducts = products.filter((p) => p.variacion_pct !== null);
 
   const maxUp =
@@ -81,14 +101,6 @@ export default function InsightsPage() {
 
   const alerts = [...validProducts]
     .sort((a, b) => (b.variacion_pct ?? 0) - (a.variacion_pct ?? 0))
-    .slice(0, 15);
-
-  const ipcComparison = [...validProducts]
-    .map((p) => ({
-      ...p,
-      delta_pp: Math.round(((p.variacion_pct ?? 0) - ipcValue) * 10) / 10,
-    }))
-    .sort((a, b) => b.delta_pp - a.delta_pp)
     .slice(0, 15);
 
   if (loading) {
@@ -207,73 +219,29 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        {/* IPC comparison */}
-        <div hidden={ipcError}>
+        {/* Classes vs INDEC: same COICOP code, same month, same region */}
+        <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-zinc-50">
-              vs. IPC ({fmtPct(ipcValue, false)})
+              Clases vs. INDEC
             </h3>
-            <button
-              onClick={() =>
-                downloadCsv(
-                  "comparacion-ipc.csv",
-                  ["Producto", "Variación %", `Delta vs IPC (${ipcValue}%)`],
-                  ipcComparison.map((p) => [
-                    p.product_description,
-                    String(p.variacion_pct ?? ""),
-                    String(p.delta_pp),
-                  ]),
-                )
-              }
-              className="flex items-center gap-1 px-2 py-1 rounded-sm text-[11px] font-medium
-                         text-zinc-400 border border-hairline-strong hover:text-zinc-200 hover:bg-panel-2"
+            <Link
+              href="/indices"
+              className="text-[11px] text-amber-400 hover:text-amber-300 underline decoration-dotted underline-offset-4"
             >
-              <Download size={11} />
-              CSV
-            </button>
+              Ver índices
+            </Link>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm table-fixed">
-              <thead>
-                <tr className="border-b border-hairline-strong">
-                  <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase w-[55%]">
-                    Producto
-                  </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase w-[22%]">
-                    Var %
-                  </th>
-                  <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase w-[23%]">
-                    &Delta; %
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {ipcComparison.map((p) => (
-                  <tr
-                    key={p.ean}
-                    onClick={() => setSelectedProduct(p)}
-                    className="border-b border-hairline hover:bg-panel-2 cursor-pointer"
-                  >
-                    <td className="py-2 px-3 text-zinc-200 truncate text-[13px]" title={p.product_description}>
-                      {p.product_description}
-                    </td>
-                    <td className="py-2 px-3 text-right text-zinc-500 text-[13px] tabular">
-                      {p.variacion_pct !== null ? fmtPct(p.variacion_pct) : "—"}
-                    </td>
-                    <td className="py-2 px-3 text-right">
-                      <span
-                        className={`tabular text-[13px] font-bold ${
-                          p.delta_pp > 0 ? "text-red-400" : "text-green-400"
-                        }`}
-                      >
-                        {fmtPct(p.delta_pp)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {indices ? (
+            <ComparacionClases
+              data={indices}
+              onSelect={(codigo) => router.push(`/indices#${codigo}`)}
+            />
+          ) : (
+            <p className="text-[13px] text-zinc-500">
+              {indicesError ? "No se pudieron cargar los índices." : "Cargando índices..."}
+            </p>
+          )}
         </div>
 
         {/* Chain ranking */}

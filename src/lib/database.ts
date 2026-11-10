@@ -6,7 +6,9 @@
  *   - price_runs: precios por EAN y cadena guardados como tramos [desde, hasta]
  *     en los que el precio no cambió (en vez de una fila por día)
  *   - canonical_products: catálogo de productos con descripción, marca, categoría
- *   - daily_counts / category_daily: agregados diarios precalculados
+ *   - daily_counts: cantidad de precios por día, precalculada
+ *   - indice_clase_mensual / indice_agregado_mensual: índices propios por
+ *     clase COICOP y sus agregados; indec_ipc / indec_aperturas: serie del INDEC
  *
  * Funciones SQL auxiliares (sql/schema_runs_pg.sql del scraper):
  *   - ps_at(fecha): los precios vigentes ese día
@@ -21,6 +23,14 @@ import type {
   Category,
   Branch,
 } from "./types";
+import {
+  REGION_INDEC,
+  compararIndices,
+  type ComparacionIndices,
+  type FilaIndec,
+  type FilaIndicePropio,
+} from "./indices";
+import { RELATIVO_MAX, RELATIVO_MIN, type RelativoProducto } from "./canasta";
 
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
@@ -70,6 +80,17 @@ let productsSnapshot: ProductsSnapshot | null = null;
 const CUTOFF_CTE =
   "WITH c AS (SELECT ((now() AT TIME ZONE 'UTC')::date - ?::int) AS d)";
 
+/**
+ * Si la ventana de N días cae entera en el tramo de precios comparables.
+ * Si no, la variación de los productos es null: antes del primer mes del
+ * índice los precios tienen otra escala y no se pueden comparar.
+ */
+export async function periodoComparable(dias: number): Promise<boolean> {
+  const row = await query<{ ok: boolean | null }>(`${CUTOFF_CTE}
+    SELECT c.d >= (SELECT MIN(periodo) FROM indice_clase_mensual) AS ok FROM c`).get(dias);
+  return row?.ok === true;
+}
+
 async function getProductsSnapshot(dias: number): Promise<CachedProduct[]> {
   const latestDate = (
     await query<{ f: string | null }>(
@@ -82,28 +103,40 @@ async function getProductsSnapshot(dias: number): Promise<CachedProduct[]> {
     return productsSnapshot.products;
   }
 
-  const baseDateSql = `${CUTOFF_CTE}
-    SELECT MIN(GREATEST(desde, c.d))::text AS f FROM price_runs, c WHERE hasta >= c.d`;
-  const baseDate = (await query<{ f: string | null }>(baseDateSql).get(dias))?.f ?? null;
+  const baseDate = (await periodoComparable(dias))
+    ? ((
+        await query<{ f: string | null }>(`${CUTOFF_CTE}
+          SELECT MIN(GREATEST(desde, c.d))::text AS f FROM price_runs, c WHERE hasta >= c.d`).get(dias)
+      )?.f ?? null)
+    : null;
 
+  // La variación compara cada cadena consigo misma (solo las que tienen
+  // precio en las dos fechas) y promedia las cadenas con media geométrica.
+  // Comparar promedios de cadenas distintas movía la variación cuando
+  // cambiaba qué cadenas tenían el producto, sin que cambiara ningún precio.
   const products = await query<Product>(`
     WITH
-    precio_actual AS (
-      SELECT ean, AVG(precio_lista) AS precio_hoy, COUNT(DISTINCT cadena) AS cobertura_cadenas
-      FROM ps_at(?::date) WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean
+    hoy AS (
+      SELECT ean, cadena, AVG(precio_lista) AS p
+      FROM ps_at(?::date) WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean, cadena
     ),
-    precio_base AS (
-      SELECT ean, AVG(precio_lista) AS precio_antes
-      FROM ps_at(?::date) WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean
+    antes AS (
+      SELECT ean, cadena, AVG(precio_lista) AS p
+      FROM ps_at(?::date) WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean, cadena
+    ),
+    precio_actual AS (
+      SELECT ean, AVG(p) AS precio_hoy, COUNT(*) AS cobertura_cadenas FROM hoy GROUP BY ean
+    ),
+    variacion AS (
+      SELECT h.ean, EXP(AVG(LN(h.p / a.p))) - 1 AS v
+      FROM hoy h JOIN antes a USING (ean, cadena) GROUP BY h.ean
     )
     SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
       ROUND(pa.precio_hoy::numeric, 0) AS precio_actual,
-      CASE WHEN pb.precio_antes IS NOT NULL AND pb.precio_antes > 0
-        THEN ROUND(((pa.precio_hoy - pb.precio_antes) / pb.precio_antes * 100)::numeric, 1)
-        ELSE NULL END AS variacion_pct,
+      ROUND((v.v * 100)::numeric, 1) AS variacion_pct,
       pa.cobertura_cadenas
     FROM precio_actual pa
-    LEFT JOIN precio_base pb USING (ean)
+    LEFT JOIN variacion v USING (ean)
     JOIN canonical_products cp USING (ean)
     ORDER BY pa.cobertura_cadenas DESC, cp.product_description
   `).all(latestDate, baseDate);
@@ -287,14 +320,15 @@ async function getProductsFromDb(options: ProductQueryOptions): Promise<{
   )?.f;
   if (!latestDate) return { products: [], total: 0 };
 
-  const baseDate =
-    (
-      await query<{ f: string | null }>(
-        `${CUTOFF_CTE}
-         SELECT MIN(GREATEST(desde, c.d))::text AS f FROM price_runs, c
-         WHERE hasta >= c.d AND cadena = ? AND is_outlier = 0`,
-      ).get(dias, cadena)
-    )?.f ?? null;
+  const baseDate = (await periodoComparable(dias))
+    ? ((
+        await query<{ f: string | null }>(
+          `${CUTOFF_CTE}
+           SELECT MIN(GREATEST(desde, c.d))::text AS f FROM price_runs, c
+           WHERE hasta >= c.d AND cadena = ? AND is_outlier = 0`,
+        ).get(dias, cadena)
+      )?.f ?? null)
+    : null;
 
   const total =
     (
@@ -460,15 +494,130 @@ export async function getPriceStats(ean: string): Promise<{
   return row;
 }
 
-/** Media geométrica diaria por categoría, desde la tabla precalculada category_daily. */
-export async function getCategoryPriceHistory(category: string): Promise<PricePoint[]> {
-  const sql = `
-    SELECT fecha::text AS fecha, EXP(sum_ln / n) AS precio_promedio
-    FROM category_daily
-    WHERE categoria = ?
-    ORDER BY fecha
-  `;
-  return query<PricePoint>(sql).all(category);
+// ─── Índices por clase COICOP (los arma el pipeline, load/coicop_pg.py) ──────
+
+/** Índices propios: clases y agregados (grupos y divisiones), con nombre del INDEC. */
+export async function getIndicesPropios(): Promise<FilaIndicePropio[]> {
+  return query<FilaIndicePropio>(`
+    SELECT 'Clase' AS nivel, i.codigo, a.nombre, i.periodo::text AS periodo, i.indice,
+           i.var_mensual, i.n_pares, i.n_productos, i.n_cadenas, NULL::float8 AS cobertura
+    FROM indice_clase_mensual i JOIN indec_aperturas a USING (codigo)
+    UNION ALL
+    SELECT g.nivel, g.codigo, a.nombre, g.periodo::text, g.indice,
+           g.var_mensual, NULL, NULL, NULL, g.cobertura
+    FROM indice_agregado_mensual g JOIN indec_aperturas a USING (codigo)
+    ORDER BY codigo, periodo
+  `).all();
+}
+
+/** Serie del INDEC de una región para esos códigos, desde un mes. */
+export async function getIndecSerie(
+  codigos: string[],
+  region: string,
+  desde: string,
+): Promise<FilaIndec[]> {
+  if (codigos.length === 0) return [];
+  return query<FilaIndec>(`
+    SELECT codigo, periodo::text AS periodo, indice, var_mensual
+    FROM indec_ipc
+    WHERE region = ? AND codigo = ANY(?::text[]) AND periodo >= ?::date
+    ORDER BY codigo, periodo
+  `).all(region, codigos, desde);
+}
+
+/** Último mes publicado por el INDEC que está cargado para la región. */
+export async function getUltimoMesIndec(region: string): Promise<string | null> {
+  const row = await query<{ periodo: string | null }>(
+    "SELECT MAX(periodo)::text AS periodo FROM indec_ipc WHERE region = ? AND indice IS NOT NULL",
+  ).get(region);
+  return row?.periodo ?? null;
+}
+
+/**
+ * Primer y último mes del índice por clase. El primero es también el primer
+ * día con precios comparables: antes de julio de 2026 Disco, Jumbo y Vea
+ * guardaban precios con otra escala.
+ */
+export async function getMesesIndice(): Promise<{ base: string | null; ultimo: string | null }> {
+  const row = await query<{ base: string | null; ultimo: string | null }>(
+    "SELECT MIN(periodo)::text AS base, MAX(periodo)::text AS ultimo FROM indice_clase_mensual",
+  ).get();
+  return { base: row?.base ?? null, ultimo: row?.ultimo ?? null };
+}
+
+/**
+ * Relativo de cada producto entre dos meses: precio mensual promedio por
+ * cadena, solo cadenas con precio en los dos meses, y media de los
+ * logaritmos entre cadenas. Mismos filtros que el índice del pipeline.
+ */
+export async function getRelativosCanasta(
+  eans: string[],
+  desde: string,
+  hasta: string,
+): Promise<RelativoProducto[]> {
+  if (eans.length === 0) return [];
+  return query<RelativoProducto>(`
+    WITH meses(periodo) AS (VALUES (?::date), (?::date)),
+    pm AS (
+      SELECT r.ean, r.cadena, m.periodo,
+             SUM(r.precio_lista * d.dias) / SUM(d.dias) AS precio
+      FROM price_runs r
+      JOIN meses m ON r.desde <= (m.periodo + interval '1 month - 1 day')::date AND r.hasta >= m.periodo
+      CROSS JOIN LATERAL (
+        SELECT LEAST(r.hasta, (m.periodo + interval '1 month - 1 day')::date)
+               - GREATEST(r.desde, m.periodo) + 1 AS dias
+      ) d
+      WHERE r.ean = ANY(?::text[]) AND r.cadena <> 'indec'
+        AND r.precio_lista > 0 AND r.is_outlier = 0
+      GROUP BY r.ean, r.cadena, m.periodo
+    ),
+    rel AS (
+      SELECT a.ean, LN(b.precio / a.precio) AS l
+      FROM pm a JOIN pm b ON b.ean = a.ean AND b.cadena = a.cadena
+      WHERE a.periodo = ?::date AND b.periodo = ?::date
+        AND b.precio / a.precio BETWEEN ? AND ?
+    )
+    SELECT rel.ean, cp.clase_coicop, AVG(rel.l) AS l, COUNT(*)::int AS n_cadenas
+    FROM rel JOIN canonical_products cp USING (ean)
+    GROUP BY rel.ean, cp.clase_coicop
+  `).all(desde, hasta, eans, desde, hasta, RELATIVO_MIN, RELATIVO_MAX);
+}
+
+/** Índices propios y su par del INDEC, listos para la UI y el MCP. */
+export async function getComparacionIndices(): Promise<ComparacionIndices> {
+  const [propios, ultimoMesIndec, publicadas] = await Promise.all([
+    getIndicesPropios(),
+    getUltimoMesIndec(REGION_INDEC),
+    query<{ codigo: string }>(
+      "SELECT DISTINCT codigo FROM indec_ipc WHERE region = ? AND indice IS NOT NULL",
+    ).all(REGION_INDEC),
+  ]);
+  const base = propios.map((p) => p.periodo).sort()[0];
+  const codigos = [...new Set(propios.map((p) => p.codigo))];
+  const indec = base ? await getIndecSerie(codigos, REGION_INDEC, base) : [];
+  return compararIndices(propios, indec, new Set(publicadas.map((p) => p.codigo)), ultimoMesIndec);
+}
+
+/**
+ * Clases que el INDEC publica en la región y, para las que tienen los dos
+ * meses, ln(I_hasta / I_desde).
+ */
+export async function getIndecClases(
+  region: string,
+  desde: string,
+  hasta: string,
+): Promise<{ publicadas: Set<string>; ln: Map<string, number> }> {
+  const rows = await query<{ codigo: string; l: number | null }>(`
+    SELECT i.codigo,
+           LN(MAX(i.indice) FILTER (WHERE i.periodo = ?::date)
+              / MAX(i.indice) FILTER (WHERE i.periodo = ?::date)) AS l
+    FROM indec_ipc i JOIN indec_aperturas a USING (codigo)
+    WHERE i.region = ? AND a.nivel = 'Clase'
+    GROUP BY i.codigo
+  `).all(hasta, desde, region);
+  const ln = new Map<string, number>();
+  for (const r of rows) if (r.l !== null) ln.set(r.codigo, r.l);
+  return { publicadas: new Set(rows.map((r) => r.codigo)), ln };
 }
 
 /** Tramos vigentes en la última fecha con datos, filtrados por EAN. */

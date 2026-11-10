@@ -9,7 +9,7 @@ import {
   getPriceHistoryByChain,
   getProductByEan,
   getPriceStats,
-  getCategoryPriceHistory,
+  getComparacionIndices,
   getChainPrices,
   getLatestDate,
 } from "@/lib/database";
@@ -158,25 +158,33 @@ const handler = createMcpHandler(
     );
 
     server.registerTool(
-      "get_category_price_history",
+      "get_class_indices",
       {
-        title: "Historial de precios por categoria",
+        title: "Indices por clase COICOP vs INDEC",
         description:
-          "Devuelve la serie historica de precios promedio de una categoria completa. " +
-          "Util para analizar inflacion por rubro (lacteos, bebidas, etc.).",
+          "Devuelve el indice mensual propio de cada clase COICOP del INDEC (y de sus grupos " +
+          "y divisiones), al lado de la serie del INDEC con el mismo codigo para la region GBA. " +
+          "Util para analizar inflacion por rubro. Cada serie dice si es comparable con el " +
+          "INDEC y, si no, por que (clases sin serie publicada, grupos con servicios).",
         inputSchema: {
-          category: z
+          codigo: z
             .string()
-            .describe(
-              "Nombre de la categoria (usar get_categories para ver opciones)",
-            ),
+            .regex(/^\d\d(\.\d){0,2}$/)
+            .optional()
+            .describe("Codigo COICOP (ej. '01.1.4'); sin codigo devuelve todas las series"),
         },
       },
-      async ({ category }) => {
-        const history = await getCategoryPriceHistory(category);
+      async ({ codigo }) => {
+        const comparacion = await getComparacionIndices();
+        const series = codigo
+          ? comparacion.series.filter((s) => s.codigo === codigo)
+          : comparacion.series;
         return {
           content: [
-            { type: "text" as const, text: JSON.stringify(history, null, 2) },
+            {
+              type: "text" as const,
+              text: JSON.stringify({ ...comparacion, series }, null, 2),
+            },
           ],
         };
       },

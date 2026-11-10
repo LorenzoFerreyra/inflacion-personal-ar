@@ -33,24 +33,60 @@ export default async function MetodologiaPage() {
 
         <section className="border-t border-hairline pt-4">
           <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
-            Cálculo de variación
+            Clasificación
           </h3>
           <p className="text-sm text-zinc-400 leading-relaxed prose-width">
-            La variación porcentual de cada producto se calcula comparando el
-            precio más reciente contra el precio registrado al inicio del
-            período seleccionado (30, 90 o 365 días).
+            Cada producto se asigna a una clase COICOP del INDEC (por ejemplo,
+            01.1.4 Leche, productos lácteos, huevos y alimentos vegetales) a
+            partir de su nombre, con reglas revisadas a mano. Un producto que
+            ninguna regla reconoce queda sin clasificar y no entra en los
+            índices: no se asigna por la categoría del supermercado.
           </p>
         </section>
 
         <section className="border-t border-hairline pt-4">
           <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
-            IPC de referencia
+            Índice por clase
           </h3>
           <p className="text-sm text-zinc-400 leading-relaxed prose-width">
-            El Índice de Precios al Consumidor (IPC) utilizado como referencia
-            es el publicado por el INDEC. Se emplea para contextualizar las
-            variaciones individuales de cada producto respecto a la inflación
-            general.
+            Para cada mes calendario se toma el precio de lista promedio de
+            cada producto en cada cadena, sin los precios marcados como
+            atípicos. Cada producto se compara consigo mismo en la misma cadena
+            entre un mes y el siguiente; las variaciones de más del doble o de
+            menos de la mitad se descartan porque son errores de carga. Por
+            clase se calcula la media geométrica de cada cadena (con al menos
+            30 productos comparables) y todas las cadenas pesan igual. Los
+            grupos y divisiones se arman con los ponderadores del INDEC para
+            GBA, actualizados por precios al primer mes del índice.
+          </p>
+        </section>
+
+        <section className="border-t border-hairline pt-4">
+          <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
+            Comparación con el INDEC
+          </h3>
+          <p className="text-sm text-zinc-400 leading-relaxed prose-width">
+            Cada índice se compara con la serie del INDEC del mismo código,
+            para la región GBA y los mismos meses; nunca contra el nivel
+            general, que incluye alquileres, transporte y servicios. No se
+            comparan las clases que el INDEC no publica por separado (como
+            01.1.3 Pescados y 01.1.9 Otros alimentos), ni los grupos que
+            incluyen servicios que un supermercado no vende: 05.6 incluye el
+            servicio doméstico y 12.1 la peluquería. La canasta personal se
+            compara con lo que habría marcado el INDEC para una canasta con la
+            misma composición por clase.
+          </p>
+        </section>
+
+        <section className="border-t border-hairline pt-4">
+          <h3 className="text-[15px] font-medium text-zinc-50 mb-2">
+            Variación por producto
+          </h3>
+          <p className="text-sm text-zinc-400 leading-relaxed prose-width">
+            La variación de cada producto en el explorador compara el precio
+            más reciente con el del inicio del período (30, 90 o 365 días).
+            Solo se calcula si ese inicio es posterior al 1 de julio de 2026:
+            hasta junio, tres cadenas publicaban los precios en otra escala.
           </p>
         </section>
 

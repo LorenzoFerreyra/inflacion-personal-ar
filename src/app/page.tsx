@@ -20,11 +20,12 @@ import ProductImage from "@/components/ProductImage";
 import VariationBadge from "@/components/VariationBadge";
 import { chainLabel } from "@/lib/chainColors";
 import { fmtPct } from "@/lib/format";
+import { fmtMes, type RespuestaCanasta } from "@/lib/canasta";
 
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
 
 export default function MiCanastaPage() {
-  const { period, ipc: ipcValues, ipcError } = usePeriod();
+  const { period } = usePeriod();
   const {
     search,
     setSearch,
@@ -46,10 +47,7 @@ export default function MiCanastaPage() {
   const [step, setStep] = useState(1);
   const [basket, setBasket] = useState<Product[]>([]);
   const [result, setResult] = useState<{
-    personal: number;
-    ipc: number;
-    diff: number;
-    products: Product[];
+    canasta: RespuestaCanasta;
     chains: ChainPrice[];
   } | null>(null);
   const [calculating, setCalculating] = useState(false);
@@ -72,46 +70,20 @@ export default function MiCanastaPage() {
     setError(null);
 
     try {
-      const eans = basket.map((p) => p.ean);
-      const params = new URLSearchParams({
-        eans: eans.join(","),
-        dias: String(PERIODS[period].dias),
-        pageSize: "200",
-      });
+      const eans = basket.map((p) => p.ean).join(",");
+      const params = new URLSearchParams({ eans, meses: String(PERIODS[period].meses) });
 
-      const [productsRes, chainsRes] = await Promise.all([
-        fetch(`/api/products?${params}`),
-        fetch(`/api/chains?eans=${eans.join(",")}`),
+      const [canastaRes, chainsRes] = await Promise.all([
+        fetch(`/api/canasta?${params}`),
+        fetch(`/api/chains?eans=${eans}`),
       ]);
 
-      if (!productsRes.ok || !chainsRes.ok)
+      if (!canastaRes.ok || !chainsRes.ok)
         throw new Error("Error al obtener datos");
 
-      const { products: basketProducts } = (await productsRes.json()) as {
-        products: Product[];
-        total: number;
-      };
-      const chains: ChainPrice[] = await chainsRes.json();
-
-      const validVariations = basketProducts
-        .map((p) => p.variacion_pct)
-        .filter((v): v is number => v !== null);
-
-      const personal =
-        validVariations.length > 0
-          ? validVariations.reduce((a, b) => a + b, 0) / validVariations.length
-          : 0;
-
-      const ipc = ipcValues[period];
-
       setResult({
-        personal: Math.round(personal * 10) / 10,
-        ipc,
-        diff: Math.round((personal - ipc) * 10) / 10,
-        products: [...basketProducts].sort(
-          (a, b) => (b.variacion_pct ?? 0) - (a.variacion_pct ?? 0),
-        ),
-        chains,
+        canasta: (await canastaRes.json()) as RespuestaCanasta,
+        chains: (await chainsRes.json()) as ChainPrice[],
       });
 
       setStep(3);
@@ -400,89 +372,18 @@ export default function MiCanastaPage() {
       {/* ── STEP 3 ── */}
       {step === 3 && result && (
         <div className="space-y-6 animate-fade-in">
-          <div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <KpiCard
-                label="Tu inflaci&oacute;n personal"
-                value={fmtPct(result.personal, false)}
-                subtitle={PERIODS[period].label.toLowerCase()}
-                color={
-                  ipcError
-                    ? undefined
-                    : result.personal > result.ipc
-                      ? "red"
-                      : "green"
-                }
-              />
-              <KpiCard
-                label="IPC oficial"
-                value={ipcError ? "—" : fmtPct(result.ipc, false)}
-                subtitle={PERIODS[period].label.toLowerCase()}
-              />
-              <KpiCard
-                label="Diferencia"
-                value={ipcError ? "—" : fmtPct(result.diff)}
-                subtitle={
-                  ipcError
-                    ? "IPC no disponible"
-                    : result.diff > 0
-                      ? "por encima del IPC"
-                      : "por debajo del IPC"
-                }
-                color={
-                  ipcError ? undefined : result.diff > 0 ? "red" : "green"
-                }
-              />
-            </div>
-            <p className="text-xs text-zinc-500 mt-4">
-              Fuente: relevamiento propio de supermercados · IPC oficial: INDEC
-              · promedio simple de {result.products.length} producto
-              {result.products.length !== 1 ? "s" : ""} de tu canasta.
+          {result.canasta.disponible ? (
+            <ResultadoCanastaView canasta={result.canasta} basket={basket} />
+          ) : (
+            <p className="text-[13px] text-amber-300 bg-amber-tint border border-amber-tint-2 rounded-sm px-4 py-3">
+              {result.canasta.motivo}
             </p>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Ranked products */}
-            <div>
-              <h3 className="text-[15px] font-medium text-zinc-50 mb-3">
-                Productos por variaci&oacute;n
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-hairline-strong">
-                      <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase">
-                        #
-                      </th>
-                      <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase">
-                        Producto
-                      </th>
-                      <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase">
-                        Var %
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.products.map((p, i) => (
-                      <tr
-                        key={p.ean}
-                        className="border-b border-hairline hover:bg-panel-2"
-                      >
-                        <td className="py-2 px-3 text-zinc-600 text-[13px] tabular">
-                          {i + 1}
-                        </td>
-                        <td className="py-2 px-3 text-zinc-200 text-[13px] truncate max-w-64">
-                          {p.product_description}
-                        </td>
-                        <td className="py-2 px-3 text-right">
-                          <VariationBadge value={p.variacion_pct} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {result.canasta.disponible && (
+              <ProductosCanasta canasta={result.canasta} basket={basket} />
+            )}
 
             {/* Chain chart */}
             {result.chains.length > 0 && (
@@ -508,6 +409,136 @@ export default function MiCanastaPage() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+type CanastaCalculada = Extract<RespuestaCanasta, { disponible: true }>;
+
+function ResultadoCanastaView({
+  canasta,
+  basket,
+}: {
+  canasta: CanastaCalculada;
+  basket: Product[];
+}) {
+  const { comparacion } = canasta;
+  const meses = `${fmtMes(canasta.desde)} → ${fmtMes(canasta.hasta)}`;
+  const color = comparacion
+    ? comparacion.diferencia > 0
+      ? "red"
+      : comparacion.diferencia < 0
+        ? "green"
+        : "neutral"
+    : "neutral";
+  const plural = (n: number) => `${n} producto${n === 1 ? "" : "s"}`;
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <KpiCard
+          label="Tu canasta"
+          value={canasta.canasta ? fmtPct(canasta.canasta.var_pct, false) : "—"}
+          subtitle={
+            canasta.canasta
+              ? `${meses} · ${plural(canasta.canasta.n)} de ${basket.length}`
+              : meses
+          }
+        />
+        <KpiCard
+          label="INDEC GBA, mismas clases"
+          value={comparacion ? fmtPct(comparacion.indec_var, false) : "—"}
+          subtitle={comparacion ? `${meses} · ${plural(comparacion.n)}` : "sin comparación"}
+        />
+        <KpiCard
+          label="Diferencia"
+          value={comparacion ? `${fmtPct(comparacion.diferencia).replace("%", "")} pp` : "—"}
+          subtitle={
+            comparacion
+              ? `tu canasta ${fmtPct(comparacion.canasta_var)} en esos ${plural(comparacion.n)}`
+              : "sin comparación"
+          }
+          color={color}
+        />
+      </div>
+      {canasta.motivo && (
+        <p className="text-[13px] text-amber-300 bg-amber-tint border border-amber-tint-2 rounded-sm px-4 py-3 mt-5">
+          {canasta.motivo}
+        </p>
+      )}
+      <p className="text-xs text-zinc-500 mt-4 leading-relaxed max-w-3xl">
+        Precio promedio de cada mes calendario en cada cadena; cada producto se compara
+        consigo mismo en la misma cadena y todos pesan igual. La columna del INDEC es la
+        variación de la clase COICOP de cada producto en GBA, en los mismos meses: lo que
+        habría marcado el INDEC para una canasta con la misma composición. Solo entran los
+        productos de clases que el INDEC publica por separado.
+      </p>
+    </div>
+  );
+}
+
+function ProductosCanasta({
+  canasta,
+  basket,
+}: {
+  canasta: CanastaCalculada;
+  basket: Product[];
+}) {
+  const nombres = new Map(basket.map((p) => [p.ean, p.product_description]));
+  const filas = [...canasta.productos].sort(
+    (a, b) => (b.var_pct ?? -Infinity) - (a.var_pct ?? -Infinity),
+  );
+  return (
+    <div>
+      <h3 className="text-[15px] font-medium text-zinc-50 mb-3">
+        Productos por variaci&oacute;n
+      </h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-hairline-strong">
+              <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase">
+                Producto
+              </th>
+              <th className="py-2.5 px-3 text-left text-[11px] font-bold text-zinc-400 uppercase">
+                Clase
+              </th>
+              <th className="py-2.5 px-3 text-right text-[11px] font-bold text-zinc-400 uppercase">
+                Var %
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((p) => (
+              <tr key={p.ean} className="border-b border-hairline hover:bg-panel-2">
+                <td className="py-2 px-3 text-zinc-200 text-[13px] truncate max-w-64">
+                  {nombres.get(p.ean) ?? p.ean}
+                </td>
+                <td
+                  className="py-2 px-3 text-[12px] tabular text-zinc-500"
+                  title={
+                    !p.clase_coicop
+                      ? "Sin clase COICOP: no entra en la comparación con el INDEC"
+                      : p.comparable
+                        ? "Entra en la comparación con el INDEC"
+                        : "El INDEC no publica esta clase para estos meses"
+                  }
+                >
+                  {p.clase_coicop ?? "—"}
+                  {p.clase_coicop && !p.comparable && " *"}
+                </td>
+                <td className="py-2 px-3 text-right">
+                  <VariationBadge value={p.var_pct} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[11px] text-zinc-500 mt-2">
+        * Clase sin serie del INDEC para estos meses: cuenta para tu canasta pero no para la
+        comparación. &ldquo;—&rdquo; en la variación: sin precio en los dos meses.
+      </p>
     </div>
   );
 }

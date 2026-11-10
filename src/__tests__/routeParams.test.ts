@@ -76,27 +76,3 @@ describe("chains route EAN parsing", () => {
     expect(parseEans(many).length).toBe(200);
   });
 });
-
-describe("category-history route validation", () => {
-  const MAX_LENGTH = 200;
-
-  it("rejects empty string", () => {
-    const category: string = "";
-    expect(!category || category.length > MAX_LENGTH).toBe(true);
-  });
-
-  it("accepts valid category name", () => {
-    const category = "Lácteos";
-    expect(!!category && category.length <= MAX_LENGTH).toBe(true);
-  });
-
-  it("rejects over 200 characters", () => {
-    const category = "a".repeat(201);
-    expect(!!category && category.length <= MAX_LENGTH).toBe(false);
-  });
-
-  it("accepts exactly 200 characters", () => {
-    const category = "a".repeat(200);
-    expect(!!category && category.length <= MAX_LENGTH).toBe(true);
-  });
-});
