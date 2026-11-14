@@ -10,8 +10,12 @@ import type { ChatMessage } from "./types";
 
 export const CHAT_MODEL = "deepseek-chat";
 
+export type Intencion = "donde_comprar" | "sitio" | "otro";
+
 export interface Extraction {
   es_consulta_valida: boolean;
+  /** Dónde comprar → ranking de cadenas; sitio → guiar a la sección de la UI. */
+  intencion: Intencion;
   productos: string[];
   ubicacion: string | null;
   /** El usuario dijo que no quiere dar ubicación / que no importa la zona. */
@@ -39,6 +43,10 @@ export async function extractIntent(
       // Ante un JSON malformado, fail-open al modelo (que también está
       // hardeneado por system prompt) en vez de rebotar consultas legítimas.
       es_consulta_valida: parsed.es_consulta_valida !== false,
+      intencion:
+        parsed.intencion === "sitio" || parsed.intencion === "otro"
+          ? parsed.intencion
+          : "donde_comprar",
       productos: Array.isArray(parsed.productos)
         ? parsed.productos
             .filter((p: unknown) => typeof p === "string")
@@ -53,6 +61,7 @@ export async function extractIntent(
   } catch {
     return {
       es_consulta_valida: true,
+      intencion: "otro",
       productos: [],
       ubicacion: null,
       ubicacion_rechazada: false,

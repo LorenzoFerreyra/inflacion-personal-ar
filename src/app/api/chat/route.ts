@@ -135,8 +135,13 @@ export async function POST(request: NextRequest) {
       return cannedSse(OFF_TOPIC_REPLY);
     }
 
+    // Solo "dónde comprar" usa el catálogo y el ranking; el resto se responde
+    // guiando al usuario a la sección del sitio que lo resuelve.
+    const wantsStores = extraction.intencion === "donde_comprar";
+
     // Sin ubicación todavía: preguntarla antes de recomendar.
     if (
+      wantsStores &&
       extraction.productos.length > 0 &&
       !extraction.ubicacion &&
       !browserCoords &&
@@ -149,7 +154,7 @@ export async function POST(request: NextRequest) {
 
     // B) Buscar cada keyword en el catálogo.
     const matches = await Promise.all(
-      extraction.productos.map(async (keyword) => ({
+      (wantsStores ? extraction.productos : []).map(async (keyword) => ({
         keyword,
         productos: await searchProducts(keyword),
       })),
@@ -162,7 +167,7 @@ export async function POST(request: NextRequest) {
     // texto. Si Nominatim falla, seguimos sin geo.
     let coords: { lat: number; lng: number } | null = browserCoords ?? null;
     let geocodeFailed = false;
-    if (!coords && extraction.ubicacion) {
+    if (wantsStores && !coords && extraction.ubicacion) {
       coords = await geocode(extraction.ubicacion);
       geocodeFailed = coords == null;
     }

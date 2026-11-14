@@ -53,10 +53,10 @@ export default function Navigation() {
             {/* IPC readout + period selector */}
             <div className="flex items-baseline gap-2 whitespace-nowrap">
               <span
-                className="hidden sm:inline text-[11px] uppercase text-zinc-500"
-                title="IPC nivel general, total nacional, último mes publicado por el INDEC. Es solo una referencia: las comparaciones se hacen por clase en Índices."
+                className="text-[11px] uppercase text-zinc-500"
+                title="IPC del INDEC: nivel general, total nacional, último mes publicado. Es solo una referencia: las comparaciones se hacen por clase en Índices."
               >
-                IPC nacional
+                <span className="hidden sm:inline">IPC </span>INDEC
               </span>
               <span
                 className={`tabular text-sm font-bold ${ipcError ? "text-zinc-500" : "text-amber-400"}`}
@@ -89,33 +89,40 @@ export default function Navigation() {
                   </svg>
                 </button>
                 {periodOpen && (
-                  <div className="absolute top-full right-0 mt-2 bg-panel-2 border border-hairline-strong rounded-sm shadow-xl py-1 min-w-[110px] z-50">
+                  <div className="absolute top-full right-0 mt-2 bg-panel-2 border border-hairline-strong rounded-sm shadow-xl py-1 min-w-[150px] z-50">
+                    <span className="block px-3 pt-1 pb-1.5 text-[10px] uppercase text-zinc-500">
+                      IPC INDEC
+                    </span>
                     {(Object.keys(PERIODS) as PeriodKey[]).map((key) => {
-                      const disponible = periodos?.disponibles[key] ?? true;
+                      // El INDEC publica las tres variaciones; lo que puede faltar
+                      // es historia propia de precios para comparar la canasta.
+                      const canastaDisponible = periodos?.disponibles[key] ?? true;
                       return (
                         <button
                           key={key}
-                          disabled={!disponible}
                           title={
-                            disponible || !periodos?.desde
+                            canastaDisponible || !periodos?.desde
                               ? undefined
-                              : `Hay precios comparables desde ${fmtMes(periodos.desde)}`
+                              : `Tu canasta tiene precios comparables desde ${fmtMes(periodos.desde)}`
                           }
                           onClick={() => {
                             setPeriod(key);
                             setPeriodOpen(false);
                           }}
                           className={`block w-full text-left px-3 py-1.5 text-[12px] ${
-                            !disponible
-                              ? "text-zinc-600 cursor-not-allowed"
-                              : period === key
-                                ? "text-amber-300 bg-amber-tint"
-                                : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                            period === key
+                              ? "text-amber-300 bg-amber-tint"
+                              : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
                           }`}
                         >
-                          {PERIODS[key].label}
-                          {!disponible && (
-                            <span className="block text-[10px] text-zinc-600">sin datos aún</span>
+                          <span className="flex items-baseline justify-between gap-3">
+                            {PERIODS[key].label}
+                            {!ipcError && (
+                              <span className="tabular text-[11px] text-zinc-500">{ipc[key]}%</span>
+                            )}
+                          </span>
+                          {!canastaDisponible && (
+                            <span className="block text-[10px] text-zinc-600">tu canasta: sin datos aún</span>
                           )}
                         </button>
                       );
