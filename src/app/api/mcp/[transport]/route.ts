@@ -162,7 +162,8 @@ const handler = createMcpHandler(
           "Devuelve el indice mensual propio de cada clase COICOP del INDEC (y de sus grupos " +
           "y divisiones), al lado de la serie del INDEC con el mismo codigo para la region GBA. " +
           "Util para analizar inflacion por rubro. Cada serie dice si es comparable con el " +
-          "INDEC y, si no, por que (clases sin serie publicada, grupos con servicios).",
+          "INDEC y, si no, por que (clases sin serie publicada). Los agregados que cubrimos en " +
+          "parte (tabaco, servicios) se comparan igual y traen una 'nota' con la cobertura.",
         inputSchema: {
           codigo: z
             .string()

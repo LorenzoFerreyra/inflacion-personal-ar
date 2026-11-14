@@ -10,11 +10,10 @@
  * │  cada serie al lado de la serie del INDEC con el mismo código, la   │
  * │  misma región y los mismos meses. Nunca contra el nivel general.    │
  * │                                                                      │
- * │  Una serie no se compara cuando:                                    │
- * │  - es una clase que el INDEC no publica (01.1.3, 01.1.9, ...);      │
- * │  - es un grupo o división que nuestros productos no cubren entero:  │
- * │    05.6 y 12.1 incluyen servicios (servicio doméstico, peluquería)  │
- * │    y 02 incluye tabaco.                                             │
+ * │  Una serie no se compara solo si el INDEC no la publica (clases     │
+ * │  01.1.3, 01.1.9, ...). Los grupos y divisiones que nuestros         │
+ * │  productos no cubren enteros (05.6 y 12.1 incluyen servicios, 02    │
+ * │  incluye tabaco) se comparan igual, con una nota que lo aclara.     │
  * │                                                                      │
  * │  Para el gráfico, la serie del INDEC se lleva a la misma base que   │
  * │  la nuestra (primer mes = 100). Las variaciones mensuales se        │
@@ -24,7 +23,7 @@
 
 export const REGION_INDEC = "GBA";
 
-/** Un agregado se compara solo si nuestras clases cubren todo su ponderador. */
+/** Debajo de esta cobertura, un agregado lleva la nota de cobertura parcial. */
 const COBERTURA_COMPLETA = 0.999;
 
 /**
@@ -34,8 +33,9 @@ const COBERTURA_COMPLETA = 0.999;
  */
 export const DIVISIONES_EXCLUIDAS = new Set(["06"]);
 
-/** Grupos del INDEC con servicios que un supermercado no vende. */
-const SERVICIOS: Record<string, string> = {
+/** Lo que el INDEC incluye en estas aperturas y un supermercado no vende. */
+const NO_SUPERMERCADO: Record<string, string> = {
+  "02": "tabaco",
   "05.6": "servicio doméstico",
   "12.1": "peluquería y otros servicios de cuidado personal",
 };
@@ -85,6 +85,8 @@ export interface SerieComparada {
   comparable: boolean;
   /** Por qué no es comparable (null si lo es). */
   motivo: string | null;
+  /** Aclaración de una comparación que vale con reparos (cobertura parcial). */
+  nota: string | null;
   puntos: PuntoComparado[];
 }
 
@@ -112,14 +114,20 @@ export function motivoNoComparable(
       ? null
       : "El INDEC no publica una serie mensual para esta clase: entra solo en los agregados.";
   }
-  if (cobertura !== null && cobertura < COBERTURA_COMPLETA) {
-    const servicio = SERVICIOS[codigo];
-    const resto = servicio
-      ? ` El resto incluye ${servicio}, que un supermercado no vende.`
-      : " El resto son bienes o servicios que no relevamos.";
-    return `Nuestros productos cubren el ${pct(cobertura)} del ponderador del INDEC para esta apertura.${resto}`;
-  }
   return indecPublica ? null : "El INDEC no publica una serie mensual para esta apertura.";
+}
+
+/** Nota para un agregado que cubrimos en parte, o null si lo cubrimos entero. */
+export function notaCobertura(codigo: string, cobertura: number | null): string | null {
+  if (cobertura === null || cobertura >= COBERTURA_COMPLETA) return null;
+  const fuera = NO_SUPERMERCADO[codigo];
+  const resto = fuera
+    ? `el resto es ${fuera}, que no relevamos`
+    : "el resto son bienes o servicios que no relevamos";
+  return (
+    `Nuestros productos cubren el ${pct(cobertura)} de lo que pesa esta categoría en el INDEC; ` +
+    `${resto}. La comparación sirve como referencia.`
+  );
 }
 
 /**
@@ -186,6 +194,7 @@ export function compararIndices(
       cobertura: primera.cobertura,
       comparable,
       motivo,
+      nota: notaCobertura(codigo, primera.cobertura),
       puntos: filas.map((f) => ({
         periodo: f.periodo,
         propio: f.indice,

@@ -425,6 +425,9 @@ function Resumen({ serie, region }: { serie: SerieComparada; region: string }) {
             <>El INDEC todavía no publicó {fmtMesLargo(p.periodo)}.</>
           ) : null}
         </p>
+        {serie.comparable && serie.nota && (
+          <p className="text-[13px] text-zinc-500 mt-2 leading-relaxed max-w-3xl">{serie.nota}</p>
+        )}
         {!serie.comparable && serie.motivo && (
           <p className="text-[13px] text-zinc-500 mt-2 leading-relaxed max-w-3xl">
             Sin comparación con el INDEC. {serie.motivo}

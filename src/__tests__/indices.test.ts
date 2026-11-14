@@ -4,6 +4,7 @@ import {
   diferenciaPp,
   mesDeComparacion,
   motivoNoComparable,
+  notaCobertura,
   rebasar,
   ultimoMesEnComun,
   type FilaIndec,
@@ -45,15 +46,16 @@ describe("motivoNoComparable", () => {
     expect(motivoNoComparable("01.1.9", "Clase", null, false)).toMatch(/no publica/);
   });
 
-  it("rejects groups with services the supermarket does not sell", () => {
-    const motivo = motivoNoComparable("05.6", "Grupo", 0.456, true);
-    expect(motivo).toMatch(/46%/);
-    expect(motivo).toMatch(/servicio doméstico/);
-    expect(motivoNoComparable("12.1", "Grupo", 0.699, true)).toMatch(/peluquería/);
-  });
-
-  it("rejects divisions we only partly cover", () => {
-    expect(motivoNoComparable("02", "Division", 0.434, true)).toMatch(/43%/);
+  it("compares partly covered aggregates, with a note", () => {
+    expect(motivoNoComparable("05.6", "Grupo", 0.456, true)).toBeNull();
+    expect(motivoNoComparable("02", "Division", 0.434, true)).toBeNull();
+    const nota = notaCobertura("05.6", 0.456);
+    expect(nota).toMatch(/46%/);
+    expect(nota).toMatch(/servicio doméstico/);
+    expect(notaCobertura("12.1", 0.699)).toMatch(/peluquería/);
+    expect(notaCobertura("02", 0.434)).toMatch(/43%.*tabaco/);
+    expect(notaCobertura("01", 1)).toBeNull();
+    expect(notaCobertura("01.1.4", null)).toBeNull();
   });
 
   it("compares a fully covered aggregate", () => {
@@ -112,15 +114,16 @@ describe("compararIndices", () => {
     expect(clase.puntos.every((p) => p.indec === null && p.indec_var === null)).toBe(true);
   });
 
-  it("does not compare a covered-in-part aggregate even if the INDEC publishes it", () => {
+  it("compares a covered-in-part aggregate the INDEC publishes, with a note", () => {
     const c = compararIndices(
       [propio("05.6", JUL, 100, null, { cobertura: 0.456 }), propio("05.6", AGO, 101, 1, { cobertura: 0.456 })],
       [{ codigo: "05.6", periodo: AGO, indice: 1, var_mensual: 3 }],
       new Set(["05.6"]),
       AGO,
     );
-    expect(c.series[0].comparable).toBe(false);
-    expect(c.series[0].puntos[1].indec_var).toBeNull();
+    expect(c.series[0].comparable).toBe(true);
+    expect(c.series[0].nota).toMatch(/46%/);
+    expect(c.series[0].puntos[1].indec_var).toBe(3);
   });
 
   it("leaves out Salud and series without any monthly variation", () => {

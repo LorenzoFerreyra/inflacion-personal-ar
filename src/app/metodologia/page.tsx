@@ -74,9 +74,11 @@ export default async function MetodologiaPage() {
             para la región GBA y los mismos meses; nunca contra el nivel
             general, que incluye alquileres, transporte y servicios. No se
             comparan las clases que el INDEC no publica por separado (como
-            01.1.3 Pescados y 01.1.9 Otros alimentos), ni los grupos que
-            incluyen servicios que un supermercado no vende: 05.6 incluye el
-            servicio doméstico y 12.1 la peluquería. La canasta personal se
+            01.1.3 Pescados y 01.1.9 Otros alimentos). Algunas categorías del
+            INDEC incluyen cosas que un supermercado no vende (el tabaco en
+            02, el servicio doméstico en 05.6, la peluquería en 12.1): esas se
+            comparan igual, con una nota que dice qué parte cubrimos, y la
+            comparación vale como referencia. La canasta personal se
             compara con lo que habría marcado el INDEC para una canasta con la
             misma composición por clase.
           </p>
