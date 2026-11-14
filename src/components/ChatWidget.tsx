@@ -8,20 +8,33 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import type { ChatMessage as Message, Priority } from "@/lib/chat/types";
 
 const SUGGESTIONS = [
+  "¿Dónde compro más barato yerba y azúcar?",
   "Necesito arroz, aceite y carne picada, vivo en Caballito",
-  "¿Dónde conviene comprar yerba y azúcar cerca de Palermo?",
-  "¿Cuánto sale la leche en cada supermercado?",
+  "¿Qué puedo hacer en esta página?",
 ];
 
+type LocationState =
+  | { status: "none" }
+  | { status: "loading" }
+  | { status: "set"; lat: number; lng: number }
+  | { status: "error"; message: string };
+
 /** Parsea los eventos SSE acumulados y devuelve el texto + resto sin consumir. */
-function drainSse(buffer: string): { text: string; rest: string; done: boolean } {
+function drainSse(buffer: string): {
+  text: string;
+  rest: string;
+  done: boolean;
+  askLocation: boolean;
+} {
   let text = "";
   let done = false;
+  let askLocation = false;
   const events = buffer.split("\n\n");
   const rest = events.pop() ?? "";
   for (const event of events) {
@@ -35,12 +48,13 @@ function drainSse(buffer: string): { text: string; rest: string; done: boolean }
       try {
         const parsed = JSON.parse(data);
         if (typeof parsed.content === "string") text += parsed.content;
+        if (parsed.meta?.ask_location === true) askLocation = true;
       } catch {
         // chunk malformado: ignorar
       }
     }
   }
-  return { text, rest, done };
+  return { text, rest, done, askLocation };
 }
 
 export default function ChatWidget() {
@@ -49,6 +63,10 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [priority, setPriority] = useState<Priority>("balanced");
   const [radiusKm, setRadiusKm] = useState<number | null>(null);
+  const [location, setLocation] = useState<LocationState>({ status: "none" });
+  // Índice del mensaje del asistente que pidió la ubicación (muestra el botón).
+  const [askLocationAt, setAskLocationAt] = useState<number | null>(null);
+  const pathname = usePathname();
   const scrollRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
 
@@ -72,10 +90,19 @@ export default function ChatWidget() {
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const send = async (text: string) => {
+  const send = async (
+    text: string,
+    coordsOverride?: { lat: number; lng: number },
+  ) => {
     const history = [...messages, { role: "user" as const, content: text }];
     setMessages([...history, { role: "assistant", content: "" }]);
+    setAskLocationAt(null);
     setLoading(true);
+    const coords =
+      coordsOverride ??
+      (location.status === "set"
+        ? { lat: location.lat, lng: location.lng }
+        : undefined);
 
     const appendToAssistant = (chunk: string) => {
       setMessages((prev) => {
@@ -93,7 +120,9 @@ export default function ChatWidget() {
         body: JSON.stringify({
           messages: history,
           priority,
+          pagina: pathname,
           ...(radiusKm != null ? { radiusKm } : {}),
+          ...(coords ? { coords } : {}),
         }),
       });
 
@@ -119,6 +148,7 @@ export default function ChatWidget() {
         const drained = drainSse(buffer);
         buffer = drained.rest;
         if (drained.text) appendToAssistant(drained.text);
+        if (drained.askLocation) setAskLocationAt(history.length);
         if (drained.done) break;
       }
     } catch {
@@ -126,6 +156,28 @@ export default function ChatWidget() {
     } finally {
       setLoading(false);
     }
+  };
+
+  /** Pide la ubicación al navegador. Si `thenSend`, reenvía la consulta con ella. */
+  const requestLocation = (thenSend: boolean) => {
+    if (!("geolocation" in navigator)) {
+      setLocation({ status: "error", message: "Tu navegador no permite compartir ubicación." });
+      return;
+    }
+    setLocation({ status: "loading" });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocation({ status: "set", ...c });
+        if (thenSend) send("Usá mi ubicación actual", c);
+      },
+      () =>
+        setLocation({
+          status: "error",
+          message: "No pude obtener tu ubicación. Escribime tu barrio o localidad.",
+        }),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 10 * 60_000 },
+    );
   };
 
   return (
@@ -206,11 +258,28 @@ export default function ChatWidget() {
               </div>
             ) : (
               messages.map((m, i) => (
-                <ChatMessage
-                  key={i}
-                  message={m}
-                  isStreaming={loading && i === messages.length - 1 && m.role === "assistant"}
-                />
+                <div key={i}>
+                  <ChatMessage
+                    message={m}
+                    isStreaming={loading && i === messages.length - 1 && m.role === "assistant"}
+                    onNavigate={() => {
+                      // En mobile el panel tapa la página: cerrarlo al navegar.
+                      if (window.matchMedia("(max-width: 639px)").matches) setOpen(false);
+                    }}
+                  />
+                  {askLocationAt === i && !loading && (
+                    <button
+                      type="button"
+                      onClick={() => requestLocation(true)}
+                      disabled={location.status === "loading"}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-sm bg-amber-450 px-3 py-2
+                                 text-[13px] font-medium text-zinc-950 hover:bg-amber-400 disabled:opacity-60"
+                    >
+                      <PinIcon />
+                      {location.status === "loading" ? "Obteniendo ubicación…" : "Usar mi ubicación"}
+                    </button>
+                  )}
+                </div>
               ))
             )}
           </div>
@@ -224,8 +293,19 @@ export default function ChatWidget() {
               onPriorityChange={setPriority}
               radiusKm={radiusKm}
               onRadiusChange={setRadiusKm}
+              location={location.status}
+              onLocationToggle={() =>
+                location.status === "set"
+                  ? setLocation({ status: "none" })
+                  : requestLocation(false)
+              }
               autoFocus
             />
+            {location.status === "error" && (
+              <p className="mt-2 text-[11px] text-red-400" role="status">
+                {location.message}
+              </p>
+            )}
             <p className="mt-2 text-center text-[10px] text-zinc-500">
               Verificá el precio en la sucursal antes de comprar.
             </p>
@@ -260,5 +340,19 @@ export default function ChatWidget() {
         )}
       </button>
     </>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M8 14.5s4.5-4.2 4.5-8a4.5 4.5 0 10-9 0c0 3.8 4.5 8 4.5 8z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="6.5" r="1.6" fill="currentColor" />
+    </svg>
   );
 }

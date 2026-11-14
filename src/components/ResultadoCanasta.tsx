@@ -119,11 +119,12 @@ function Resumen({
   const { canasta_var, indec_var, diferencia, n } = comparacion;
   const x = escala([canasta_var, indec_var]);
   const cero = x(0);
+  const brecha = `${fmtPct(Math.abs(diferencia), false).replace("%", "")} pp`;
   const veredicto =
     diferencia > 0
-      ? `${fmtPp(diferencia).replace("+", "")} por encima del INDEC`
+      ? `${brecha} por encima del INDEC`
       : diferencia < 0
-        ? `${fmtPp(-diferencia)} por debajo del INDEC`
+        ? `${brecha} por debajo del INDEC`
         : "igual que el INDEC";
 
   const barras = [
@@ -149,7 +150,7 @@ function Resumen({
           return (
             <div key={b.label} className="grid grid-cols-[9rem_1fr] sm:grid-cols-[11rem_1fr] items-center gap-3">
               <span className="text-[13px] text-zinc-400">{b.label}</span>
-              <div className="relative h-9">
+              <div className="relative h-9 mr-12">
                 <div
                   className="absolute top-0 bottom-0 w-px bg-hairline-strong"
                   style={{ left: `${cero}%` }}
@@ -240,21 +241,22 @@ function PorClase({
                     </span>
                   </span>
 
-                  <span className="relative h-6 col-span-2 sm:col-span-1 row-start-2 sm:row-start-auto order-last sm:order-none">
+                  <span className="relative h-6 mx-2 col-span-2 sm:col-span-1 row-start-2 sm:row-start-auto order-last sm:order-none">
                     <span className="absolute inset-y-0 w-px bg-hairline-strong" style={{ left: `${cero}%` }} />
                     <span
                       className={`absolute top-1/2 h-0.5 -translate-y-1/2 opacity-60 ${tonoBg(c.diferencia)}`}
                       style={{ left: `${Math.min(a, b)}%`, width: `${Math.abs(a - b)}%` }}
                     />
                     <span
-                      className="absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-zinc-400 bg-zinc-950"
-                      style={{ left: `${b}%` }}
-                      title={`INDEC ${fmtPct(c.indec_var)}`}
-                    />
-                    <span
                       className="absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-450"
                       style={{ left: `${a}%` }}
                       title={`Vos ${fmtPct(c.canasta_var)}`}
+                    />
+                    {/* Anillo más grande y hueco: se ve aunque coincida con tu punto. */}
+                    <span
+                      className="absolute top-1/2 w-4 h-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-zinc-400"
+                      style={{ left: `${b}%` }}
+                      title={`INDEC ${fmtPct(c.indec_var)}`}
                     />
                   </span>
 
@@ -278,7 +280,7 @@ function PorClase({
       </ul>
       <div className="hidden sm:grid grid-cols-[minmax(0,16rem)_1fr_4.5rem] gap-4 px-1 pt-1 text-[10px] text-zinc-600 tabular">
         <span />
-        <span className="relative h-3">
+        <span className="relative h-3 mx-2">
           <span className="absolute -translate-x-1/2" style={{ left: `${cero}%` }}>0%</span>
         </span>
         <span />

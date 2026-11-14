@@ -15,6 +15,10 @@ export interface ChatRequestBody {
   messages: ChatMessage[];
   priority: Priority;
   radiusKm?: number;
+  /** Ubicación del navegador (botón "Usar mi ubicación"), si el usuario la compartió. */
+  coords?: { lat: number; lng: number };
+  /** Ruta de la página donde está el usuario (ej: "/explorador"). */
+  pagina?: string;
 }
 
 /** Valida y normaliza el body del POST. Devuelve null si es inválido. */
@@ -50,5 +54,24 @@ export function parseBody(raw: unknown): ChatRequestBody | null {
     radiusKm = Math.min(100, Math.max(0.5, body.radiusKm));
   }
 
-  return { messages, priority, radiusKm };
+  let coords: { lat: number; lng: number } | undefined;
+  const c = body.coords as Record<string, unknown> | undefined;
+  if (
+    c != null &&
+    typeof c === "object" &&
+    typeof c.lat === "number" &&
+    typeof c.lng === "number" &&
+    Math.abs(c.lat) <= 90 &&
+    Math.abs(c.lng) <= 180
+  ) {
+    coords = { lat: c.lat, lng: c.lng };
+  }
+
+  // Solo rutas internas simples: evita inyectar texto arbitrario al prompt.
+  const pagina =
+    typeof body.pagina === "string" && /^\/[a-z0-9\-/]{0,60}$/i.test(body.pagina)
+      ? body.pagina
+      : undefined;
+
+  return { messages, priority, radiusKm, coords, pagina };
 }

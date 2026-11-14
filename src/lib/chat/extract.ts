@@ -14,6 +14,8 @@ export interface Extraction {
   es_consulta_valida: boolean;
   productos: string[];
   ubicacion: string | null;
+  /** El usuario dijo que no quiere dar ubicación / que no importa la zona. */
+  ubicacion_rechazada: boolean;
 }
 
 export async function extractIntent(
@@ -46,8 +48,14 @@ export async function extractIntent(
         typeof parsed.ubicacion === "string" && parsed.ubicacion.trim()
           ? parsed.ubicacion.trim()
           : null,
+      ubicacion_rechazada: parsed.ubicacion_rechazada === true,
     };
   } catch {
-    return { es_consulta_valida: true, productos: [], ubicacion: null };
+    return {
+      es_consulta_valida: true,
+      productos: [],
+      ubicacion: null,
+      ubicacion_rechazada: false,
+    };
   }
 }

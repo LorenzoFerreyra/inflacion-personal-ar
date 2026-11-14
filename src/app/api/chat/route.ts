@@ -5,6 +5,8 @@
  *   A) clasificación + extracción de productos y ubicación (DeepSeek, JSON mode)
  *      — si la consulta está fuera de tema, responde un mensaje fijo sin
  *        gastar la segunda llamada (guardrail de alcance)
+ *      — si pidió productos pero no dijo dónde está (ni compartió la
+ *        ubicación del navegador ni dijo "no importa"), le pregunta la zona
  *   B) búsqueda fuzzy de productos en el catálogo (SQLite)
  *   C) geocodificación de la ubicación (Nominatim)
  *   D) ranking de cadenas (recommend, una variante por keyword)
@@ -21,7 +23,12 @@ import { searchProducts } from "@/lib/chat/search-products";
 import { geocode } from "@/lib/chat/geocode";
 import { recommend } from "@/lib/chat/recommend";
 import { CHAT_MODEL, extractIntent, type Extraction } from "@/lib/chat/extract";
-import { OFF_TOPIC_REPLY, SYSTEM_PROMPT } from "@/lib/chat/prompts";
+import {
+  OFF_TOPIC_REPLY,
+  SYSTEM_PROMPT,
+  askLocationReply,
+} from "@/lib/chat/prompts";
+import { buildSiteKnowledge } from "@/lib/chat/site-knowledge";
 import { parseBody } from "@/lib/chat/parse-request";
 import { checkRateLimit } from "@/lib/chat/rate-limit";
 import type { MatchedProduct } from "@/lib/chat/types";
@@ -37,12 +44,18 @@ function buildContextMessage(
   matches: { keyword: string; productos: MatchedProduct[] }[],
   recommendation: Awaited<ReturnType<typeof recommend>> | null,
   geocodeFailed: boolean,
+  ubicacionNavegador: boolean,
+  siteKnowledge: string,
 ): string {
   return [
     "Datos del sistema para responder la última consulta (no los muestres crudos, usalos para redactar):",
+    siteKnowledge,
+    "",
+    "DATOS DE LA CONSULTA:",
     JSON.stringify(
       {
         interpretacion: extraction,
+        ubicacion_compartida_desde_navegador: ubicacionNavegador,
         geocoding_fallo: geocodeFailed,
         productos_encontrados: matches,
         recomendacion: recommendation,
@@ -66,9 +79,16 @@ const SSE_HEADERS = {
 };
 
 /** Respuesta SSE con un texto fijo, sin llamar al modelo. */
-function cannedSse(text: string): Response {
+function cannedSse(text: string, meta?: Record<string, unknown>): Response {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
+      if (meta) {
+        controller.enqueue(
+          new TextEncoder().encode(`data: ${JSON.stringify({ meta })}
+
+`),
+        );
+      }
       controller.enqueue(sseEncode(text));
       controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
       controller.close();
@@ -104,7 +124,7 @@ export async function POST(request: NextRequest) {
   if (!body) {
     return Response.json({ error: "Formato de mensaje inválido." }, { status: 400 });
   }
-  const { messages, priority, radiusKm } = body;
+  const { messages, priority, radiusKm, coords: browserCoords, pagina } = body;
 
   try {
     // A) Clasificar y extraer productos + ubicación del mensaje natural.
@@ -113,6 +133,18 @@ export async function POST(request: NextRequest) {
     // Guardrail de alcance: fuera de tema → respuesta fija, sin segunda llamada.
     if (!extraction.es_consulta_valida) {
       return cannedSse(OFF_TOPIC_REPLY);
+    }
+
+    // Sin ubicación todavía: preguntarla antes de recomendar.
+    if (
+      extraction.productos.length > 0 &&
+      !extraction.ubicacion &&
+      !browserCoords &&
+      !extraction.ubicacion_rechazada
+    ) {
+      return cannedSse(askLocationReply(extraction.productos), {
+        ask_location: true,
+      });
     }
 
     // B) Buscar cada keyword en el catálogo.
@@ -126,19 +158,22 @@ export async function POST(request: NextRequest) {
       .map((m) => ({ keyword: m.keyword, eans: m.productos.map((p) => p.ean) }))
       .filter((i) => i.eans.length > 0);
 
-    // C) Geocodificar si hay ubicación. Si Nominatim falla, seguimos sin geo.
-    let coords: { lat: number; lng: number } | null = null;
+    // C) Ubicación: la del navegador tiene prioridad; si no, geocodificar el
+    // texto. Si Nominatim falla, seguimos sin geo.
+    let coords: { lat: number; lng: number } | null = browserCoords ?? null;
     let geocodeFailed = false;
-    if (extraction.ubicacion) {
+    if (!coords && extraction.ubicacion) {
       coords = await geocode(extraction.ubicacion);
       geocodeFailed = coords == null;
     }
 
     // D) Rankear cadenas (una variante por keyword, la más barata por cadena).
-    const recommendation =
+    const [recommendation, siteKnowledge] = await Promise.all([
       items.length > 0
-        ? await recommend(items, coords?.lat, coords?.lng, priority, radiusKm)
-        : null;
+        ? recommend(items, coords?.lat, coords?.lng, priority, radiusKm)
+        : Promise.resolve(null),
+      buildSiteKnowledge(pagina),
+    ]);
 
     // E) Respuesta conversacional streameada con los datos inyectados.
     const completion = await client.chat.completions.create({
@@ -159,6 +194,8 @@ export async function POST(request: NextRequest) {
             matches,
             recommendation,
             geocodeFailed,
+            browserCoords != null,
+            siteKnowledge,
           ),
         },
         { role: "user", content: messages[messages.length - 1].content },

@@ -22,6 +22,8 @@ export default function ChatInput({
   onPriorityChange,
   radiusKm,
   onRadiusChange,
+  location,
+  onLocationToggle,
   autoFocus = false,
 }: {
   onSend: (text: string) => void;
@@ -30,6 +32,9 @@ export default function ChatInput({
   onPriorityChange: (p: Priority) => void;
   radiusKm: number | null;
   onRadiusChange: (km: number | null) => void;
+  /** Estado de la ubicación del navegador. */
+  location: "none" | "loading" | "set" | "error";
+  onLocationToggle: () => void;
   autoFocus?: boolean;
 }) {
   const [text, setText] = useState("");
@@ -75,7 +80,7 @@ export default function ChatInput({
           }
         }}
         disabled={disabled}
-        placeholder="¿Qué necesitás comprar y dónde?"
+        placeholder="¿Qué querés comprar más barato?"
         aria-label="Mensaje para el asistente"
         className="block w-full resize-none bg-transparent px-4 pt-3.5 pb-1.5
                    text-[15px] leading-6 text-zinc-100 placeholder:text-zinc-400
@@ -126,6 +131,29 @@ export default function ChatInput({
           }`}
         >
           {radiusOpen ? `Radio ${radiusKm ?? 5} km ✕` : "Radio"}
+        </button>
+
+        <button
+          type="button"
+          onClick={onLocationToggle}
+          disabled={location === "loading"}
+          aria-pressed={location === "set"}
+          title={
+            location === "set"
+              ? "Usando la ubicación de tu navegador. Tocá para dejar de usarla."
+              : "Compartir tu ubicación para encontrar la sucursal más cercana"
+          }
+          className={`rounded-sm px-2 py-1 text-[11px] font-medium disabled:opacity-60 ${
+            location === "set"
+              ? "bg-amber-tint-2 text-amber-300"
+              : "text-zinc-400 hover:text-zinc-200"
+          }`}
+        >
+          {location === "loading"
+            ? "Ubicando…"
+            : location === "set"
+              ? "Mi ubicación ✕"
+              : "Mi ubicación"}
         </button>
 
         {radiusOpen && (

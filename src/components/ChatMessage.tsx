@@ -1,15 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import type { ChatMessage as ChatMessageType } from "@/lib/chat/types";
 
-/**
- * Renderiza **negritas** dentro de una línea sin librería de markdown.
- */
-function renderInline(text: string): React.ReactNode[] {
+/** Solo enlaces internos del sitio ("/explorador"); el resto queda como texto. */
+const INTERNAL_LINK = /\[([^\]]+)\]\((\/[a-z0-9\-/#?=&]*)\)/gi;
+
+/** Renderiza **negritas** dentro de un fragmento sin librería de markdown. */
+function renderBold(text: string, keyPrefix: string): React.ReactNode[] {
   const parts = text.split(/\*\*(.+?)\*\*/g);
   return parts.map((part, i) =>
     i % 2 === 1 ? (
-      <strong key={i} className="font-semibold text-zinc-50">
+      <strong key={`${keyPrefix}-${i}`} className="font-semibold text-zinc-50">
         {part}
       </strong>
     ) : (
@@ -18,11 +20,34 @@ function renderInline(text: string): React.ReactNode[] {
   );
 }
 
+/** Negritas + enlaces internos [texto](/ruta). */
+function renderInline(text: string, onNavigate?: () => void): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(INTERNAL_LINK)) {
+    const idx = m.index ?? 0;
+    nodes.push(...renderBold(text.slice(last, idx), `t${idx}`));
+    nodes.push(
+      <Link
+        key={`l${idx}`}
+        href={m[2]}
+        onClick={onNavigate}
+        className="text-amber-300 underline decoration-amber-450/60 underline-offset-2 hover:text-amber-200"
+      >
+        {m[1]}
+      </Link>,
+    );
+    last = idx + m[0].length;
+  }
+  nodes.push(...renderBold(text.slice(last), "end"));
+  return nodes;
+}
+
 /**
  * Markdown mínimo para el MVP: negritas, listas con "- "/"• " y saltos
  * de línea. Sin dangerouslySetInnerHTML — todo son elementos React.
  */
-function renderContent(content: string): React.ReactNode {
+function renderContent(content: string, onNavigate?: () => void): React.ReactNode {
   const lines = content.split("\n");
   const blocks: React.ReactNode[] = [];
   let listItems: string[] = [];
@@ -34,7 +59,7 @@ function renderContent(content: string): React.ReactNode {
         {listItems.map((item, i) => (
           <li key={i} className="flex gap-2.5">
             <span className="mt-[9px] size-1 shrink-0 rounded-full bg-amber-400" />
-            <span>{renderInline(item)}</span>
+            <span>{renderInline(item, onNavigate)}</span>
           </li>
         ))}
       </ul>,
@@ -51,7 +76,7 @@ function renderContent(content: string): React.ReactNode {
       if (line.trim()) {
         blocks.push(
           <p key={`p-${blocks.length}`} className="my-2 first:mt-0 last:mb-0">
-            {renderInline(line)}
+            {renderInline(line, onNavigate)}
           </p>,
         );
       }
@@ -68,9 +93,12 @@ function renderContent(content: string): React.ReactNode {
 export default function ChatMessage({
   message,
   isStreaming = false,
+  onNavigate,
 }: {
   message: ChatMessageType;
   isStreaming?: boolean;
+  /** Se llama al tocar un enlace interno (ej: para cerrar el panel en mobile). */
+  onNavigate?: () => void;
 }) {
   if (message.role === "user") {
     return (
@@ -88,10 +116,10 @@ export default function ChatMessage({
   return (
     <div className="text-[15px] leading-7 text-zinc-200">
       {message.content ? (
-        renderContent(message.content)
+        renderContent(message.content, onNavigate)
       ) : isStreaming ? (
         <p className="my-2 text-zinc-400">
-          Buscando precios
+          Pensando
           <span className="inline-flex gap-0.5 pl-1 align-baseline">
             <span className="size-1 animate-pulse rounded-full bg-zinc-400" />
             <span
