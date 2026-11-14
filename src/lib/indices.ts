@@ -27,6 +27,13 @@ export const REGION_INDEC = "GBA";
 /** Un agregado se compara solo si nuestras clases cubren todo su ponderador. */
 const COBERTURA_COMPLETA = 0.999;
 
+/**
+ * Divisiones COICOP que no publicamos: el observatorio mide supermercados, y lo
+ * poco que hay de estas en la góndola no alcanza para un índice que valga.
+ * 06 = Salud (medicamentos y servicios médicos van por farmacia y prestadores).
+ */
+export const DIVISIONES_EXCLUIDAS = new Set(["06"]);
+
 /** Grupos del INDEC con servicios que un supermercado no vende. */
 const SERVICIOS: Record<string, string> = {
   "05.6": "servicio doméstico",
@@ -161,6 +168,9 @@ export function compararIndices(
 
   const series: SerieComparada[] = [];
   for (const [codigo, filas] of propiosPorCodigo) {
+    if (DIVISIONES_EXCLUIDAS.has(codigo.split(".")[0])) continue;
+    // Sin ninguna variación mensual todavía no hay nada que mostrar.
+    if (!filas.some((f) => f.var_mensual !== null)) continue;
     filas.sort((a, b) => a.periodo.localeCompare(b.periodo));
     const primera = filas[0];
     const indecSerie = indecPorCodigo.get(codigo) ?? [];
@@ -190,7 +200,7 @@ export function compararIndices(
   }
 
   series.sort((a, b) => a.codigo.localeCompare(b.codigo));
-  const periodos = propios.map((f) => f.periodo).sort();
+  const periodos = series.flatMap((x) => x.puntos.map((p) => p.periodo)).sort();
   return {
     region,
     base: periodos[0] ?? null,

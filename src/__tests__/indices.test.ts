@@ -123,6 +123,22 @@ describe("compararIndices", () => {
     expect(c.series[0].puntos[1].indec_var).toBeNull();
   });
 
+  it("leaves out Salud and series without any monthly variation", () => {
+    const c = compararIndices(
+      [
+        ...propios,
+        propio("06", JUL, 100, null),
+        propio("06", AGO, 103, 3),
+        propio("06.1.1", AGO, 100, null),
+        propio("09", AGO, 100, null),
+      ],
+      indec,
+      new Set(["01", "06", "09"]),
+      AGO,
+    );
+    expect(c.series.map((s) => s.codigo)).toEqual(["01", "01.1.9"]);
+  });
+
   it("keeps a published series comparable when its recent months are missing", () => {
     // La serie cargada llega a mayo y la nuestra empieza en julio: el INDEC
     // publica la apertura, solo que todavía no hay meses en común.

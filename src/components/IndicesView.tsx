@@ -148,7 +148,7 @@ export default function IndicesView() {
       </div>
 
       <section aria-label="Categorías" className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
           {divisiones.map((s) => (
             <TarjetaCategoria
               key={s.codigo}
