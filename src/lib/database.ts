@@ -69,20 +69,6 @@ export function getPool(): Pool {
   return globalForDb.__pgPool;
 }
 
-interface CachedProduct extends Product {
-  product_description_norm: string;
-  marca_norm: string;
-}
-
-interface ProductsSnapshot {
-  latestDate: string;
-  baseDate: string | null;
-  dias: number;
-  products: CachedProduct[];
-}
-
-let productsSnapshot: ProductsSnapshot | null = null;
-
 /** Fecha de corte (hoy UTC menos N días); el parámetro es la cantidad de días. */
 const CUTOFF_CTE =
   "WITH c AS (SELECT ((now() AT TIME ZONE 'UTC')::date - ?::int) AS d)";
@@ -96,66 +82,6 @@ export async function periodoComparable(dias: number): Promise<boolean> {
   const row = await query<{ ok: boolean | null }>(`${CUTOFF_CTE}
     SELECT c.d >= (SELECT MIN(periodo) FROM indice_clase_mensual) AS ok FROM c`).get(dias);
   return row?.ok === true;
-}
-
-async function getProductsSnapshot(dias: number): Promise<CachedProduct[]> {
-  const latestDate = (
-    await query<{ f: string | null }>(
-      "SELECT MAX(hasta)::text AS f FROM price_runs",
-    ).get()
-  )?.f;
-  if (!latestDate) return [];
-
-  if (productsSnapshot && productsSnapshot.latestDate === latestDate && productsSnapshot.dias === dias) {
-    return productsSnapshot.products;
-  }
-
-  const baseDate = (await periodoComparable(dias))
-    ? ((
-        await query<{ f: string | null }>(`${CUTOFF_CTE}
-          SELECT MIN(GREATEST(desde, c.d))::text AS f FROM price_runs, c WHERE hasta >= c.d`).get(dias)
-      )?.f ?? null)
-    : null;
-
-  // La variación compara cada cadena consigo misma (solo las que tienen
-  // precio en las dos fechas) y promedia las cadenas con media geométrica.
-  // Comparar promedios de cadenas distintas movía la variación cuando
-  // cambiaba qué cadenas tenían el producto, sin que cambiara ningún precio.
-  const products = await query<Product>(`
-    WITH
-    hoy AS (
-      SELECT ean, cadena, AVG(precio_lista) AS p
-      FROM ps_at(?::date) WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean, cadena
-    ),
-    antes AS (
-      SELECT ean, cadena, AVG(precio_lista) AS p
-      FROM ps_at(?::date) WHERE precio_lista > 0 AND is_outlier = 0 GROUP BY ean, cadena
-    ),
-    precio_actual AS (
-      SELECT ean, AVG(p) AS precio_hoy, COUNT(*) AS cobertura_cadenas FROM hoy GROUP BY ean
-    ),
-    variacion AS (
-      SELECT h.ean, EXP(AVG(LN(h.p / a.p))) - 1 AS v
-      FROM hoy h JOIN antes a USING (ean, cadena) GROUP BY h.ean
-    )
-    SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
-      ROUND(pa.precio_hoy::numeric, 0) AS precio_actual,
-      ROUND((v.v * 100)::numeric, 1) AS variacion_pct,
-      pa.cobertura_cadenas
-    FROM precio_actual pa
-    LEFT JOIN variacion v USING (ean)
-    JOIN canonical_products cp USING (ean)
-    ORDER BY pa.cobertura_cadenas DESC, cp.product_description
-  `).all(latestDate, baseDate);
-
-  const cached: CachedProduct[] = products.map((p) => ({
-    ...p,
-    product_description_norm: stripDiacritics(p.product_description ?? ""),
-    marca_norm: stripDiacritics(p.marca ?? ""),
-  }));
-
-  productsSnapshot = { latestDate, baseDate, dias, products: cached };
-  return cached;
 }
 
 /** Normaliza un string: elimina acentos y pasa a minúsculas. */
@@ -298,8 +224,10 @@ function buildProductQueryParts(options: ProductQueryOptions) {
  * Soporta filtrado por texto, categoría, cadena y lista de EANs.
  * Paginación con LIMIT/OFFSET.
  *
- * For the common case (no chain filter), uses an in-memory cache of per-date
- * price aggregations so only the first request per date pays the full scan.
+ * Sin filtro de cadena lee productos_resumen, que el pipeline arma una vez por
+ * día para 30, 90 y 365 días (scrapers-uflo, load/resumen_productos.py):
+ * calcular los 240.000 productos en cada pedido tardaba unos 10 segundos. Con
+ * filtro de cadena se calcula en el momento, porque es una sola cadena.
  */
 export async function getProducts(options: ProductQueryOptions): Promise<{
   products: Product[];
@@ -309,7 +237,7 @@ export async function getProducts(options: ProductQueryOptions): Promise<{
   const hasCadena = cadena.trim().length > 0;
 
   if (hasCadena) return getProductsFromDb(options);
-  return getProductsCached(options);
+  return getProductsResumen(options);
 }
 
 async function getProductsFromDb(options: ProductQueryOptions): Promise<{
@@ -368,42 +296,47 @@ async function getProductsFromDb(options: ProductQueryOptions): Promise<{
   return { products, total };
 }
 
-async function getProductsCached(options: ProductQueryOptions): Promise<{
+async function getProductsResumen(options: ProductQueryOptions): Promise<{
   products: Product[];
   total: number;
 }> {
   const { dias = 30, page = 1, pageSize = 30, search = "", category = "", eans } = options;
   const offset = (Math.max(page, 1) - 1) * pageSize;
 
-  const all = await getProductsSnapshot(dias);
-  if (all.length === 0) return { products: [], total: 0 };
-
-  let filtered: CachedProduct[] = all;
-
+  const conditions = ["r.dias = ?"];
+  const params: (string | number)[] = [dias];
+  if (search.trim()) buildSearchConditions(search, conditions, params);
   if (category.trim()) {
-    filtered = filtered.filter((p) => p.categoria === category);
+    conditions.push("r.categoria = ?");
+    params.push(category);
   }
-
   if (eans && eans.length > 0) {
-    const eanSet = new Set(eans);
-    filtered = filtered.filter((p) => eanSet.has(p.ean));
+    conditions.push(`r.ean IN (${eans.map(() => "?").join(", ")})`);
+    params.push(...eans);
   }
+  const from = `FROM productos_resumen r JOIN canonical_products cp USING (ean)
+                WHERE ${conditions.join(" AND ")}`;
 
-  if (search.trim()) {
-    const terms = stripDiacritics(search).split(/\s+/).filter(Boolean);
-    filtered = filtered.filter((p) =>
-      terms.every(
-        (t) => p.product_description_norm.includes(t) || p.marca_norm.includes(t),
-      ),
-    );
+  const [totalRow, products] = await Promise.all([
+    query<{ cnt: number }>(`SELECT COUNT(*) AS cnt ${from}`).get(...params),
+    query<Product>(`
+      SELECT cp.ean, cp.product_description, cp.marca, cp.categoria, cp.image_url,
+             r.precio_actual, r.variacion_pct, r.cobertura_cadenas
+      ${from}
+      ORDER BY r.orden
+      LIMIT ? OFFSET ?
+    `).all(...params, pageSize, offset),
+  ]);
+  const total = totalRow?.cnt ?? 0;
+
+  if (total === 0) {
+    // Sin filas puede ser una búsqueda vacía o un período que el pipeline no arma.
+    const hay = await query<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM productos_resumen_meta WHERE dias = ?",
+    ).get(dias);
+    if (!hay?.n) throw new Error(`productos_resumen no tiene el período de ${dias} días`);
   }
-
-  // Already sorted by cobertura DESC, product_description ASC from the snapshot
-  const products = filtered.slice(offset, offset + pageSize).map(
-    ({ product_description_norm: _, marca_norm: __, ...rest }) => rest,
-  );
-
-  return { products, total: filtered.length };
+  return { products, total };
 }
 
 /**
@@ -646,9 +579,9 @@ export async function getIndecClases(
   region: string,
   desde: string,
   hasta: string,
-): Promise<{ publicadas: Set<string>; ln: Map<string, number> }> {
-  const rows = await query<{ codigo: string; l: number | null }>(`
-    SELECT i.codigo,
+): Promise<{ publicadas: Set<string>; ln: Map<string, number>; nombres: Map<string, string> }> {
+  const rows = await query<{ codigo: string; nombre: string; l: number | null }>(`
+    SELECT i.codigo, MAX(a.nombre) AS nombre,
            LN(MAX(i.indice) FILTER (WHERE i.periodo = ?::date)
               / MAX(i.indice) FILTER (WHERE i.periodo = ?::date)) AS l
     FROM indec_ipc i JOIN indec_aperturas a USING (codigo)
@@ -657,7 +590,11 @@ export async function getIndecClases(
   `).all(hasta, desde, region);
   const ln = new Map<string, number>();
   for (const r of rows) if (r.l !== null) ln.set(r.codigo, r.l);
-  return { publicadas: new Set(rows.map((r) => r.codigo)), ln };
+  return {
+    publicadas: new Set(rows.map((r) => r.codigo)),
+    ln,
+    nombres: new Map(rows.map((r) => [r.codigo, r.nombre])),
+  };
 }
 
 /** Tramos vigentes en la última fecha con datos, filtrados por EAN. */

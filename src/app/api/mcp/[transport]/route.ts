@@ -35,12 +35,9 @@ const handler = createMcpHandler(
               "Categoria exacta (usar get_categories para ver opciones)",
             ),
           dias: z
-            .number()
-            .int()
-            .min(1)
-            .max(365)
+            .union([z.literal(30), z.literal(90), z.literal(365)])
             .optional()
-            .describe("Periodo de comparacion en dias (default: 30)"),
+            .describe("Periodo de comparacion en dias: 30, 90 o 365 (default: 30)"),
           page: z
             .number()
             .int()

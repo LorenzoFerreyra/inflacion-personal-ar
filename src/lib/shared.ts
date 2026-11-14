@@ -2,6 +2,21 @@
  * shared.ts — Funciones de utilidad compartidas entre rutas de API.
  */
 
+import { PERIODS } from "./constants";
+
+/** Días de los períodos de la web: los únicos que tiene productos_resumen. */
+export const DIAS_PERIODOS: readonly number[] = Object.values(PERIODS).map((p) => p.dias);
+
+/**
+ * Parámetro `dias` de la query string: 30 si no viene, null si no es uno de
+ * los períodos de la web (la ruta responde 400).
+ */
+export function parseDias(raw: string | null): number | null {
+  if (raw === null || raw.trim() === "") return 30;
+  const n = Number(raw);
+  return DIAS_PERIODOS.includes(n) ? n : null;
+}
+
 /**
  * Parsea un string de EANs separados por coma y devuelve un array limpio.
  */

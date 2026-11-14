@@ -40,10 +40,24 @@ export interface ProductoCanasta {
   comparable: boolean;
 }
 
+/** Una clase COICOP de la canasta que el INDEC publica: tu variación contra la suya. */
+export interface ClaseCanasta {
+  codigo: string;
+  nombre: string;
+  /** Productos de la canasta en la clase (con precio en los dos meses). */
+  n: number;
+  canasta_var: number;
+  indec_var: number;
+  /** canasta_var − indec_var, en puntos porcentuales. */
+  diferencia: number;
+}
+
 export interface ResultadoCanasta {
   desde: string;
   hasta: string;
   productos: ProductoCanasta[];
+  /** Desglose por clase, mayor diferencia absoluta primero (vacío sin comparación). */
+  clases: ClaseCanasta[];
   canasta: { var_pct: number; n: number } | null;
   comparacion: {
     canasta_var: number;
@@ -97,6 +111,7 @@ export function calcularCanasta(
   desde: string,
   hasta: string,
   ultimoMesIndec: string | null,
+  nombres: Map<string, string> = new Map(),
 ): ResultadoCanasta {
   const porEan = new Map(relativos.map((r) => [r.ean, r]));
   const productos: ProductoCanasta[] = eans.map((ean) => {
@@ -113,7 +128,7 @@ export function calcularCanasta(
   const conDatos = eans.map((e) => porEan.get(e)).filter((r): r is RelativoProducto => !!r);
   if (conDatos.length === 0) {
     return {
-      desde, hasta, productos, canasta: null, comparacion: null,
+      desde, hasta, productos, clases: [], canasta: null, comparacion: null,
       motivo: `Ningún producto de tu canasta tiene precios en ${fmtMes(desde)} y en ${fmtMes(hasta)}.`,
     };
   }
@@ -126,15 +141,37 @@ export function calcularCanasta(
       conClasePublicada && (!ultimoMesIndec || ultimoMesIndec < hasta)
         ? `La serie del INDEC cargada llega a ${ultimoMesIndec ? fmtMes(ultimoMesIndec) : "ningún mes"}: falta ${fmtMes(hasta)} para comparar.`
         : "Ningún producto de tu canasta es de una clase que el INDEC publique por separado.";
-    return { desde, hasta, productos, canasta, comparacion: null, motivo };
+    return { desde, hasta, productos, clases: [], canasta, comparacion: null, motivo };
   }
 
   const canastaVar = aPct(media(comparables.map((r) => r.l)));
   const indecVar = aPct(media(comparables.map((r) => indecLn.get(r.clase_coicop!)!)));
+
+  const porClase = new Map<string, number[]>();
+  for (const r of comparables) {
+    const ls = porClase.get(r.clase_coicop!) ?? [];
+    ls.push(r.l);
+    porClase.set(r.clase_coicop!, ls);
+  }
+  const clases: ClaseCanasta[] = [...porClase].map(([codigo, ls]) => {
+    const propia = aPct(media(ls));
+    const indec = aPct(indecLn.get(codigo)!);
+    return {
+      codigo,
+      nombre: nombres.get(codigo) ?? codigo,
+      n: ls.length,
+      canasta_var: propia,
+      indec_var: indec,
+      diferencia: Math.round((propia - indec) * 10) / 10,
+    };
+  });
+  clases.sort((a, b) => Math.abs(b.diferencia) - Math.abs(a.diferencia) || a.codigo.localeCompare(b.codigo));
+
   return {
     desde,
     hasta,
     productos,
+    clases,
     canasta,
     comparacion: {
       canasta_var: canastaVar,

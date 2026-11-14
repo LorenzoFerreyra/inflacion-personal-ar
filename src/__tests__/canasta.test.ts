@@ -41,6 +41,30 @@ describe("calcularCanasta", () => {
     expect(r.motivo).toBeNull();
   });
 
+  it("breaks the comparison down by class, largest gap first", () => {
+    const r = calcularCanasta(
+      ["leche", "yogur", "pan", "snack"],
+      [
+        rel("leche", "01.1.4", 1.02),
+        rel("yogur", "01.1.4", 1.04),
+        rel("pan", "01.1.1", 1.08),
+        rel("snack", "01.1.9", 1.5),
+      ],
+      new Map([["01.1.4", Math.log(1.01)], ["01.1.1", Math.log(1.03)]]),
+      publicadas,
+      AGO,
+      SEP,
+      SEP,
+      new Map([["01.1.4", "Leche"], ["01.1.1", "Pan"]]),
+    );
+    expect(r.clases.map((c) => c.codigo)).toEqual(["01.1.1", "01.1.4"]);
+    expect(r.clases[0]).toEqual({
+      codigo: "01.1.1", nombre: "Pan", n: 1, canasta_var: 8, indec_var: 3, diferencia: 5,
+    });
+    // sqrt(1.02 * 1.04) = 1.02995
+    expect(r.clases[1]).toMatchObject({ nombre: "Leche", n: 2, canasta_var: 3, indec_var: 1, diferencia: 2 });
+  });
+
   it("leaves out of the comparison the products of classes the INDEC does not publish", () => {
     const r = calcularCanasta(
       ["leche", "snack"],

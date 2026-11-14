@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseEans, clampInt } from "@/lib/shared";
+import { parseEans, clampInt, parseDias, DIAS_PERIODOS } from "@/lib/shared";
 
 /**
  * Tests for the parameter parsing logic used by /api/products.
@@ -9,27 +9,20 @@ import { parseEans, clampInt } from "@/lib/shared";
 describe("products route parameter parsing", () => {
   describe("dias", () => {
     it("defaults to 30", () => {
-      expect(clampInt(null, 1, 365, 30)).toBe(30);
+      expect(parseDias(null)).toBe(30);
+      expect(parseDias("")).toBe(30);
     });
 
-    it("clamps zero to minimum 1", () => {
-      expect(clampInt("0", 1, 365, 30)).toBe(1);
+    it("accepts only the site periods, which productos_resumen has", () => {
+      expect(DIAS_PERIODOS).toEqual([30, 90, 365]);
+      expect(parseDias("90")).toBe(90);
+      expect(parseDias("365")).toBe(365);
     });
 
-    it("clamps negative values to 1", () => {
-      expect(clampInt("-10", 1, 365, 30)).toBe(1);
-    });
-
-    it("clamps to maximum 365", () => {
-      expect(clampInt("999", 1, 365, 30)).toBe(365);
-    });
-
-    it("parses valid number", () => {
-      expect(clampInt("90", 1, 365, 30)).toBe(90);
-    });
-
-    it("falls back to 30 on garbage input", () => {
-      expect(clampInt("abc", 1, 365, 30)).toBe(30);
+    it("rejects any other number or garbage", () => {
+      expect(parseDias("45")).toBeNull();
+      expect(parseDias("0")).toBeNull();
+      expect(parseDias("abc")).toBeNull();
     });
   });
 

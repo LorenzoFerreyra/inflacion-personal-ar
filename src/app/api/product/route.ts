@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProductByEan, getPriceStats } from "@/lib/database";
-import { isValidEan, clampInt } from "@/lib/shared";
+import { isValidEan, parseDias, DIAS_PERIODOS } from "@/lib/shared";
 
 export async function GET(request: NextRequest) {
   const ean = request.nextUrl.searchParams.get("ean");
-  const dias = clampInt(request.nextUrl.searchParams.get("dias"), 1, 365, 30);
+  const dias = parseDias(request.nextUrl.searchParams.get("dias"));
+  if (dias === null) {
+    return NextResponse.json(
+      { error: `'dias' tiene que ser ${DIAS_PERIODOS.join(", ")}` },
+      { status: 400 },
+    );
+  }
 
   if (!ean || !isValidEan(ean)) {
     return NextResponse.json(

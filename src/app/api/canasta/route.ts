@@ -49,7 +49,9 @@ export async function GET(request: NextRequest) {
     ]);
     return NextResponse.json<RespuestaCanasta>({
       disponible: true,
-      ...calcularCanasta(eans, relativos, indec.ln, indec.publicadas, desde, ultimo, ultimoMesIndec),
+      ...calcularCanasta(
+        eans, relativos, indec.ln, indec.publicadas, desde, ultimo, ultimoMesIndec, indec.nombres,
+      ),
     });
   } catch (err) {
     console.error("Error al calcular la canasta:", err);
