@@ -69,7 +69,18 @@ function renderContent(content: string, onNavigate?: () => void): React.ReactNod
 
   for (const line of lines) {
     const listMatch = line.match(/^\s*(?:[-•*]|\d+[.)])\s+(.*)/);
-    if (listMatch) {
+    const headingMatch = line.match(/^\s*#{1,6}\s+(.*)/);
+    if (headingMatch) {
+      flushList();
+      blocks.push(
+        <p
+          key={`h-${blocks.length}`}
+          className="mb-1 mt-3 font-semibold text-zinc-50 first:mt-0"
+        >
+          {renderInline(headingMatch[1].replace(/\*\*/g, ""), onNavigate)}
+        </p>,
+      );
+    } else if (listMatch) {
       listItems.push(listMatch[1]);
     } else {
       flushList();

@@ -74,7 +74,9 @@ let cache: { at: number; text: string } | null = null;
 async function liveStats(): Promise<string> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.text;
   try {
-    const [fecha, cadenas] = await Promise.all([getLatestDate(), getChainList()]);
+    const [fecha, todas] = await Promise.all([getLatestDate(), getChainList()]);
+    // "Indec" es la serie de precios oficiales, no un supermercado.
+    const cadenas = todas.filter((c) => c.toLowerCase() !== "indec");
     const text = `- Última fecha con precios: ${fecha ?? "desconocida"}.\n- Cadenas relevadas (${cadenas.length}): ${cadenas.join(", ")}.`;
     cache = { at: Date.now(), text };
     return text;

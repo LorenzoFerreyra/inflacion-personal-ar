@@ -25,7 +25,8 @@ interface Props {
 
 /**
  * Índice propio y del INDEC para el mismo código, los dos con base 100 en
- * nuestro primer mes. Si el INDEC no tiene el mes base, va solo el propio.
+ * nuestro primer mes, mostrados como aumento acumulado (índice − 100) para que
+ * se lea en porcentaje. Si el INDEC no tiene el mes base, va solo el propio.
  */
 export default function IndexChart({ serie, region, height = 260 }: Props) {
   if (serie.puntos.length < 2) {
@@ -35,14 +36,21 @@ export default function IndexChart({ serie, region, height = 260 }: Props) {
   const hayIndec = serie.puntos.some((p) => p.indec !== null);
   const data = serie.puntos.map((p) => ({
     periodo: p.periodo,
-    propio: Math.round(p.propio * 100) / 100,
-    indec: p.indec === null ? null : Math.round(p.indec * 100) / 100,
+    propio: Math.round((p.propio - 100) * 100) / 100,
+    indec: p.indec === null ? null : Math.round((p.indec - 100) * 100) / 100,
     propio_var: p.propio_var,
     indec_var: p.indec_var,
   }));
   const valores = data.flatMap((d) => (d.indec === null ? [d.propio] : [d.propio, d.indec]));
-  const min = Math.floor(Math.min(...valores) - 0.5);
+  // El acumulado arranca en 0: el eje siempre lo incluye.
+  const min = Math.min(0, Math.floor(Math.min(...valores)));
   const max = Math.ceil(Math.max(...valores) + 0.5);
+  // Marcas parejas en el eje (cada 1, 2 o 5 puntos según el rango).
+  const paso = max - min <= 6 ? 1 : max - min <= 12 ? 2 : 5;
+  const ticks: number[] = [];
+  for (let t = Math.floor(min / paso) * paso; ticks.at(-1) === undefined || ticks.at(-1)! < max; t += paso) {
+    ticks.push(t);
+  }
 
   return (
     <div>
@@ -60,7 +68,7 @@ export default function IndexChart({ serie, region, height = 260 }: Props) {
             INDEC {region}
           </span>
         )}
-        <span className="text-zinc-600">base {fmtMes(data[0].periodo)} = 100</span>
+        <span className="text-zinc-500">aumento acumulado desde {fmtMes(data[0].periodo)}</span>
       </div>
       <div role="img" aria-label={`Índice de ${serie.nombre}: supermercados${hayIndec ? " e INDEC" : ""}`}>
         <ResponsiveContainer width="100%" height={height}>
@@ -74,12 +82,14 @@ export default function IndexChart({ serie, region, height = 260 }: Props) {
               axisLine={{ stroke: "#3f3f46" }}
             />
             <YAxis
-              domain={[min, max]}
+              domain={[ticks[0], ticks.at(-1)!]}
+              ticks={ticks}
               tick={{ fill: "#71717a", fontSize: 11 }}
               tickLine={false}
               axisLine={false}
-              width={40}
+              width={44}
               allowDecimals={false}
+              tickFormatter={(v: number) => fmtPct(v, true).replace(",0%", "%")}
             />
             <Tooltip
               contentStyle={{
@@ -94,8 +104,8 @@ export default function IndexChart({ serie, region, height = 260 }: Props) {
                 const p = item.payload as (typeof data)[number];
                 const v = name === "propio" ? p.propio_var : p.indec_var;
                 const etiqueta = name === "propio" ? "Supermercados" : `INDEC ${region}`;
-                const variacion = v === null ? "" : ` (${fmtPct(v)} en el mes)`;
-                return [`${Number(value).toFixed(2).replace(".", ",")}${variacion}`, etiqueta];
+                const variacion = v === null ? "" : ` · ${fmtPct(v)} en el mes`;
+                return [`${fmtPct(Number(value))} acumulado${variacion}`, etiqueta];
               }}
             />
             <Line
