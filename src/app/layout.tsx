@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Ubuntu, Ubuntu_Mono } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
+import ChatWidget from "@/components/ChatWidget";
 import { PeriodProvider } from "@/lib/PeriodContext";
 
 const fraunces = Fraunces({
@@ -49,6 +50,7 @@ export default function RootLayout({
           <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-10">
             {children}
           </main>
+          <ChatWidget />
         </PeriodProvider>
       </body>
     </html>

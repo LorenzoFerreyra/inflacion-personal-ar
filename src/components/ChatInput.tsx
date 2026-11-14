@@ -75,7 +75,7 @@ export default function ChatInput({
           }
         }}
         disabled={disabled}
-        placeholder="Preguntale al asistente dónde conviene comprar…"
+        placeholder="¿Qué necesitás comprar y dónde?"
         aria-label="Mensaje para el asistente"
         className="block w-full resize-none bg-transparent px-4 pt-3.5 pb-1.5
                    text-[15px] leading-6 text-zinc-100 placeholder:text-zinc-400

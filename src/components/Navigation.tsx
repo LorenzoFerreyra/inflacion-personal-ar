@@ -12,9 +12,7 @@ const tabs = [
   { href: "/historial", label: "Historial" },
   { href: "/indices", label: "Índices" },
   { href: "/variedades", label: "Precios INDEC" },
-  { href: "/insights", label: "Insights" },
   { href: "/cobertura", label: "Cobertura" },
-  { href: "/chat", label: "Asistente" },
   { href: "/metodologia", label: "Metodología" },
   { href: "/sobre-mi", label: "Acerca de" },
 ];

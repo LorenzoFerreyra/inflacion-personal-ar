@@ -103,7 +103,6 @@ src/
 ├── app/
 │   ├── page.tsx                ← Tab "Mi canasta"
 │   ├── explorador/page.tsx     ← Tab "Explorador"
-│   ├── insights/page.tsx       ← Tab "Insights"
 │   ├── layout.tsx              ← Layout global (nav + dark theme)
 │   └── api/
 │       ├── products/route.ts   ← GET /api/products
