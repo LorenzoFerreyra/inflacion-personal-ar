@@ -18,6 +18,8 @@ interface Props {
   selectedEans?: Set<string>;
   loading?: boolean;
   chainFiltered?: boolean;
+  /** Días del período contra el que se calcula la variación. */
+  dias?: number;
 }
 
 const HEADER_CELL =
@@ -51,6 +53,7 @@ export default function ProductTable({
   selectedEans,
   loading = false,
   chainFiltered = false,
+  dias = 30,
 }: Props) {
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   if (loading) {
@@ -85,7 +88,15 @@ export default function ProductTable({
               <th className={`${HEADER_CELL} text-right`}>
                 {chainFiltered ? "Precio" : "Precio prom."}
               </th>
-              <th className={`${HEADER_CELL} text-right`}>Variaci&oacute;n</th>
+              <th
+                className={`${HEADER_CELL} text-right`}
+                title={`Precio actual contra el de hace ${dias} días`}
+              >
+                Variaci&oacute;n
+                <span className="block text-[10px] font-normal normal-case text-zinc-500">
+                  {dias}&nbsp;d&iacute;as
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>

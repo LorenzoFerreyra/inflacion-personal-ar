@@ -6,6 +6,12 @@
  * más barata disponible de cada keyword — nunca suma variantes duplicadas —
  * y rankea por un score compuesto de precio total y distancia a la sucursal
  * más cercana. Menor score = mejor.
+ *
+ * Cobertura: con ubicación, solo compiten las cadenas que tienen una
+ * sucursal relevada (tabla sucursales, la misma del mapa de /cobertura)
+ * dentro del radio. Si no hay ninguna, se devuelve la sucursal relevada más
+ * cercana para que el asistente le diga al usuario que su zona no está
+ * cubierta.
  */
 
 import {
@@ -17,6 +23,7 @@ import {
 import type { Branch } from "@/lib/types";
 import type {
   ChainRecommendation,
+  CoverageInfo,
   NearestBranch,
   Priority,
   ProductRequest,
@@ -25,6 +32,16 @@ import type {
 
 const EARTH_RADIUS_KM = 6371;
 const TOP_N = 3;
+/** Radio de cobertura por defecto cuando el usuario no fijó uno. */
+export const DEFAULT_COVERAGE_KM = 20;
+
+/**
+ * Clave de cadena tolerante a diferencias de carga entre tablas
+ * ("super_top" en sucursales vs "supertop" en precios).
+ */
+export function chainKey(cadena: string): string {
+  return cadena.toLowerCase().replace(/[\s_-]+/g, "");
+}
 
 const WEIGHTS: Record<Priority, { price: number; dist: number }> = {
   price: { price: 0.9, dist: 0.1 },
@@ -48,21 +65,27 @@ export function haversineKm(
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
 }
 
-/** Sucursal más cercana al usuario por cadena (solo con coordenadas válidas). */
+type RankedBranch = NearestBranch & { cadena: string; provincia: string };
+
+/**
+ * Sucursal más cercana al usuario por cadena (clave normalizada, solo con
+ * coordenadas válidas), sin límite de distancia.
+ */
 function nearestBranchByChain(
   branches: Branch[],
   userLat: number,
   userLng: number,
-  radiusKm?: number,
-): Map<string, NearestBranch> {
-  const nearest = new Map<string, NearestBranch>();
+): Map<string, RankedBranch> {
+  const nearest = new Map<string, RankedBranch>();
   for (const b of branches) {
     if (b.latitud == null || b.longitud == null) continue;
     const distancia_km = haversineKm(userLat, userLng, b.latitud, b.longitud);
-    if (radiusKm != null && distancia_km > radiusKm) continue;
-    const current = nearest.get(b.cadena);
+    const key = chainKey(b.cadena);
+    const current = nearest.get(key);
     if (!current || distancia_km < current.distancia_km) {
-      nearest.set(b.cadena, {
+      nearest.set(key, {
+        cadena: b.cadena,
+        provincia: b.provincia,
         direccion: b.direccion,
         localidad: b.localidad,
         distancia_km: Math.round(distancia_km * 10) / 10,
@@ -85,8 +108,24 @@ export async function recommend(
   radiusKm?: number,
 ): Promise<Recommendation> {
   const fecha_precios = await getLatestDate();
+  const hasLocation = userLat != null && userLng != null;
+
+  // Cobertura: qué cadenas tienen sucursales relevadas cerca del usuario.
+  let cobertura: CoverageInfo | null = null;
+  let nearest = new Map<string, RankedBranch>();
+  const coverageKm = radiusKm ?? DEFAULT_COVERAGE_KM;
+  if (hasLocation) {
+    nearest = nearestBranchByChain(await getBranches(), userLat, userLng);
+    const all = [...nearest.values()].sort((a, b) => a.distancia_km - b.distancia_km);
+    cobertura = {
+      radio_km: coverageKm,
+      cadenas_cerca: all.filter((b) => b.distancia_km <= coverageKm).map((b) => b.cadena),
+      sucursal_relevada_mas_cercana: all[0] ?? null,
+    };
+  }
+
   const validItems = items.filter((i) => i.eans.length > 0);
-  if (validItems.length === 0) return { cadenas: [], fecha_precios };
+  if (validItems.length === 0) return { cadenas: [], fecha_precios, cobertura };
 
   const allEans = [...new Set(validItems.flatMap((i) => i.eans))];
 
@@ -106,19 +145,7 @@ export async function recommend(
     if (!chainPrices) byChain.set(row.cadena, (chainPrices = new Map()));
     chainPrices.set(row.ean, row.precio);
   }
-  if (byChain.size === 0) return { cadenas: [], fecha_precios };
-
-  const hasLocation = userLat != null && userLng != null;
-  const branches = hasLocation ? await getBranches() : [];
-  const nearest = hasLocation
-    ? nearestBranchByChain(branches, userLat, userLng, radiusKm)
-    : new Map<string, NearestBranch>();
-  // Cadenas que tienen al menos una sucursal con coordenadas.
-  const chainsWithCoords = new Set(
-    branches
-      .filter((b) => b.latitud != null && b.longitud != null)
-      .map((b) => b.cadena),
-  );
+  if (byChain.size === 0) return { cadenas: [], fecha_precios, cobertura };
 
   interface Candidate extends Omit<ChainRecommendation, "score"> {
     score?: number;
@@ -126,11 +153,19 @@ export async function recommend(
 
   const candidates: Candidate[] = [];
   for (const [cadena, chainPrices] of byChain) {
-    // Con ubicación y radio configurado, descartar cadenas fuera del radio
-    // (pero solo si la cadena tiene sucursales geolocalizadas).
-    const sucursal = nearest.get(cadena) ?? null;
-    if (hasLocation && radiusKm != null && !sucursal && chainsWithCoords.has(cadena))
-      continue;
+    // Con ubicación, solo compiten cadenas con una sucursal relevada dentro
+    // del radio de cobertura (sin sucursales geolocalizadas → no sabemos si
+    // está cerca, se descarta).
+    let sucursal: NearestBranch | null = null;
+    if (hasLocation) {
+      const near = nearest.get(chainKey(cadena));
+      if (!near || near.distancia_km > coverageKm) continue;
+      sucursal = {
+        direccion: near.direccion,
+        localidad: near.localidad,
+        distancia_km: near.distancia_km,
+      };
+    }
 
     const productos: ChainRecommendation["productos"] = [];
     const faltantes: string[] = [];
@@ -165,7 +200,7 @@ export async function recommend(
     });
   }
 
-  if (candidates.length === 0) return { cadenas: [], fecha_precios };
+  if (candidates.length === 0) return { cadenas: [], fecha_precios, cobertura };
 
   // Normalización min-max de cada eje sobre el set de candidatas.
   const totals = candidates.map((c) => c.total_precio);
@@ -204,6 +239,6 @@ export async function recommend(
     score: Math.round(c.score! * 1000) / 1000,
   })) as ChainRecommendation[];
 
-  return { cadenas, fecha_precios };
+  return { cadenas, fecha_precios, cobertura };
 }
 

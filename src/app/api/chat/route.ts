@@ -165,9 +165,13 @@ export async function POST(request: NextRequest) {
 
     // C) Ubicación: la del navegador tiene prioridad; si no, geocodificar el
     // texto. Si Nominatim falla, seguimos sin geo.
-    let coords: { lat: number; lng: number } | null = browserCoords ?? null;
+    // Si dijo "no importa", ranking solo por precio aunque haya dado zona.
+    const useLocation = wantsStores && !extraction.ubicacion_rechazada;
+    let coords: { lat: number; lng: number } | null = useLocation
+      ? (browserCoords ?? null)
+      : null;
     let geocodeFailed = false;
-    if (wantsStores && !coords && extraction.ubicacion) {
+    if (useLocation && !coords && extraction.ubicacion) {
       coords = await geocode(extraction.ubicacion);
       geocodeFailed = coords == null;
     }

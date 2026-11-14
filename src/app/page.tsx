@@ -155,6 +155,7 @@ export default function MiCanastaPage() {
               onSelect={addToBasket}
               selectedEans={basketEans}
               loading={loading}
+              dias={PERIODS[period].dias}
             />
           </div>
 

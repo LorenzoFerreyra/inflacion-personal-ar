@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { usePeriod } from "@/lib/PeriodContext";
 import { PERIODS, PeriodKey } from "@/lib/constants";
-import { fmtMes } from "@/lib/canasta";
 const tabs = [
   { href: "/", label: "Mi canasta" },
   { href: "/explorador", label: "Explorador" },
@@ -19,7 +18,10 @@ const tabs = [
 
 export default function Navigation() {
   const pathname = usePathname();
-  const { period, setPeriod, ipc, ipcError, periodos } = usePeriod();
+  // El IPC del header es solo una referencia: su selector no toca el período
+  // global con el que se calculan la canasta y las tablas.
+  const { ipc, ipcError } = usePeriod();
+  const [period, setPeriod] = useState<PeriodKey>("mensual");
   const [periodOpen, setPeriodOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -94,17 +96,9 @@ export default function Navigation() {
                       IPC INDEC
                     </span>
                     {(Object.keys(PERIODS) as PeriodKey[]).map((key) => {
-                      // El INDEC publica las tres variaciones; lo que puede faltar
-                      // es historia propia de precios para comparar la canasta.
-                      const canastaDisponible = periodos?.disponibles[key] ?? true;
                       return (
                         <button
                           key={key}
-                          title={
-                            canastaDisponible || !periodos?.desde
-                              ? undefined
-                              : `Tu canasta tiene precios comparables desde ${fmtMes(periodos.desde)}`
-                          }
                           onClick={() => {
                             setPeriod(key);
                             setPeriodOpen(false);
@@ -121,9 +115,6 @@ export default function Navigation() {
                               <span className="tabular text-[11px] text-zinc-500">{ipc[key]}%</span>
                             )}
                           </span>
-                          {!canastaDisponible && (
-                            <span className="block text-[10px] text-zinc-600">tu canasta: sin datos aún</span>
-                          )}
                         </button>
                       );
                     })}

@@ -7,7 +7,8 @@
  * lee de la base en cada consulta, con cache corto.
  */
 
-import { getChainList, getLatestDate } from "@/lib/database";
+import { getBranches, getChainList, getLatestDate } from "@/lib/database";
+import { chainLabel } from "@/lib/chainColors";
 
 export const SITE_SECTIONS: { ruta: string; nombre: string; descripcion: string }[] = [
   {
@@ -74,10 +75,35 @@ let cache: { at: number; text: string } | null = null;
 async function liveStats(): Promise<string> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.text;
   try {
-    const [fecha, todas] = await Promise.all([getLatestDate(), getChainList()]);
+    const [fecha, todas, sucursales] = await Promise.all([
+      getLatestDate(),
+      getChainList(),
+      getBranches(),
+    ]);
     // "Indec" es la serie de precios oficiales, no un supermercado.
-    const cadenas = todas.filter((c) => c.toLowerCase() !== "indec");
-    const text = `- Última fecha con precios: ${fecha ?? "desconocida"}.\n- Cadenas relevadas (${cadenas.length}): ${cadenas.join(", ")}.`;
+    const cadenas = todas.filter((c) => c.toLowerCase() !== "indec").map(chainLabel);
+
+    // Cobertura por provincia (lo mismo que muestra el mapa de /cobertura).
+    const porProvincia = new Map<string, { n: number; cadenas: Set<string> }>();
+    for (const s of sucursales) {
+      const prov = s.provincia?.trim() || "Sin provincia";
+      const entry = porProvincia.get(prov) ?? { n: 0, cadenas: new Set<string>() };
+      entry.n++;
+      entry.cadenas.add(chainLabel(s.cadena === "super_top" ? "supertop" : s.cadena));
+      porProvincia.set(prov, entry);
+    }
+    const cobertura = [...porProvincia.entries()]
+      .sort((a, b) => b[1].n - a[1].n)
+      .map(([prov, e]) => `  - ${prov}: ${e.n} sucursales (${[...e.cadenas].join(", ")})`)
+      .join("\n");
+
+    const text = [
+      `- Última fecha con precios: ${fecha ?? "desconocida"}.`,
+      `- Cadenas relevadas (${cadenas.length}): ${cadenas.join(", ")}.`,
+      `- Sucursales relevadas: ${sucursales.length}. Por provincia:`,
+      cobertura,
+      "- Fuera de esas zonas no hay sucursales relevadas: la recomendación de dónde comprar solo funciona cerca de ellas.",
+    ].join("\n");
     cache = { at: Date.now(), text };
     return text;
   } catch {

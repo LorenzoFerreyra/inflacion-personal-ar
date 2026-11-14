@@ -116,8 +116,31 @@ describe("recommend — variantes casi iguales", () => {
     expect(coto.sucursal_cercana?.distancia_km).toBeLessThan(1);
     // dia queda fuera del radio de 2km y tiene coordenadas → se descarta
     expect(rec.cadenas.find((c) => c.cadena === "dia")).toBeUndefined();
-    // extra no tiene geo → sigue como candidata rankeada por precio
-    expect(rec.cadenas.find((c) => c.cadena === "extra")).toBeDefined();
+    // extra no tiene sucursales geolocalizadas → no sabemos si está cerca
+    expect(rec.cadenas.find((c) => c.cadena === "extra")).toBeUndefined();
+    expect(rec.cobertura?.radio_km).toBe(2);
+    expect(rec.cobertura?.cadenas_cerca).toEqual(["coto"]);
+  });
+
+  it("sin radio usa la cobertura por defecto (20 km)", async () => {
+    const rec = await recommend(PEDIDO, -34.62, -58.43);
+    expect(rec.cobertura?.radio_km).toBe(20);
+    expect(rec.cadenas.map((c) => c.cadena).sort()).toEqual(["coto", "dia"]);
+  });
+
+  it("zona sin cobertura: sin cadenas y con la sucursal relevada más cercana", async () => {
+    // Usuario en Salta: ninguna sucursal relevada a menos de 20 km
+    const rec = await recommend(PEDIDO, -24.79, -65.41);
+    expect(rec.cadenas).toEqual([]);
+    expect(rec.cobertura?.cadenas_cerca).toEqual([]);
+    expect(rec.cobertura?.sucursal_relevada_mas_cercana?.cadena).toBeDefined();
+    expect(rec.cobertura?.sucursal_relevada_mas_cercana?.distancia_km).toBeGreaterThan(1000);
+  });
+
+  it("matchea cadenas aunque el nombre difiera entre tablas", async () => {
+    const { chainKey } = await import("@/lib/chat/recommend");
+    expect(chainKey("super_top")).toBe(chainKey("supertop"));
+    expect(chainKey("Chango Mas")).toBe(chainKey("chango_mas"));
   });
 
   it("pedido vacío devuelve sin cadenas", async () => {

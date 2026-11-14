@@ -7,6 +7,8 @@ import { Product } from "@/lib/types";
 import { useProducts } from "@/lib/useProducts";
 import { Search } from "@/components/Icons";
 import { chainLabel } from "@/lib/chainColors";
+import { PERIODS } from "@/lib/constants";
+import { usePeriod } from "@/lib/PeriodContext";
 
 export default function ExploradorPage() {
   const {
@@ -26,6 +28,7 @@ export default function ExploradorPage() {
     categoriesError,
     chainsError,
   } = useProducts();
+  const { period } = usePeriod();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const selectedEans = useMemo(
@@ -125,6 +128,7 @@ export default function ExploradorPage() {
           selectedEans={selectedEans}
           loading={loading}
           chainFiltered={cadena.trim().length > 0}
+          dias={PERIODS[period].dias}
         />
       </div>
 

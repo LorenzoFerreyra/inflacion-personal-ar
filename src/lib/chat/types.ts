@@ -52,7 +52,24 @@ export interface ChainRecommendation {
   faltantes: string[];
 }
 
+/**
+ * Cobertura alrededor del usuario: qué cadenas tienen sucursales relevadas
+ * cerca. Solo existe cuando conocemos su ubicación.
+ */
+export interface CoverageInfo {
+  /** Distancia máxima a una sucursal relevada para considerar una cadena. */
+  radio_km: number;
+  /** Cadenas con al menos una sucursal relevada dentro del radio. */
+  cadenas_cerca: string[];
+  /** La sucursal relevada más cercana de cualquier cadena (aunque esté lejos). */
+  sucursal_relevada_mas_cercana:
+    | (NearestBranch & { cadena: string; provincia: string })
+    | null;
+}
+
 export interface Recommendation {
   cadenas: ChainRecommendation[];
   fecha_precios: string | null;
+  /** null si no hay ubicación del usuario. */
+  cobertura: CoverageInfo | null;
 }
