@@ -51,9 +51,13 @@ export default async function MetodologiaPage() {
           <p className="text-sm text-zinc-400 leading-relaxed prose-width">
             Para cada mes calendario se toma el precio de lista promedio de
             cada producto en cada cadena, sin los precios marcados como
-            atípicos. Cada producto se compara consigo mismo en la misma cadena
-            entre un mes y el siguiente; las variaciones de más del doble o de
-            menos de la mitad se descartan porque son errores de carga. Por
+            atípicos. En Disco, Jumbo y Vea parte del catálogo tiene precios
+            inválidos, así que de esas cadenas entra solo el precio que
+            coincide (entre la mitad y el doble) con el del mismo producto en
+            otras cadenas. Cada producto se compara consigo mismo en la misma
+            cadena entre un mes y el siguiente; las variaciones de más del
+            doble o de menos de la mitad se descartan porque son errores de
+            carga. Por
             clase se calcula la media geométrica de cada cadena (con al menos
             30 productos comparables) y todas las cadenas pesan igual. Los
             grupos y divisiones se arman con los ponderadores del INDEC para

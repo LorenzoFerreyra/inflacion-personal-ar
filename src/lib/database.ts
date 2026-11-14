@@ -31,6 +31,13 @@ import {
   type FilaIndicePropio,
 } from "./indices";
 import { RELATIVO_MAX, RELATIVO_MIN, type RelativoProducto } from "./canasta";
+import {
+  REGION_VARIEDADES,
+  agruparVariedades,
+  type FilaVariedad,
+  type PrecioProducto,
+  type RespuestaVariedades,
+} from "./variedades";
 
 // ─── Conexión ────────────────────────────────────────────────────────────────
 
@@ -581,6 +588,39 @@ export async function getRelativosCanasta(
     FROM rel JOIN canonical_products cp USING (ean)
     GROUP BY rel.ean, cp.clase_coicop
   `).all(desde, hasta, eans, desde, hasta, RELATIVO_MIN, RELATIVO_MAX);
+}
+
+// ─── Variedades del INDEC contra el súper (load/variedades_pg.py) ────────────
+
+/** Precio del INDEC y del súper por variedad y mes. */
+export async function getVariedades(): Promise<RespuestaVariedades> {
+  const filas = await query<FilaVariedad>(`
+    SELECT v.id, v.nombre, v.unidad, s.motivo AS sin_reglas, m.periodo::text AS periodo,
+           m.precio_indec, m.var_indec, m.precio_p25, m.precio_mediana, m.precio_p75,
+           m.var_super, m.n_productos, m.n_cadenas, m.n_pares
+    FROM variedad_mensual m
+    JOIN indec_variedades v ON v.id = m.variedad
+    LEFT JOIN indec_variedades_sin_reglas s ON s.variedad = v.id
+    ORDER BY v.nombre, m.periodo
+  `).all();
+  const periodos = filas.map((f) => f.periodo).sort();
+  return {
+    region: REGION_VARIEDADES,
+    desde: periodos[0] ?? null,
+    ultimoMes: periodos.at(-1) ?? null,
+    variedades: agruparVariedades(filas),
+  };
+}
+
+/** Productos de una variedad en el último mes, con su precio por unidad del INDEC. */
+export async function getVariedadPrecios(variedad: string): Promise<PrecioProducto[]> {
+  return query<PrecioProducto>(`
+    SELECT p.ean, cp.product_description, p.cadena, p.precio, p.entra
+    FROM variedad_precios_mes p
+    JOIN canonical_products cp USING (ean)
+    WHERE p.variedad = ?
+    ORDER BY p.entra DESC, p.precio
+  `).all(variedad);
 }
 
 /** Índices propios y su par del INDEC, listos para la UI y el MCP. */
