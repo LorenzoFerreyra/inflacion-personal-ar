@@ -237,9 +237,10 @@ export default function ChatWidget() {
             {messages.length === 0 ? (
               <div>
                 <p className="text-[14px] leading-relaxed text-zinc-400">
-                  Decime qué productos necesitás y en qué zona estás. Comparo
-                  los precios relevados en cada cadena y te recomiendo dónde
-                  comprar.
+                  Decime qué productos necesitás y en qué zona estás: comparo
+                  los precios relevados en cada cadena y te digo dónde te
+                  conviene comprar. También te explico cómo funciona el sitio
+                  y de dónde salen los datos.
                 </p>
                 <div className="mt-4 flex flex-col gap-2">
                   {SUGGESTIONS.map((s) => (
