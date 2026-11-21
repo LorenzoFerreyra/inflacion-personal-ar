@@ -174,10 +174,27 @@ export async function getCategories(): Promise<Category[]> {
  */
 let chainsSnapshot: string[] | null = null;
 
+/** Días sin precios después de los cuales una cadena deja de contarse como relevada. */
+export const DIAS_CADENA_ACTIVA = 14;
+
+/**
+ * Cadenas que se relevan hoy: las que tienen precios en los últimos
+ * DIAS_CADENA_ACTIVA días (contados desde el último dato, no desde hoy, para
+ * que una pausa del scraper no vacíe la lista). Así una cadena que cierra
+ * deja de figurar como relevada aunque queden sus precios viejos. (Hiper
+ * Libertad, que pasó a La Anónima en 2026, ya se consolidó en la base.)
+ * "indec" es mensual y siempre queda.
+ */
 export async function getChainList(): Promise<string[]> {
   if (!chainsSnapshot) {
     const rows = await query<{ cadena: string }>(
-      `SELECT DISTINCT cadena FROM price_runs WHERE cadena IS NOT NULL AND cadena != '' ORDER BY cadena`,
+      `SELECT cadena
+         FROM price_runs
+        WHERE cadena IS NOT NULL AND cadena != ''
+        GROUP BY cadena
+       HAVING cadena = 'indec'
+           OR MAX(hasta) >= (SELECT MAX(hasta) FROM price_runs WHERE cadena != 'indec') - ${DIAS_CADENA_ACTIVA}
+        ORDER BY cadena`,
     ).all();
     chainsSnapshot = rows.map((r) => r.cadena);
   }

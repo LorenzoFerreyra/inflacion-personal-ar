@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import ProductTable from "@/components/ProductTable";
 import ResultadoCanasta from "@/components/ResultadoCanasta";
 import Stepper from "@/components/Stepper";
+import { EVENTO_INICIO_CANASTA } from "@/components/Navigation";
 import { Product } from "@/lib/types";
 import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
@@ -247,6 +248,17 @@ export default function MiCanastaPage() {
     setStep(1);
     setResult(null);
   }
+
+  // El logo y la pestaña "Mi canasta" apuntan a "/": estando acá, vuelven al
+  // paso 1 (la canasta armada se conserva). Ver Navigation.
+  useEffect(() => {
+    const volver = () => {
+      setStep(1);
+      setResult(null);
+    };
+    window.addEventListener(EVENTO_INICIO_CANASTA, volver);
+    return () => window.removeEventListener(EVENTO_INICIO_CANASTA, volver);
+  }, []);
 
   const basketEans = useMemo(() => new Set(basket.map((p) => p.ean)), [basket]);
 

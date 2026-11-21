@@ -39,7 +39,7 @@ export const SITE_SECTIONS: { ruta: string; nombre: string; descripcion: string 
     ruta: "/cobertura",
     nombre: "Cobertura",
     descripcion:
-      "Mapa de sucursales cuyas góndolas se relevan y la lista de cadenas cubiertas.",
+      "Lista de cadenas relevadas (precios de sus tiendas online, por cadena) y mapa con sucursales de referencia de cada una; no es el listado completo de locales.",
   },
   {
     ruta: "/metodologia",
@@ -94,9 +94,9 @@ async function liveStats(): Promise<string> {
     const text = [
       `- Última fecha con precios: ${fecha ?? "desconocida"}.`,
       `- Cadenas relevadas (${cadenas.length}): ${cadenas.join(", ")}.`,
-      `- Sucursales relevadas: ${sucursales.length}. Por provincia:`,
+      `- Sucursales de referencia en el mapa: ${sucursales.length}. Por provincia:`,
       cobertura,
-      "- Fuera de esas zonas no hay sucursales relevadas: la recomendación de dónde comprar solo funciona cerca de ellas.",
+      "- Fuera de esas zonas no hay sucursales cargadas: la recomendación de dónde comprar solo funciona cerca de ellas.",
     ].join("\n");
     cache = { at: Date.now(), text };
     return text;

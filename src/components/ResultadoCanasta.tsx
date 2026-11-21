@@ -11,7 +11,17 @@ interface Props {
 }
 
 const plural = (n: number) => `${n} producto${n === 1 ? "" : "s"}`;
-const fmtPp = (v: number) => `${fmtPct(v).replace("%", "")} pp`;
+/** Diferencia entre dos porcentajes, en puntos (no es un %). */
+const fmtPts = (v: number) => `${fmtPct(v).replace("%", "")} pts`;
+
+/** Qué quiere decir una diferencia contra el INDEC, en palabras. */
+function lectura(dif: number) {
+  return dif > 0 ? "subió más que el INDEC" : dif < 0 ? "subió menos que el INDEC" : "igual que el INDEC";
+}
+
+/** Columnas de la tabla por clase (encabezado, filas y productos comparten la grilla). */
+const COLS =
+  "grid-cols-[1fr_5.5rem] sm:grid-cols-[minmax(0,15rem)_1fr_4.5rem_4.5rem_7.5rem]";
 
 /** Color de una diferencia contra el INDEC: más inflación que el INDEC = rojo. */
 function tono(dif: number) {
@@ -119,7 +129,7 @@ function Resumen({
   const { canasta_var, indec_var, diferencia, n } = comparacion;
   const x = escala([canasta_var, indec_var]);
   const cero = x(0);
-  const brecha = `${fmtPct(Math.abs(diferencia), false).replace("%", "")} pp`;
+  const brecha = `${fmtPct(Math.abs(diferencia), false).replace("%", "")} puntos`;
   const veredicto =
     diferencia > 0
       ? `${brecha} por encima del INDEC`
@@ -193,18 +203,28 @@ function PorClase({
   return (
     <section>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 mb-1">
-        <div>
+        <div className="max-w-3xl">
           <h3 className="text-[15px] font-medium text-zinc-50">
             De dónde sale la diferencia
           </h3>
-          <p className="text-xs text-zinc-500 mt-1">
-            Cada clase del INDEC de tu canasta: cuánto subió para vos y cuánto marcó el INDEC.
-            Tocá una fila para ver los productos.
+          <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+            Por rubro: cuánto subieron tus productos en el súper y cuánto subió ese rubro
+            según el INDEC.{" "}
+            <span className="text-green-400">Verde</span>: tus productos subieron menos.{" "}
+            <span className="text-red-400">Rojo</span>: subieron más. La diferencia está en
+            puntos: es la resta entre los dos porcentajes. Tocá un rubro para ver sus productos.
+          </p>
+          <p className="mt-2 inline-flex items-start gap-2 text-xs text-amber-300 bg-amber-tint border border-amber-tint-2 rounded-sm px-3 py-2">
+            <span aria-hidden="true" className="font-bold">i</span>
+            <span>
+              Esto mide cuánto <strong className="font-semibold">subieron</strong> los precios en el
+              período, no qué producto es más caro en el INDEC o en el súper.
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-zinc-400">
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-450" /> Vos
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-450" /> Tus productos
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full border-2 border-zinc-400" /> INDEC
@@ -212,10 +232,14 @@ function PorClase({
         </div>
       </div>
 
-      <div className="hidden sm:grid grid-cols-[minmax(0,16rem)_1fr_4.5rem] gap-4 px-1 pt-4 pb-2 border-b border-hairline-strong text-[11px] font-bold text-zinc-400 uppercase">
-        <span>Clase</span>
+      <div
+        className={`hidden sm:grid ${COLS} gap-x-4 px-1 pt-4 pb-2 border-b border-hairline-strong text-[11px] font-bold text-zinc-400 uppercase`}
+      >
+        <span>Rubro</span>
         <span />
-        <span className="text-right">Dif.</span>
+        <span className="text-right text-amber-300">Tus prod.</span>
+        <span className="text-right">INDEC</span>
+        <span className="text-right">Diferencia</span>
       </div>
 
       <ul>
@@ -228,16 +252,21 @@ function PorClase({
           return (
             <li key={c.codigo} className="border-b border-hairline">
               <details className="group">
-                <summary className="list-none cursor-pointer hover:bg-panel-2 px-1 py-3 grid grid-cols-[1fr_4.5rem] sm:grid-cols-[minmax(0,16rem)_1fr_4.5rem] gap-x-4 gap-y-2 items-center [&::-webkit-details-marker]:hidden">
+                <summary
+                  className={`list-none cursor-pointer hover:bg-panel-2 px-1 py-3 grid ${COLS} gap-x-4 gap-y-2 items-center [&::-webkit-details-marker]:hidden`}
+                >
                   <span className="min-w-0">
                     <span className="block text-[13px] text-zinc-200 truncate" title={c.nombre}>
                       <span className="inline-block text-zinc-500 group-open:rotate-90 transition-transform mr-1.5">›</span>
                       {c.nombre}
                     </span>
                     <span className="block text-[11px] text-zinc-500 tabular pl-3.5">
-                      {c.codigo} · {plural(c.n)} ·{" "}
-                      <span className="text-amber-300">{fmtPct(c.canasta_var)}</span> vs{" "}
-                      {fmtPct(c.indec_var)}
+                      {plural(c.n)}
+                      {/* En móvil no hay columnas: los dos porcentajes van acá. */}
+                      <span className="sm:hidden">
+                        {" "}· vos <span className="text-amber-300">{fmtPct(c.canasta_var)}</span>,
+                        INDEC {fmtPct(c.indec_var)}
+                      </span>
                     </span>
                   </span>
 
@@ -250,7 +279,7 @@ function PorClase({
                     <span
                       className="absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-450"
                       style={{ left: `${a}%` }}
-                      title={`Vos ${fmtPct(c.canasta_var)}`}
+                      title={`Tus productos ${fmtPct(c.canasta_var)}`}
                     />
                     {/* Anillo más grande y hueco: se ve aunque coincida con tu punto. */}
                     <span
@@ -260,31 +289,65 @@ function PorClase({
                     />
                   </span>
 
-                  <span className={`text-right tabular text-[13px] font-bold ${tono(c.diferencia)}`}>
-                    {fmtPp(c.diferencia)}
+                  <span className="hidden sm:block text-right tabular text-[13px] text-amber-300">
+                    {fmtPct(c.canasta_var)}
                   </span>
+                  <span className="hidden sm:block text-right tabular text-[13px] text-zinc-300">
+                    {fmtPct(c.indec_var)}
+                  </span>
+                  <Diferencia dif={c.diferencia} />
                 </summary>
 
-                <ul className="pb-3 pl-5 pr-1 space-y-1">
-                  {productos.map((p) => (
-                    <li key={p.ean} className="flex items-center justify-between gap-4 text-[12px]">
-                      <span className="text-zinc-400 truncate">{nombres.get(p.ean) ?? p.ean}</span>
-                      <VariationBadge value={p.var_pct} />
-                    </li>
-                  ))}
+                <ul className="pb-3">
+                  {productos.map((p) => {
+                    const dif = p.var_pct === null ? null : p.var_pct - c.indec_var;
+                    return (
+                      <li
+                        key={p.ean}
+                        className={`grid ${COLS} gap-x-4 items-center px-1 py-1 text-[12px]`}
+                      >
+                        <span className="flex min-w-0 pl-5 sm:col-span-2">
+                          <span className="text-zinc-400 truncate">{nombres.get(p.ean) ?? p.ean}</span>
+                          <span className="sm:hidden shrink-0 whitespace-pre tabular text-amber-300">
+                            {" "}· {p.var_pct === null ? "—" : fmtPct(p.var_pct)}
+                          </span>
+                        </span>
+                        <span className="hidden sm:block text-right tabular text-amber-300/80">
+                          {p.var_pct === null ? "—" : fmtPct(p.var_pct)}
+                        </span>
+                        <span className="hidden sm:block" />
+                        {dif === null ? (
+                          <span className="text-right text-zinc-600">—</span>
+                        ) : (
+                          <Diferencia dif={dif} chico />
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </details>
             </li>
           );
         })}
       </ul>
-      <div className="hidden sm:grid grid-cols-[minmax(0,16rem)_1fr_4.5rem] gap-4 px-1 pt-1 text-[10px] text-zinc-600 tabular">
+      <div className={`hidden sm:grid ${COLS} gap-x-4 px-1 pt-1 text-[10px] text-zinc-600 tabular`}>
         <span />
         <span className="relative h-3 mx-2">
           <span className="absolute -translate-x-1/2" style={{ left: `${cero}%` }}>0%</span>
         </span>
-        <span />
       </div>
     </section>
+  );
+}
+
+/** Diferencia contra el INDEC: el número en puntos y qué significa. */
+function Diferencia({ dif, chico = false }: { dif: number; chico?: boolean }) {
+  return (
+    <span className="text-right leading-tight">
+      <span className={`block tabular font-bold ${chico ? "text-[12px] font-medium" : "text-[13px]"} ${tono(dif)}`}>
+        {fmtPts(dif)}
+      </span>
+      {!chico && <span className="block text-[10px] text-zinc-500">{lectura(dif)}</span>}
+    </span>
   );
 }

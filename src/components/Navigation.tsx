@@ -15,6 +15,26 @@ const tabs = [
   { href: "/sobre-mi", label: "Acerca de" },
 ];
 
+/** Evento que avisa a la página de la canasta que vuelva al paso 1. */
+export const EVENTO_INICIO_CANASTA = "canasta:inicio";
+
+/**
+ * Un Link a la página en la que ya se está no hace nada visible (Next conserva
+ * el estado y el scroll). En "/" eso deja al usuario varado en el resultado,
+ * así que en ese caso se vuelve al inicio del armado y arriba de todo.
+ */
+function volverAlInicioSiMismaPagina(
+  e: React.MouseEvent<HTMLAnchorElement>,
+  href: string,
+  pathname: string,
+) {
+  if (href !== pathname) return;
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+  e.preventDefault();
+  if (href === "/") window.dispatchEvent(new Event(EVENTO_INICIO_CANASTA));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 export default function Navigation() {
   const pathname = usePathname();
   // El IPC del header es solo una referencia: su selector no toca el período
@@ -45,6 +65,7 @@ export default function Navigation() {
             <Link
               href="/"
               aria-label="Ir a inicio"
+              onClick={(e) => volverAlInicioSiMismaPagina(e, "/", pathname)}
               className="font-display text-lg md:text-[22px] font-semibold text-zinc-50 whitespace-nowrap hover:text-amber-300"
             >
               Observatorio de inflaci&oacute;n
@@ -133,6 +154,7 @@ export default function Navigation() {
                   key={href}
                   href={href}
                   aria-current={isActive ? "page" : undefined}
+                  onClick={(e) => volverAlInicioSiMismaPagina(e, href, pathname)}
                   className={`relative px-3 py-2.5 text-[13px] whitespace-nowrap ${
                     isActive
                       ? "text-zinc-50 font-medium"
