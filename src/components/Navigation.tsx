@@ -7,8 +7,7 @@ import { usePeriod } from "@/lib/PeriodContext";
 import { PERIODS, PeriodKey } from "@/lib/constants";
 const tabs = [
   { href: "/", label: "Mi canasta" },
-  { href: "/explorador", label: "Explorador" },
-  { href: "/historial", label: "Historial" },
+  { href: "/productos", label: "Productos" },
   { href: "/indices", label: "Índices" },
   { href: "/variedades", label: "Precios INDEC" },
   { href: "/cobertura", label: "Cobertura" },

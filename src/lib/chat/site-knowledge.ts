@@ -18,16 +18,10 @@ export const SITE_SECTIONS: { ruta: string; nombre: string; descripcion: string 
       "Armás tu canasta personal buscando productos y haciendo click en la tabla; después la revisás y ves cuánto subió en el período elegido comparada con lo que habría marcado el IPC del INDEC para una canasta con la misma composición por clase.",
   },
   {
-    ruta: "/explorador",
-    nombre: "Explorador",
+    ruta: "/productos",
+    nombre: "Productos",
     descripcion:
-      "Todo el relevamiento, producto por producto: buscador, filtro por cadena y por categoría. Al elegir un producto muestra su historial y en qué cadena conviene comprarlo.",
-  },
-  {
-    ruta: "/historial",
-    nombre: "Historial",
-    descripcion:
-      "Evolución histórica del precio de uno o varios productos para compararlos, con filtro por supermercado y categoría.",
+      "Todo el relevamiento, producto por producto, con buscador y filtros por cadena y categoría. Pestaña Detalle: al elegir un producto muestra su historial, en qué cadena conviene comprarlo y un botón para empezar una canasta con él. Pestaña Comparar (/productos?vista=comparar): la evolución de hasta 4 productos en un mismo gráfico.",
   },
   {
     ruta: "/indices",
@@ -65,7 +59,7 @@ const METODOLOGIA = `- Los precios se relevan todos los días de los portales p�
 - Índice por clase: precio de lista promedio mensual de cada producto en cada cadena, sin atípicos; cada producto se compara consigo mismo en la misma cadena mes a mes (variaciones de más del doble o menos de la mitad se descartan como errores de carga); media geométrica por cadena (mínimo 30 productos comparables) y todas las cadenas pesan igual; grupos y divisiones con ponderadores del INDEC para GBA.
 - En Disco, Jumbo y Vea parte del catálogo tiene precios inválidos: de esas cadenas solo entra el precio que coincide (entre la mitad y el doble) con el de otras cadenas.
 - Cada índice se compara con la serie del INDEC del mismo código, región GBA, mismos meses; nunca contra el nivel general (que incluye alquileres, transporte y servicios).
-- Variación por producto (Explorador): precio más reciente vs. inicio del período (30, 90 o 365 días); solo si ese inicio es posterior al 1/7/2026, porque hasta junio tres cadenas publicaban precios en otra escala.
+- Variación por producto (Productos): precio más reciente vs. inicio del período (30, 90 o 365 días); solo si ese inicio es posterior al 1/7/2026, porque hasta junio tres cadenas publicaban precios en otra escala.
 - El observatorio no reemplaza las mediciones oficiales: solo mide precios de góndola en cadenas seleccionadas.`;
 
 const CACHE_MS = 10 * 60_000;

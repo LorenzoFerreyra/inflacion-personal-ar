@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**.amazonaws.com" },
     ],
   },
+  // Explorador e Historial se unieron en /productos (pestañas Detalle y Comparar).
+  redirects: async () => [
+    { source: "/explorador", destination: "/productos", permanent: true },
+    { source: "/historial", destination: "/productos?vista=comparar", permanent: true },
+    { source: "/historial/:ean", destination: "/productos/:ean", permanent: true },
+  ],
   headers: async () => [
     {
       source: "/(.*)",

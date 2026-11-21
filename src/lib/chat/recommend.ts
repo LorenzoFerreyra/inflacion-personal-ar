@@ -32,6 +32,8 @@ import type {
 
 const EARTH_RADIUS_KM = 6371;
 const TOP_N = 3;
+/** Además de la más cercana, cuántas sucursales relevadas por cadena se informan. */
+const MAX_OTHER_BRANCHES = 5;
 /** Radio de cobertura por defecto cuando el usuario no fijó uno. */
 export const DEFAULT_COVERAGE_KM = 20;
 
@@ -68,32 +70,38 @@ export function haversineKm(
 type RankedBranch = NearestBranch & { cadena: string; provincia: string };
 
 /**
- * Sucursal más cercana al usuario por cadena (clave normalizada, solo con
- * coordenadas válidas), sin límite de distancia.
+ * Sucursales de cada cadena (clave normalizada, solo con coordenadas
+ * válidas) ordenadas por distancia al usuario, sin límite de distancia.
  */
-function nearestBranchByChain(
+function branchesByChain(
   branches: Branch[],
   userLat: number,
   userLng: number,
-): Map<string, RankedBranch> {
-  const nearest = new Map<string, RankedBranch>();
+): Map<string, RankedBranch[]> {
+  const byChain = new Map<string, RankedBranch[]>();
   for (const b of branches) {
     if (b.latitud == null || b.longitud == null) continue;
     const distancia_km = haversineKm(userLat, userLng, b.latitud, b.longitud);
     const key = chainKey(b.cadena);
-    const current = nearest.get(key);
-    if (!current || distancia_km < current.distancia_km) {
-      nearest.set(key, {
-        cadena: b.cadena,
-        provincia: b.provincia,
-        direccion: b.direccion,
-        localidad: b.localidad,
-        distancia_km: Math.round(distancia_km * 10) / 10,
-      });
-    }
+    let list = byChain.get(key);
+    if (!list) byChain.set(key, (list = []));
+    list.push({
+      cadena: b.cadena,
+      provincia: b.provincia,
+      direccion: b.direccion,
+      localidad: b.localidad,
+      distancia_km: Math.round(distancia_km * 10) / 10,
+    });
   }
-  return nearest;
+  for (const list of byChain.values()) list.sort((a, b) => a.distancia_km - b.distancia_km);
+  return byChain;
 }
+
+const toNearest = (b: RankedBranch): NearestBranch => ({
+  direccion: b.direccion,
+  localidad: b.localidad,
+  distancia_km: b.distancia_km,
+});
 
 function minMaxNorm(value: number, min: number, max: number): number {
   if (max === min) return 0;
@@ -112,11 +120,13 @@ export async function recommend(
 
   // Cobertura: qué cadenas tienen sucursales relevadas cerca del usuario.
   let cobertura: CoverageInfo | null = null;
-  let nearest = new Map<string, RankedBranch>();
+  let byChainBranches = new Map<string, RankedBranch[]>();
   const coverageKm = radiusKm ?? DEFAULT_COVERAGE_KM;
   if (hasLocation) {
-    nearest = nearestBranchByChain(await getBranches(), userLat, userLng);
-    const all = [...nearest.values()].sort((a, b) => a.distancia_km - b.distancia_km);
+    byChainBranches = branchesByChain(await getBranches(), userLat, userLng);
+    const all = [...byChainBranches.values()]
+      .map((list) => list[0])
+      .sort((a, b) => a.distancia_km - b.distancia_km);
     cobertura = {
       radio_km: coverageKm,
       cadenas_cerca: all.filter((b) => b.distancia_km <= coverageKm).map((b) => b.cadena),
@@ -157,14 +167,14 @@ export async function recommend(
     // del radio de cobertura (sin sucursales geolocalizadas → no sabemos si
     // está cerca, se descarta).
     let sucursal: NearestBranch | null = null;
+    let otras: NearestBranch[] = [];
     if (hasLocation) {
-      const near = nearest.get(chainKey(cadena));
-      if (!near || near.distancia_km > coverageKm) continue;
-      sucursal = {
-        direccion: near.direccion,
-        localidad: near.localidad,
-        distancia_km: near.distancia_km,
-      };
+      const near = (byChainBranches.get(chainKey(cadena)) ?? []).filter(
+        (b) => b.distancia_km <= coverageKm,
+      );
+      if (near.length === 0) continue;
+      sucursal = toNearest(near[0]);
+      otras = near.slice(1, 1 + MAX_OTHER_BRANCHES).map(toNearest);
     }
 
     const productos: ChainRecommendation["productos"] = [];
@@ -195,6 +205,7 @@ export async function recommend(
       cadena,
       total_precio: productos.reduce((sum, p) => sum + p.precio, 0),
       sucursal_cercana: sucursal,
+      otras_sucursales_cerca: otras,
       productos,
       faltantes,
     });

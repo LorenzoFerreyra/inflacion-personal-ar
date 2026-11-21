@@ -46,6 +46,8 @@ export interface ChainRecommendation {
   score: number;
   total_precio: number;
   sucursal_cercana: NearestBranch | null;
+  /** Otras sucursales relevadas de la cadena dentro del radio, por distancia. */
+  otras_sucursales_cerca: NearestBranch[];
   /** La variante más barata de cada keyword pedida que la cadena tiene. */
   productos: { keyword: string; ean: string; descripcion: string; precio: number }[];
   /** Keywords del pedido de las que la cadena no tiene ninguna variante. */

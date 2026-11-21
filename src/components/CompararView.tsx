@@ -20,7 +20,8 @@ import {
   Tooltip,
 } from "recharts";
 
-export default function HistorialPage() {
+/** Pestaña "Comparar" de Productos: evolución de hasta 4 productos juntos. */
+export default function CompararView() {
   const { period } = usePeriod();
 
   const [search, setSearch] = useState("");
@@ -161,22 +162,6 @@ export default function HistorialPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-display font-semibold text-zinc-50">
-          Historial de precios
-        </h1>
-        <p className="text-sm text-zinc-400 mt-1">
-          Explorá la evolución histórica de precios y compará productos. La
-          evolución por rubro está en{" "}
-          <Link
-            href="/indices"
-            className="text-amber-400 hover:text-amber-300 underline decoration-dotted underline-offset-4"
-          >
-            índices por clase
-          </Link>
-          .
-        </p>
-      </div>
 
       {/* Compare panel */}
       {compareEans.size > 0 && (
@@ -351,7 +336,7 @@ function ProductCard({
             {isComparing ? "Quitar" : "Comparar"}
           </button>
           <Link
-            href={`/historial/${product.ean}`}
+            href={`/productos/${product.ean}`}
             className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium
                        text-amber-400 hover:text-amber-300 underline decoration-dotted decoration-amber-400/50 underline-offset-4"
           >

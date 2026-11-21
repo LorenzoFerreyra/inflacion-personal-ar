@@ -180,10 +180,10 @@ export default function HistorialProductPage({
       <div className="text-center py-24">
         <p className="text-red-400">{error}</p>
         <Link
-          href="/historial"
+          href="/productos"
           className="text-amber-400 text-sm mt-2 inline-block hover:underline"
         >
-          Volver al historial
+          Volver a productos
         </Link>
       </div>
     );
@@ -194,10 +194,10 @@ export default function HistorialProductPage({
       <div className="text-center py-24">
         <p className="text-zinc-400">Producto no encontrado.</p>
         <Link
-          href="/historial"
+          href="/productos"
           className="text-amber-400 text-sm mt-2 inline-block hover:underline"
         >
-          Volver al historial
+          Volver a productos
         </Link>
       </div>
     );
@@ -209,11 +209,11 @@ export default function HistorialProductPage({
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Back link */}
       <Link
-        href="/historial"
+        href="/productos"
         className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
       >
         <ArrowLeft size={14} />
-        Volver al historial
+        Volver a productos
       </Link>
 
       {/* Product header */}

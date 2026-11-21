@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ChatMessage as ChatMessageType } from "@/lib/chat/types";
 
-/** Solo enlaces internos del sitio ("/explorador"); el resto queda como texto. */
+/** Solo enlaces internos del sitio ("/productos"); el resto queda como texto. */
 const INTERNAL_LINK = /\[([^\]]+)\]\((\/[a-z0-9\-/#?=&]*)\)/gi;
 
 /** Renderiza **negritas** dentro de un fragmento sin librería de markdown. */

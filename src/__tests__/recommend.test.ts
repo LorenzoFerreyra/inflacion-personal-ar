@@ -126,6 +126,8 @@ describe("recommend — variantes casi iguales", () => {
     const rec = await recommend(PEDIDO, -34.62, -58.43);
     expect(rec.cobertura?.radio_km).toBe(20);
     expect(rec.cadenas.map((c) => c.cadena).sort()).toEqual(["coto", "dia"]);
+    // con una sola sucursal por cadena no hay otras para informar
+    expect(rec.cadenas.every((c) => c.otras_sucursales_cerca.length === 0)).toBe(true);
   });
 
   it("zona sin cobertura: sin cadenas y con la sucursal relevada más cercana", async () => {

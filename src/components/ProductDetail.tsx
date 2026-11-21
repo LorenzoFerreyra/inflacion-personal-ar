@@ -216,7 +216,7 @@ function IndecProductView({
             Evolución de precios
           </h4>
           <Link
-            href={`/historial/${product.ean}`}
+            href={`/productos/${product.ean}`}
             className="flex items-center gap-1 text-[11px] text-amber-400/70 hover:text-amber-300 transition-colors"
           >
             Ver completo
@@ -441,7 +441,7 @@ function RegularProductView({
             Evolución de precios
           </h4>
           <Link
-            href={`/historial/${product.ean}`}
+            href={`/productos/${product.ean}`}
             className="flex items-center gap-1 text-[11px] text-amber-400/70 hover:text-amber-300 transition-colors"
           >
             Ver completo

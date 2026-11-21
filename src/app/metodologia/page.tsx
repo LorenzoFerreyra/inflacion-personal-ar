@@ -89,7 +89,7 @@ export default async function MetodologiaPage() {
             Variación por producto
           </h3>
           <p className="text-sm text-zinc-400 leading-relaxed prose-width">
-            La variación de cada producto en el explorador compara el precio
+            La variación de cada producto en Productos compara el precio
             más reciente con el del inicio del período (30, 90 o 365 días).
             Solo se calcula si ese inicio es posterior al 1 de julio de 2026:
             hasta junio, tres cadenas publicaban los precios en otra escala.

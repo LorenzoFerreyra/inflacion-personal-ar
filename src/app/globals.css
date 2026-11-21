@@ -188,9 +188,10 @@ textarea::placeholder {
   animation: checkDraw 0.3s cubic-bezier(0.25, 1, 0.5, 1) 0.15s both;
 }
 
-/* Mapa base oscuro a partir de los tiles claros de OSM */
-.map-tiles-dark {
-  filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.9) saturate(0.5);
+/* Fondo mientras cargan los tiles (Argenmap oscuro): sin flash gris claro.
+   Doble clase porque leaflet.css se importa después y define el gris. */
+.leaflet-container.leaflet-container {
+  background: #2b2b2b;
 }
 
 /* Leaflet popup dark theme */

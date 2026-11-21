@@ -5,12 +5,14 @@ import ProductTable from "@/components/ProductTable";
 import ProductDetail from "@/components/ProductDetail";
 import { Product } from "@/lib/types";
 import { useProducts } from "@/lib/useProducts";
-import { Search } from "@/components/Icons";
+import Link from "next/link";
+import { Search, ShoppingBasket } from "@/components/Icons";
 import { chainLabel } from "@/lib/chainColors";
 import { PERIODS } from "@/lib/constants";
 import { usePeriod } from "@/lib/PeriodContext";
 
-export default function ExploradorPage() {
+/** Pestaña "Detalle" de Productos: tabla + detalle de un producto. */
+export default function ExploradorView() {
   const {
     search,
     setSearch,
@@ -40,15 +42,6 @@ export default function ExploradorPage() {
     <div className="flex flex-col lg:flex-row gap-10">
       {/* Left: product list */}
       <div className="flex-1 min-w-0">
-        <header className="mb-6">
-          <h1 className="font-display text-[26px] font-semibold text-zinc-50">
-            Explorador de precios
-          </h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Todo el relevamiento, producto por producto.
-          </p>
-        </header>
-
         {/* Search bar + chain filter */}
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
@@ -152,10 +145,20 @@ export default function ExploradorPage() {
               </p>
             </div>
           ) : (
-            <ProductDetail
-              key={selectedProduct.ean}
-              product={selectedProduct}
-            />
+            <>
+              <ProductDetail
+                key={selectedProduct.ean}
+                product={selectedProduct}
+              />
+              <Link
+                href={`/?eans=${encodeURIComponent(selectedProduct.ean)}`}
+                className="mt-6 w-full flex items-center justify-center gap-2 border border-hairline-strong
+                           hover:bg-panel-2 text-zinc-200 font-medium py-2.5 rounded-sm text-sm"
+              >
+                <ShoppingBasket size={15} />
+                Empezar una canasta con este producto
+              </Link>
+            </>
           )}
         </div>
       </div>

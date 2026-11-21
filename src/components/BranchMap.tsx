@@ -57,13 +57,18 @@ export default function BranchMap({ branches, chains }: Props) {
           attributionControl: true,
         });
 
-        // OSM estándar (sin API key); el tema oscuro lo da el filtro CSS .map-tiles-dark.
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          className: "map-tiles-dark",
-          maxZoom: 19,
-        }).addTo(map);
+        // Argenmap oscuro del IGN (servicio público, sin API key). Se usa en
+        // lugar de OSM porque rotula las Islas Malvinas según la cartografía
+        // oficial argentina. Es TMS: el eje Y va invertido ({-y}).
+        L.tileLayer(
+          "https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/argenmap_oscuro@EPSG%3A3857@png/{z}/{x}/{-y}.png",
+          {
+            attribution:
+              '<a href="https://www.ign.gob.ar/AreaServicios/Argenmap/IntroduccionV2" target="_blank" rel="noopener">Instituto Geográfico Nacional</a> + <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+            minZoom: 3,
+            maxZoom: 18,
+          },
+        ).addTo(map);
 
         const layer = L.layerGroup().addTo(map);
         markersLayer.current = layer;

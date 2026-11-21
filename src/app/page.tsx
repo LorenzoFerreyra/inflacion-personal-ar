@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import ProductTable from "@/components/ProductTable";
 import ResultadoCanasta from "@/components/ResultadoCanasta";
 import Stepper from "@/components/Stepper";
@@ -20,8 +20,50 @@ import VariationBadge from "@/components/VariationBadge";
 import { chainLabel } from "@/lib/chainColors";
 import { fmtPct } from "@/lib/format";
 import type { RespuestaCanasta } from "@/lib/canasta";
+import {
+  ListaCanastasGuardadas,
+  PanelGuardarCanasta,
+} from "@/components/CanastasGuardadas";
+import {
+  type ResultadoGuardado,
+  guardarCanasta,
+  agregarResultado,
+  actualizarEans,
+  borrarCanasta,
+  mismosEans,
+  eansDesdeUrl,
+  urlCompartir,
+  storageLocal,
+} from "@/lib/canastasGuardadas";
+import { useCanastasGuardadas, avisarCambioCanastas } from "@/lib/useCanastasGuardadas";
 
 const STEP_LABELS = ["Elegir", "Revisar", "Resultados"];
+
+interface ProductosCargados {
+  /** En el orden de los EANs pedidos. */
+  productos: Product[];
+  /** EANs sin precio hoy (no vinieron de la API). */
+  faltan: number;
+}
+
+/** Productos de una lista de EANs, o null si la API falló. */
+async function traerProductos(eans: string[], dias: number): Promise<ProductosCargados | null> {
+  try {
+    const params = new URLSearchParams({
+      eans: eans.join(","),
+      dias: String(dias),
+      pageSize: "200",
+    });
+    const res = await fetch(`/api/products?${params}`);
+    if (!res.ok) return null;
+    const { products } = (await res.json()) as { products: Product[] };
+    const porEan = new Map(products.map((p) => [p.ean, p]));
+    const productos = eans.flatMap((e) => porEan.get(e) ?? []);
+    return { productos, faltan: eans.length - productos.length };
+  } catch {
+    return null;
+  }
+}
 
 export default function MiCanastaPage() {
   const { period } = usePeriod();
@@ -49,6 +91,107 @@ export default function MiCanastaPage() {
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Canastas guardadas en el navegador (ver useCanastasGuardadas).
+  const guardadas = useCanastasGuardadas();
+  const [activaId, setActivaId] = useState<string | null>(null);
+  const [cargandoId, setCargandoId] = useState<string | null>(null);
+  const [avisoCarga, setAvisoCarga] = useState<string | null>(null);
+  const [resultadoGuardado, setResultadoGuardado] = useState<ResultadoGuardado | null>(null);
+
+  const activa = guardadas.find((c) => c.id === activaId) ?? null;
+  const basketEanList = useMemo(() => basket.map((p) => p.ean), [basket]);
+  const coincideActiva = activa !== null && mismosEans(activa.eans, basketEanList);
+
+  /** Pone en la canasta los productos traídos para una canasta guardada o un link. */
+  const aplicarCarga = useCallback(
+    (carga: ProductosCargados | null, id: string | null) => {
+      if (!carga) {
+        setAvisoCarga("No se pudo cargar la canasta. Reintentá más tarde.");
+        return;
+      }
+      if (carga.productos.length === 0) {
+        setAvisoCarga("Ninguno de los productos de esa canasta tiene precios disponibles hoy.");
+        return;
+      }
+      setBasket(carga.productos);
+      setActivaId(id);
+      setResult(null);
+      setStep(1);
+      const f = carga.faltan;
+      setAvisoCarga(
+        f > 0
+          ? `${f} producto${f === 1 ? "" : "s"} de la canasta ya no ${f === 1 ? "tiene" : "tienen"} precios y no se ${f === 1 ? "cargó" : "cargaron"}.`
+          : null,
+      );
+    },
+    [],
+  );
+
+  async function cargarGuardada(id: string, eans: string[]) {
+    setCargandoId(id);
+    setAvisoCarga(null);
+    aplicarCarga(await traerProductos(eans, PERIODS[period].dias), id);
+    setCargandoId(null);
+  }
+
+  // Al entrar con un link compartido (?eans=), cargar esa canasta. El link
+  // se limpia de la barra recién al aplicarla (StrictMode corre esto dos veces).
+  useEffect(() => {
+    const eans = eansDesdeUrl(window.location.search);
+    if (eans.length === 0) return;
+    let cancelado = false;
+    void traerProductos(eans, PERIODS[period].dias).then((carga) => {
+      if (cancelado) return;
+      aplicarCarga(carga, null);
+      window.history.replaceState(null, "", window.location.pathname);
+    });
+    return () => {
+      cancelado = true;
+    };
+    // Solo al montar: el link se lee una vez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function borrarGuardada(id: string) {
+    borrarCanasta(storageLocal(), id);
+    avisarCambioCanastas();
+    if (id === activaId) setActivaId(null);
+  }
+
+  const refrescarGuardadas = avisarCambioCanastas;
+
+  function guardarNueva(nombre: string): boolean {
+    const c = guardarCanasta(storageLocal(), {
+      nombre,
+      eans: basketEanList,
+      resultado: resultadoGuardado,
+    });
+    if (!c) return false;
+    setActivaId(c.id);
+    refrescarGuardadas();
+    return true;
+  }
+
+  function actualizarActiva(): boolean {
+    if (!activa) return false;
+    const store = storageLocal();
+    if (!actualizarEans(store, activa.id, basketEanList)) return false;
+    if (resultadoGuardado) agregarResultado(store, activa.id, resultadoGuardado);
+    refrescarGuardadas();
+    return true;
+  }
+
+  async function copiarLink(): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(
+        urlCompartir(window.location.origin, window.location.pathname, basketEanList),
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function addToBasket(product: Product) {
     setBasket((prev) => {
       if (prev.some((p) => p.ean === product.ean)) return prev;
@@ -71,7 +214,26 @@ export default function MiCanastaPage() {
 
       const res = await fetch(`/api/canasta?${params}`);
       if (!res.ok) throw new Error("Error al obtener datos");
-      setResult((await res.json()) as RespuestaCanasta);
+      const data = (await res.json()) as RespuestaCanasta;
+      setResult(data);
+
+      // Resumen para el historial de la canasta guardada (el mismo número
+      // que muestra el titular del resultado).
+      const resumen: ResultadoGuardado | null = data.disponible
+        ? {
+            fecha: new Date().toISOString(),
+            periodo: period,
+            desde: data.desde,
+            hasta: data.hasta,
+            var_pct: data.comparacion?.canasta_var ?? data.canasta?.var_pct ?? null,
+            indec_var: data.comparacion?.indec_var ?? null,
+          }
+        : null;
+      setResultadoGuardado(resumen);
+      if (resumen && activa && mismosEans(activa.eans, basketEanList)) {
+        agregarResultado(storageLocal(), activa.id, resumen);
+        refrescarGuardadas();
+      }
 
       setStep(3);
     } catch {
@@ -236,6 +398,20 @@ export default function MiCanastaPage() {
                   </button>
                 </>
               )}
+
+              {avisoCarga && (
+                <p role="status" className="mt-4 text-[12px] text-amber-300 bg-amber-tint border border-amber-tint-2 rounded-sm px-3 py-2">
+                  {avisoCarga}
+                </p>
+              )}
+
+              <ListaCanastasGuardadas
+                canastas={guardadas}
+                activaId={coincideActiva ? activaId : null}
+                cargando={cargandoId}
+                onCargar={(c) => void cargarGuardada(c.id, c.eans)}
+                onBorrar={borrarGuardada}
+              />
             </div>
           </div>
         </div>
@@ -361,7 +537,17 @@ export default function MiCanastaPage() {
       {step === 3 && result && (
         <div className="space-y-10 animate-fade-in">
           {result.disponible ? (
-            <ResultadoCanasta canasta={result} basket={basket} />
+            <>
+              <ResultadoCanasta canasta={result} basket={basket} />
+              <PanelGuardarCanasta
+                activa={activa}
+                coincide={coincideActiva}
+                resultadoActual={resultadoGuardado}
+                onGuardarNueva={guardarNueva}
+                onActualizar={actualizarActiva}
+                onCopiarLink={copiarLink}
+              />
+            </>
           ) : (
             <p className="text-[13px] text-amber-300 bg-amber-tint border border-amber-tint-2 rounded-sm px-4 py-3">
               {result.motivo}
